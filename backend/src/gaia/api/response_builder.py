@@ -1,0 +1,140 @@
+"""
+Response Builder - Handles creating API responses from orchestrator results
+"""
+
+import logging
+from typing import Dict, Any
+# Protocol types removed - using OpenAPI/Pydantic schemas instead
+from gaia.api.schemas.chat import (
+    StructuredGameData, ExecutionDetails, AgentType,
+    MachineResponse, ErrorResponse, ChatResponse
+)
+
+logger = logging.getLogger(__name__)
+
+class ResponseBuilder:
+    """Handles creating API responses from orchestrator results."""
+    
+    @staticmethod
+    def build_protocol_response(
+        orchestrator_result: Dict[str, Any],
+        session_id: str,
+        current_agent: str,
+        conversation_history: list
+    ) -> ChatResponse:
+        """Build new protocol API response format."""
+        structured_data = orchestrator_result["structured_data"]
+        
+        # The answer is the DM's direct response to the user's input
+        answer = orchestrator_result.get("answer")
+        if not answer and structured_data and hasattr(structured_data, 'answer'):
+            answer = getattr(structured_data, 'answer', None)
+        elif not answer and isinstance(structured_data, dict):
+            answer = structured_data.get('answer')
+
+        # Always parse structured data from response content since orchestrator doesn't extract it
+        if structured_data is None:
+            raise ValueError("No structured data provided.")
+
+        logger.info(f"Using structured data from orchestrator: {structured_data}")
+
+        # Convert dict to StructuredGameData if needed
+        if isinstance(structured_data, dict):
+            # Ensure all fields are strings for frontend compatibility
+            processed_data = {}
+            for key, value in structured_data.items():
+                if isinstance(value, (dict, list)):
+                    import json
+                    try:
+                        processed_data[key] = json.dumps(value, indent=2)
+                    except (TypeError, ValueError):
+                        processed_data[key] = str(value)
+                elif not isinstance(value, str):
+                    processed_data[key] = str(value)
+                else:
+                    processed_data[key] = value
+            
+            # Ensure the answer is included in the structured data for frontend compatibility
+            if answer and 'answer' not in processed_data:
+                processed_data['answer'] = answer
+            
+            structured_data = StructuredGameData(**processed_data)
+        else:
+            raise ValueError(f"Unable to create proto from {str(structured_data)}")
+
+        # --- Fallback for empty fields ---
+        fallback_msgs = {
+            'narrative': "The Dungeon Master is thinking... (no narrative provided)",
+            'turn': "It is currently the players' turn. (no turn info provided)",
+            'status': "No status information provided.",
+            'characters': "No character information provided."
+        }
+        updated = False
+        for field in ['narrative', 'turn', 'status', 'characters']:
+            val = getattr(structured_data, field, None)
+            if not val or not str(val).strip():
+                logger.warning(f"LLM returned empty '{field}'. Filling with fallback message.")
+                setattr(structured_data, field, fallback_msgs[field])
+                updated = True
+        if updated:
+            logger.warning(f"Structured response after fallback: {structured_data}")
+
+        # TODO make execution details meaningful
+        # Create execution details
+        execution_details = ExecutionDetails(
+            agent_name=current_agent,
+            agent_type=AgentType.DUNGEON_MASTER,  # Default, could be enhanced to detect actual agent type
+            execution_time=0.0,  # Could be enhanced to track actual execution time
+            model_name="llama3.3",  # Could be enhanced to get actual model name
+            temperature=0.7
+        )
+        
+        # Create machine response using Pydantic model
+        machine_response = MachineResponse(
+            session_id=session_id,
+            agent_name=current_agent,
+            agent_type=AgentType.DUNGEON_MASTER,  # Default, could be enhanced
+            execution_details=execution_details,
+            structured_data=structured_data,
+            conversation_context={
+                "total_messages": len(conversation_history),
+                "session_started": len(conversation_history) <= 2
+            }
+        )
+        
+        # Create chat response
+        chat_response = ChatResponse(
+            success=True,
+            message=machine_response,
+            conversation_context={
+                "total_messages": len(conversation_history),
+                "session_started": len(conversation_history) <= 2,
+                "answer": answer
+            }
+        )
+        
+        logger.info(f"✅ Protocol response generated by {current_agent}")
+        return chat_response
+    
+    @staticmethod
+    def build_error_response(
+        session_id: str,
+        error: Exception
+    ) -> ChatResponse:
+        """Build error response in protocol format."""
+        error_response = ErrorResponse(
+            error_code="CHAT_ERROR",
+            error_message=str(error)
+        )
+        # Return error as a ChatResponse with a dummy MachineResponse
+        return ChatResponse(
+            success=False,
+            message=MachineResponse(
+                session_id=session_id,
+                agent_name="System",
+                agent_type=AgentType.DUNGEON_MASTER,
+                structured_data=StructuredGameData(
+                    answer=f"Error: {str(error)}"
+                )
+            )
+        ) 

@@ -1,0 +1,201 @@
+# Docker Compose configuration for Gaia
+# 
+# Available services:
+#   dev  - Development mode with hot-reload (default)
+#   gpu  - Development mode with GPU support (requires nvidia-docker)
+#   prod - Production build
+#   test - Test environment
+#
+# Usage:
+#   docker compose build        # Build all images (uses BuildKit automatically)
+#   docker compose up dev       # Start development server
+#   docker compose up gpu       # Start with GPU support
+#   docker compose up prod      # Start production server
+#   docker compose up test      # Run tests
+#
+# Note: Docker Compose v2+ automatically uses BuildKit for better performance.
+# For older versions, set: export DOCKER_BUILDKIT=1
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: gaia-backend-dev
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    env_file:
+      - ../config/cloudrun.dev.env
+    entrypoint: ["/home/gaia/scripts/docker-entrypoint-with-secrets.sh"]
+    command: ["python3", "-m", "uvicorn", "gaia.api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      - SOPS_AGE_KEY_FILE=/run/secrets/age-key.txt
+    tmpfs:
+        - /home/gaia/logs:uid=1000,gid=1000,mode=1777,size=104857600
+        - /home/gaia/audio:uid=1000,gid=1000,mode=1777,size=104857600
+        - /tmp/gaia_auto_tts:uid=1000,gid=1000,mode=1777,size=104857600
+    volumes:
+      # Development: bind mounts for hot-reload, named volume for logs
+      - ./src:/home/gaia/src:ro
+      - ./scripts:/home/gaia/scripts:ro
+      - ./test:/home/gaia/test:ro
+      - ./tests:/home/gaia/tests:ro
+      - ./audio_samples:/home/gaia/audio_samples:ro
+      # Mount auth and db submodules
+      - ../auth:/home/gaia/auth:ro
+      - ../db:/home/gaia/db:ro
+      # Use docker_mount for persistent data
+      - ../campaign_storage:/home/gaia/campaign_storage
+      - ./docker_mount/images:/home/gaia/images
+      # Mount SOPS AGE key for secrets decryption
+      - ${HOME}/.config/sops/age/keys.txt:/run/secrets/age-key.txt:ro
+      # Mount secrets directory for access to encrypted secrets
+      - ../secrets:/home/gaia/secrets:ro
+      - /run/user/1000:/run/user/1000
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 8G
+        reservations:
+          cpus: '4'
+          memory: 4G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: gaia-backend-gpu
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    env_file:
+      - .settings.docker.env
+    entrypoint: ["/home/gaia/scripts/docker-entrypoint-with-secrets.sh"]
+    command: ["python3", "-m", "uvicorn", "gaia.api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      - SOPS_AGE_KEY_FILE=/run/secrets/age-key.txt
+    volumes:
+      # GPU development: bind mounts for hot-reload, named volume for logs
+      - ./src:/home/gaia/src
+      - ./scripts:/home/gaia/scripts
+      - ./test:/home/gaia/test
+      - ./tests:/home/gaia/tests
+      - ./audio_samples:/home/gaia/audio_samples
+      # Mount auth and db submodules
+      - ../auth:/home/gaia/auth
+      - ../db:/home/gaia/db
+      # Use docker_mount for persistent data
+      - ./docker_mount/logs:/home/gaia/logs
+      - ../campaign_storage:/home/gaia/campaign_storage
+      - ./docker_mount/images:/home/gaia/images
+      - ./docker_mount/audio:/home/gaia/audio
+      - ./docker_mount/tts_temp:/tmp/gaia_auto_tts
+      # Mount SOPS AGE key for secrets decryption
+      - ${HOME}/.config/sops/age/keys.txt:/run/secrets/age-key.txt:ro
+      # Mount secrets directory for access to encrypted secrets
+      - ../secrets:/home/gaia/secrets:ro
+      - /run/user/1000:/run/user/1000
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 8G
+        reservations:
+          cpus: '4'
+          memory: 4G
+          # Uncomment below to enable GPU support (requires nvidia-docker)
+          devices:
+            - capabilities: [gpu]
+              count: all              
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: gaia-backend-prod
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    # Production:
+    env_file:
+      - .settings.docker.env
+      - ../secrets/.secrets.env
+    volumes:
+      # Production: only named volumes for better isolation
+      - gaia-logs:/home/gaia/logs
+      - gaia-campaigns:/home/gaia/campaigns
+      - gaia-tts-cache:/tmp/gaia_auto_tts
+      # Mount tests for running tests in production container
+      - ./tests:/home/gaia/tests:ro
+      # Mount auth and db submodules (read-only in production)
+      - ../auth:/home/gaia/auth:ro
+      - ../db:/home/gaia/db:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: gaia-backend-test
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    env_file:
+      - .settings.docker.env
+      - ../secrets/.secrets.env
+    volumes:
+      # Mount source code for testing
+      - ./src:/home/gaia/src
+      - ./test:/home/gaia/test
+      - ./tests:/home/gaia/tests
+      # Mount auth and db submodules
+      - ../auth:/home/gaia/auth
+      - ../db:/home/gaia/db
+      # Use docker_mount for persistent data
+      - ./docker_mount/logs:/home/gaia/logs
+      - ../campaign_storage:/home/gaia/campaign_storage
+      - ./docker_mount/images:/home/gaia/images
+      - ./docker_mount/audio:/home/gaia/audio
+      - ./docker_mount/tts_temp:/tmp/gaia_auto_tts
+      - /run/user/1000:/run/user/1000
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 8G
+        reservations:
+          cpus: '4'
+          memory: 4G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+# Define named volumes
+volumes:
+  gaia-logs:
+  gaia-campaigns:
+  gaia-tts-cache:

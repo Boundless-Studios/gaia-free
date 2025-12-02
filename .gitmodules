@@ -1,0 +1,3 @@
+[submodule "campaign_storage"]
+	path = campaign_storage
+	url = https://github.com/Boundless-Studios/Gaia-Campaigns.git

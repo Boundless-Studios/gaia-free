@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Restore uv / Python cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      - name: Restore npm cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
+
+      - name: Install Python deps with uv (if needed)
+        run: |
+          if [ ! -d .venv ]; then
+            echo "No .venv found → running uv sync..."
+            uv sync
+          else
+            echo ".venv already present from cache → skipping uv sync."
+          fi
+
+      - name: Create secret file
+        run: |
+          SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
+          mkdir -p "$(dirname ${SOPS_AGE_KEY_FILE})"
+          echo "${{ secrets.SOPS_AGE_KEY }}" > ${SOPS_AGE_KEY_FILE}
+
+      - name: Build docker images
+        run: |
+          make build > build.log 2>&1 || {
+                echo "❌ make build failed. Last 200 lines of the log:"
+                tail -n 200 build.log
+                exit 1
+          }
+
+      - name: Config
+        run: |
+          docker compose -f docker-compose.yml  -f docker-compose.ci.yaml --profile dev config
+
+      - name: Start services in detached mode
+        timeout-minutes: 1
+        run: |
+          make start DETACH=--detach 
+          until [ "$(docker inspect -f '{{.State.Health.Status}}' gaia-backend-dev)" = "healthy" ]; do
+           echo "  still waiting for gaia-backend ...";
+              sleep 1;
+          done;
+
+      - name: Run tests
+        run: |
+          ./backend/src/gaia_private/prompts/run_migration.sh
+           python3 gaia_launcher.py test
+
+      - name: backend log
+        if: always()
+        run: |
+          docker compose logs backend-dev > backend.log
+
+      - name: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-build-log
+          path: |
+            build.log
+            backend.log

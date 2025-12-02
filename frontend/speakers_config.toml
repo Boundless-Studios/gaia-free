@@ -1,0 +1,77 @@
+# F5-TTS Speaker Configuration
+# This file defines the available speakers and their reference audio files
+
+[speakers.dm]
+name = "DM Narrator"
+description = "Calm and authoritative dungeon master voice"
+reference_audio = "audio_samples/dm-narrator-nathaniel-calm.mp3"
+reference_text = "The town square seems to shift slightly as you speak your name, as if the very stones recognize the touch of magic."
+style = "narrator"
+gender = "male"
+
+[speakers.adventurer]
+name = "Adventurer"
+description = "Gentle and soft adventurer voice"
+reference_audio = "audio_samples/adventurer-jen-soft.mp3"
+reference_text = "The town square seems to shift slightly as you speak your name, as if the very stones recognize the touch of magic."
+style = "friendly"
+gender = "female"
+
+[speakers.innkeeper]
+name = "Innkeeper"
+description = "Warm and welcoming innkeeper voice"
+reference_audio = "audio_samples/innkeeper-priyanka-warm.mp3"
+reference_text = "The town square seems to shift slightly as you speak your name, as if the very stones recognize the touch of magic."
+style = "warm"
+gender = "female"
+
+[speakers.merchant]
+name = "Merchant"
+description = "Clear and articulate merchant voice"
+reference_audio = "audio_samples/merchant-alice-clear.mp3"
+reference_text = "The town square seems to shift slightly as you speak your name, as if the very stones recognize the touch of magic."
+style = "professional"
+gender = "female"
+
+[speakers.sage]
+name = "Wise Sage"
+description = "Wise and moderate sage voice"
+reference_audio = "audio_samples/wise-sage-moderate.mp3"
+reference_text = "The town square seems to shift slightly as you speak your name, as if the very stones recognize the touch of magic."
+style = "wise"
+gender = "neutral"
+
+[speakers.mysterious]
+name = "Mysterious Figure"
+description = "Mysterious and whispering voice"
+reference_audio = "audio_samples/mysterious-almee-whisper.mp3"
+reference_text = "The town square seems to shift slightly as you speak your name, as if the very stones recognize the touch of magic."
+style = "mysterious"
+gender = "female"
+
+[speakers.warrior]
+name = "Warrior"
+description = "Confident and strong warrior voice"
+reference_audio = "audio_samples/warrior-caleb-confident.mp3"
+reference_text = "The town square seems to shift slightly as you speak your name, as if the very stones recognize the touch of magic."
+style = "confident"
+gender = "male"
+
+[speakers.noble]
+name = "Noble"
+description = "Distinguished and authoritative noble voice"
+reference_audio = "audio_samples/noble-cornelius-distinguished.mp3"
+reference_text = "The town square seems to shift slightly as you speak your name, as if the very stones recognize the touch of magic."
+style = "authoritative"
+gender = "male"
+
+# Global settings
+[settings]
+output_dir = "generated_audio"
+sample_rate = 24000
+model_name = "F5-TTS"
+device = "auto"  # auto, cpu, cuda
+speed = 1.0
+remove_silence = true
+# Gradio API settings (much faster than local F5-TTS)
+gradio_url = "http://localhost:7860"  # Local Gradio server URL and port

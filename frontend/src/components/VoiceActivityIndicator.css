@@ -1,0 +1,29 @@
+.voice-activity-indicator {
+  @apply fixed top-5 right-5 flex items-center gap-2 px-3 py-2 rounded-full z-50 transition-all duration-300 ease-in-out;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.indicator-dot {
+  @apply w-3 h-3 rounded-full bg-gray-600 transition-all duration-200 ease-in-out;
+}
+
+.voice-activity-indicator.active .indicator-dot {
+  @apply bg-green-500 animate-pulse;
+  box-shadow: 0 0 10px #4caf50, 0 0 20px #4caf50;
+}
+
+.indicator-label {
+  @apply text-gray-300 text-sm font-medium;
+}
+
+@keyframes pulse {
+  0% {
+    @apply scale-100 opacity-100;
+  }
+  50% {
+    @apply scale-110 opacity-80;
+  }
+  100% {
+    @apply scale-100 opacity-100;
+  }
+}

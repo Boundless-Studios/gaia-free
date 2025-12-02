@@ -1,0 +1,166 @@
+/* CampaignManager Styles - Using Tailwind @apply */
+.campaign-manager {
+  @apply p-5 bg-gaia-light rounded-lg h-full overflow-y-auto;
+}
+
+.campaign-header {
+  @apply flex justify-between items-center mb-5;
+}
+
+.campaign-header-actions {
+  @apply flex items-center gap-2.5;
+}
+
+.campaign-header h2 {
+  @apply m-0 text-gray-200;
+}
+
+.campaign-controls {
+  @apply flex items-center gap-2.5 mb-5 p-2.5;
+  @apply bg-gaia-dark rounded;
+}
+
+.campaign-controls label {
+  @apply text-gray-400;
+}
+
+.campaign-controls select {
+  @apply bg-gaia-light text-gray-200 border border-gray-600;
+  @apply px-2.5 py-1 rounded;
+}
+
+.campaign-create-form {
+  @apply bg-gaia-dark p-5 rounded-lg mb-5;
+}
+
+.campaign-create-form h3 {
+  @apply mt-0 text-gray-200;
+}
+
+.campaign-create-form input,
+.campaign-create-form textarea,
+.campaign-create-form select {
+  @apply w-full mb-2.5 p-2.5;
+  @apply bg-gaia-light text-gray-200;
+  @apply border border-gray-600 rounded;
+}
+
+.campaign-create-form textarea {
+  @apply resize-y min-h-[60px];
+}
+
+.form-buttons {
+  @apply flex gap-2.5 justify-end;
+}
+
+.campaign-list {
+  @apply flex flex-col gap-4;
+}
+
+.campaign-item {
+  @apply bg-gaia-dark p-5 rounded-lg;
+  @apply border-2 border-transparent;
+  @apply transition-all duration-300;
+  @apply flex justify-between items-center;
+}
+
+.campaign-item:hover {
+  @apply border-gray-600 bg-gray-800;
+}
+
+.campaign-item.active {
+  @apply border-green-500;
+  background-color: #2d3d2d;
+}
+
+.campaign-info {
+  @apply flex-1;
+}
+
+.campaign-info h4 {
+  @apply m-0 mb-2.5 text-gray-200 text-xl;
+}
+
+.campaign-description {
+  @apply text-gray-400 m-0 mb-2.5 italic;
+}
+
+.campaign-meta {
+  @apply flex gap-4 mb-2.5;
+}
+
+.campaign-meta span {
+  @apply text-gray-500 text-sm;
+}
+
+.game-style {
+  @apply bg-gaia-light px-2 py-0.5 rounded text-xs capitalize;
+}
+
+.campaign-dates {
+  @apply flex gap-5 text-sm text-gray-600;
+}
+
+.campaign-actions {
+  @apply flex flex-col gap-2.5 ml-5;
+}
+
+.loading {
+  @apply text-center text-gray-500 py-10;
+}
+
+.no-campaigns {
+  @apply text-center text-gray-500 py-10;
+  @apply bg-gaia-dark rounded-lg;
+}
+
+/* Button styles */
+.btn {
+  @apply px-4 py-2 border-none rounded cursor-pointer;
+  @apply text-sm transition-all duration-300;
+}
+
+.btn-small {
+  @apply px-3 py-1.5 text-xs;
+}
+
+.btn-primary {
+  @apply bg-green-600 text-white hover:bg-green-700;
+}
+
+.btn-secondary {
+  @apply bg-gray-600 text-white hover:bg-gray-700;
+}
+
+/* Make edit button more visible */
+.btn-edit {
+  @apply bg-blue-600 text-white border-2 border-blue-700 font-bold;
+  @apply hover:bg-blue-700 hover:scale-105;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white hover:bg-red-700;
+}
+
+/* Campaign edit form styles */
+.campaign-edit-form {
+  @apply w-full flex flex-col gap-2.5;
+}
+
+.edit-title {
+  @apply w-full p-2.5;
+  @apply bg-gaia-light text-gray-200;
+  @apply border border-gray-600 rounded;
+  @apply text-lg font-bold;
+}
+
+.edit-description {
+  @apply w-full p-2.5;
+  @apply bg-gaia-light text-gray-200;
+  @apply border border-gray-600 rounded;
+  @apply resize-y min-h-[60px] font-sans;
+}
+
+.edit-actions {
+  @apply flex gap-2.5 justify-end mt-2.5;
+}

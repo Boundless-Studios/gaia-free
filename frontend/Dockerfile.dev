@@ -1,0 +1,30 @@
+# Development Docker image with hot reload
+FROM node:22-alpine
+
+# Install system dependencies
+RUN apk add --no-cache curl git
+
+# Upgrade npm to latest version
+RUN npm install -g npm@latest
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install all dependencies
+RUN npm install --legacy-peer-deps
+
+# Copy source code
+COPY . .
+
+# Expose development port
+EXPOSE 3000
+
+# Health check for development
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:3000/ || exit 1
+
+# Start development server with hot reload
+# Need --host 0.0.0.0 to make Vite accessible from outside the container
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

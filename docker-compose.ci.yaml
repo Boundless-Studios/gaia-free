@@ -1,0 +1,10 @@
+services:
+  backend-dev:
+    deploy:
+      resources:
+        limits:
+          cpus: 2
+          memory: "1G"
+        reservations:
+          cpus: 1
+          memory: "512M"

@@ -1,0 +1,276 @@
+.campaign-setup-container {
+  @apply max-w-6xl mx-auto p-8 bg-gray-800 rounded-2xl;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Step Header with Auto-Generate Button */
+.step-header {
+  @apply flex justify-between items-center mb-6;
+}
+
+.step-header h2 {
+  @apply m-0;
+}
+
+.step-header-buttons {
+  @apply flex gap-2;
+}
+
+/* Progress Indicator */
+.campaign-setup-progress {
+  @apply flex justify-center items-center mb-12 gap-8;
+}
+
+.progress-step {
+  @apply flex items-center gap-2 opacity-50 transition-opacity duration-300 ease-in-out;
+}
+
+.progress-step.active {
+  @apply opacity-100;
+}
+
+.step-number {
+  @apply w-8 h-8 rounded-full bg-purple-400 text-gray-900 flex items-center justify-center font-bold text-sm;
+}
+
+.step-label {
+  @apply text-gray-200 font-medium;
+}
+
+/* Form Styles */
+.campaign-setup-step {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.campaign-setup-step h2 {
+  @apply text-purple-400 mb-8 text-center text-3xl;
+}
+
+.form-group {
+  @apply mb-6;
+}
+
+.form-group label {
+  @apply block text-gray-200 mb-2 font-medium;
+}
+
+.campaign-input,
+.campaign-textarea,
+.campaign-select,
+.character-input,
+.character-textarea,
+.character-select {
+  @apply w-full p-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-200 text-base transition-colors duration-300 ease-in-out;
+}
+
+.campaign-input:focus,
+.campaign-textarea:focus,
+.campaign-select:focus,
+.character-input:focus,
+.character-textarea:focus,
+.character-select:focus {
+  @apply outline-none border-purple-400;
+}
+
+.campaign-textarea,
+.character-textarea {
+  @apply resize-y min-h-[64px];
+}
+
+/* Player Count Selector */
+.player-count-selector {
+  @apply grid grid-cols-4 gap-4 mb-4;
+}
+
+.player-count-button {
+  @apply p-4 bg-gray-900 border-2 border-gray-600 rounded-lg text-gray-200 text-xl font-bold cursor-pointer transition-all duration-300 ease-in-out;
+}
+
+.player-count-button:hover {
+  @apply border-purple-400 -translate-y-0.5;
+}
+
+.player-count-button.selected {
+  @apply bg-purple-400 text-gray-900 border-purple-400;
+}
+
+/* Character Creation */
+.character-creation .help-text {
+  @apply text-center text-gray-400 mb-8;
+}
+
+.character-slots {
+  @apply grid gap-8;
+}
+
+.character-slot {
+  @apply bg-gray-900 border border-gray-600 rounded-xl p-6 transition-all duration-300 ease-in-out;
+}
+
+.character-slot-header {
+  @apply flex justify-between items-center mb-4;
+}
+
+.character-slot-header h3 {
+  @apply m-0;
+}
+
+.header-buttons {
+  @apply flex gap-4 items-center;
+}
+
+.auto-fill-button {
+  @apply px-4 py-2 bg-red-500 text-white border-none rounded-lg text-sm cursor-pointer transition-all duration-300 ease-in-out;
+}
+
+.auto-fill-button:hover:not(:disabled) {
+  @apply bg-red-600 -translate-y-0.5;
+}
+
+.auto-fill-button:disabled {
+  @apply opacity-60 cursor-not-allowed;
+}
+
+.start-campaign-top {
+  @apply px-5 py-2 text-sm font-semibold;
+}
+
+.character-slot.filled {
+  @apply border-green-500;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.character-slot h3 {
+  @apply text-purple-400 mb-4 text-xl;
+}
+
+.character-grid {
+  @apply grid gap-4 mb-4;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.generate-backstory-button {
+  @apply float-right px-3 py-1 bg-red-500 border-none rounded text-white text-sm cursor-pointer transition-all duration-300 ease-in-out;
+}
+
+.generate-backstory-button:hover {
+  @apply bg-red-600 -translate-y-0.5;
+}
+
+.generate-backstory-button:disabled {
+  @apply opacity-60 cursor-not-allowed;
+}
+
+/* Buttons */
+.button-group {
+  @apply flex justify-center gap-4 mt-8;
+}
+
+.button-primary,
+.button-secondary {
+  @apply px-8 py-3 border-none rounded-lg text-base font-medium cursor-pointer transition-all duration-300 ease-in-out;
+}
+
+.button-primary {
+  @apply bg-purple-400 text-gray-900;
+}
+
+.button-primary:hover:not(:disabled) {
+  @apply bg-purple-500 -translate-y-0.5;
+}
+
+.button-secondary {
+  @apply bg-transparent text-gray-200 border border-gray-600;
+}
+
+.button-secondary:hover {
+  @apply border-purple-400 text-purple-400;
+}
+
+.button-primary:disabled,
+.button-secondary:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/* Error Message */
+.error-message {
+  @apply border border-red-500 text-red-500 p-3 rounded-lg mt-4 text-center;
+  background: rgba(244, 67, 54, 0.1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    @apply opacity-0 translate-y-2.5;
+  }
+  to {
+    @apply opacity-100 translate-y-0;
+  }
+}
+
+/* Dark Theme Variables */
+/* CSS variables converted to Tailwind classes */
+/* --bg-primary: #1a1a1a -> bg-gray-900 */
+/* --bg-secondary: #2a2a2a -> bg-gray-800 */
+/* --text-primary: #e0e0e0 -> text-gray-200 */
+/* --text-secondary: #a0a0a0 -> text-gray-400 */
+/* --primary-color: #b19cd9 -> bg-purple-400 */
+/* --primary-hover: #9b86c9 -> bg-purple-500 */
+/* --accent-color: #ff6b6b -> bg-red-500 */
+/* --accent-hover: #ff5252 -> bg-red-600 */
+/* --success-color: #4caf50 -> border-green-500 */
+/* --error-color: #f44336 -> text-red-500 */
+/* --border-color: #3a3a3a -> border-gray-600 */
+/* Character Basics Section (properties + portrait) */
+.character-basics-section {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 2rem;
+  align-items: start;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .character-basics-section {
+    grid-template-columns: 1fr;
+  }
+
+  .character-basics-section .portrait-section {
+    max-width: 350px;
+    margin: 0 auto;
+  }
+}
+
+.character-basics-section .portrait-section {
+  position: sticky;
+  top: 2rem;
+}
+
+/* Character Visual Section */
+.character-visual-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.visual-grid {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .visual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portrait-section {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+}
+
+.visual-customization {
+  flex: 1;
+}

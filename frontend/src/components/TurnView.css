@@ -1,0 +1,198 @@
+/* TurnView Styles - Using Tailwind @apply */
+
+.turn-view {
+  @apply shadow-lg rounded-lg overflow-hidden transition-all duration-300;
+  @apply hover:shadow-xl;
+  background: #1a1a1a; /* Match conversation box background */
+  border: 1px solid #2a2a2a;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.turn-view.base-view {
+  /* Inherits from shared.css */
+}
+
+.turn-view:hover {
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
+}
+
+.turn-header {
+  background: rgba(245, 158, 11, 0.2);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.4);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+}
+
+.turn-header.base-header {
+  /* Inherits from shared.css */
+}
+
+.turn-icon {
+  line-height: 1;
+  flex-shrink: 0;
+  color: #f59e0b;
+  font-size: 0.85rem;
+}
+
+.turn-title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #f59e0b;
+  text-shadow: none;
+  flex: 1;
+  white-space: nowrap;
+}
+
+.turn-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  max-height: 100%;
+  padding: 6px 12px;
+}
+
+/* Style player options as buttons like in player view */
+.turn-view .chat-message-container {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  border-left: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.turn-view .chat-message-container:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+}
+
+.turn-view .chat-message-container:active {
+  transform: translateY(0);
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.turn-view .chat-message-container .chat-message-header {
+  display: none;
+}
+
+.turn-view .chat-message-container .chat-message-content {
+  color: #e5e7eb;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.turn-view .chat-message-container .chat-message-timestamp {
+  display: none;
+}
+
+/* Override padding on mobile for tighter spacing */
+@media (max-width: 768px) {
+  .turn-view .chat-message-container {
+    padding: 0.6rem 0.85rem;
+    margin-bottom: 0.6rem;
+  }
+}
+
+.turn-text {
+  @apply text-gray-200 leading-normal;
+  font-size: 0.85rem;
+}
+
+/* Play button styles matching NarrativeView */
+.turn-play-button {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.turn-play-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.turn-play-button:active {
+  transform: scale(0.95);
+}
+
+.turn-play-button.playing {
+  background: rgba(255, 100, 100, 0.3);
+  border-color: rgba(255, 100, 100, 0.6);
+  animation: pulse 1.5s infinite;
+}
+
+.turn-paragraph.base-paragraph {
+  @apply mb-2 last:mb-0 first:mt-0 py-2 px-3 text-justify;
+  border-left: 4px solid #f59e0b;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.turn-paragraph:last-child {
+  @apply mb-0;
+}
+
+.turn-paragraph:first-child {
+  @apply mt-0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .turn-view {
+    @apply rounded-lg;
+  }
+  
+  .turn-header {
+    @apply px-4 py-3;
+  }
+  
+  .turn-title {
+    @apply text-lg;
+  }
+  
+  .turn-content {
+    @apply p-4;
+  }
+  
+  .turn-text {
+    @apply text-sm;
+  }
+}
+
+/* Animation inherited from shared.css */
+
+/* Turn header indicator container */
+.turn-header-indicator {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+/* Turn header buttons container */
+.turn-header-buttons {
+  margin-left: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+

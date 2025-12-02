@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposal 1: Collapsible Sidebar Layout</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Collapsible Sidebar */
+        .sidebar {
+            width: 320px;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+            border-right: 1px solid #2a2a2a;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .sidebar.collapsed {
+            width: 60px;
+        }
+
+        .sidebar-toggle {
+            position: absolute;
+            right: -12px;
+            top: 20px;
+            width: 24px;
+            height: 24px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: all 0.2s;
+        }
+
+        .sidebar-toggle:hover {
+            background: #3a3a3a;
+            transform: scale(1.1);
+        }
+
+        /* Sidebar Sections */
+        .sidebar-section {
+            padding: 16px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .sidebar.collapsed .sidebar-section {
+            padding: 8px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 12px;
+            opacity: 1;
+            transition: opacity 0.2s;
+        }
+
+        .sidebar.collapsed .section-title {
+            opacity: 0;
+            height: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Initiative Tracker in Sidebar */
+        .initiative-widget {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+        }
+
+        .sidebar.collapsed .initiative-widget {
+            padding: 8px;
+            text-align: center;
+        }
+
+        .current-turn {
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .sidebar.collapsed .current-turn {
+            font-size: 20px;
+        }
+
+        .next-turn {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        .sidebar.collapsed .next-turn {
+            display: none;
+        }
+
+        /* Character List in Sidebar */
+        .character-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .character-mini {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .character-mini:hover {
+            background: #3a3a3a;
+            transform: translateX(2px);
+        }
+
+        .character-mini.active {
+            border-left-color: #4CAF50;
+            background: #2a3a2a;
+        }
+
+        .sidebar.collapsed .character-mini {
+            padding: 8px;
+            text-align: center;
+        }
+
+        .char-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .char-name {
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .sidebar.collapsed .char-name {
+            display: none;
+        }
+
+        .char-hp {
+            font-size: 10px;
+            color: #aaa;
+        }
+
+        .sidebar.collapsed .char-hp {
+            display: none;
+        }
+
+        /* Main Content Area */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Header Bar */
+        .header-bar {
+            background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 100%);
+            border-bottom: 1px solid #3a3a3a;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-btn:hover {
+            background: #3a3a3a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            border-color: #4CAF50;
+        }
+
+        /* Content Grid */
+        .content-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        /* Left Panel: Narrative/Chat */
+        .narrative-panel {
+            background: #0f0f0f;
+            border-right: 1px solid #2a2a2a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 16px 20px;
+            background: #1a1a1a;
+            border-bottom: 1px solid #2a2a2a;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .narrative-feed {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 3px solid #4CAF50;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .message.player {
+            border-left-color: #2196F3;
+        }
+
+        .message-author {
+            font-weight: 700;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .input-area {
+            padding: 16px 20px;
+            background: #1a1a1a;
+            border-top: 1px solid #2a2a2a;
+        }
+
+        .chat-input {
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 14px;
+            resize: none;
+            font-family: inherit;
+        }
+
+        /* Right Panel: Context */
+        .context-panel {
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .context-tabs {
+            display: flex;
+            background: #1a1a1a;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .context-tab {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .context-tab:hover {
+            color: #ccc;
+        }
+
+        .context-tab.active {
+            color: #4CAF50;
+            border-bottom-color: #4CAF50;
+        }
+
+        .context-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        /* Character Detail Card */
+        .detail-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .detail-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .detail-icon {
+            font-size: 48px;
+        }
+
+        .detail-info h3 {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .detail-info p {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .hp-display {
+            margin-bottom: 16px;
+        }
+
+        .hp-bar {
+            width: 100%;
+            height: 8px;
+            background: #0f0f0f;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50 0%, #45a049 100%);
+            transition: width 0.3s;
+        }
+
+        /* Player Suggestion Box */
+        .suggestion-box {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid #3b82f6;
+        }
+
+        .suggestion-label {
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .suggestion-text {
+            background: rgba(0,0,0,0.3);
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .suggestion-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .suggestion-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .suggestion-btn.approve {
+            background: #4CAF50;
+            color: white;
+            flex: 1;
+        }
+
+        .suggestion-btn.edit {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .suggestion-btn.dismiss {
+            background: #dc2626;
+            color: white;
+        }
+
+        /* Scene Info */
+        .scene-card {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .scene-label {
+            font-weight: 700;
+            color: #4CAF50;
+            margin-bottom: 6px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3a3a3a;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4a4a4a;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Collapsible Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-toggle" onclick="toggleSidebar()">◀</div>
+
+            <div class="sidebar-section">
+                <div class="section-title">Current Turn</div>
+                <div class="initiative-widget">
+                    <div class="current-turn">🎯 Thorin</div>
+                    <div class="next-turn">Next: Goblin (14)</div>
+                </div>
+            </div>
+
+            <div class="sidebar-section" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+                <div class="section-title">Characters</div>
+                <div class="character-list">
+                    <div class="character-mini active">
+                        <div class="char-icon">👤</div>
+                        <div class="char-name">Thorin</div>
+                        <div class="char-hp">45/50 HP</div>
+                    </div>
+                    <div class="character-mini">
+                        <div class="char-icon">🧙</div>
+                        <div class="char-name">Elara</div>
+                        <div class="char-hp">38/38 HP</div>
+                    </div>
+                    <div class="character-mini">
+                        <div class="char-icon">🗡️</div>
+                        <div class="char-name">Brock</div>
+                        <div class="char-hp">52/60 HP</div>
+                    </div>
+                    <div class="character-mini">
+                        <div class="char-icon">🏹</div>
+                        <div class="char-name">Lyra</div>
+                        <div class="char-hp">18/35 HP</div>
+                    </div>
+                    <div class="character-mini">
+                        <div class="char-icon">👹</div>
+                        <div class="char-name">Goblin</div>
+                        <div class="char-hp">12/15 HP</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Area -->
+        <div class="main-area">
+            <!-- Header Bar -->
+            <div class="header-bar">
+                <div style="font-weight: 700; font-size: 14px;">🎲 The Forgotten Ruins</div>
+                <div class="quick-actions">
+                    <button class="action-btn primary">🎯 End Turn</button>
+                    <button class="action-btn">🎲 Roll Dice</button>
+                    <button class="action-btn">🎨 Generate Image</button>
+                    <button class="action-btn">⚔️ Start Combat</button>
+                    <button class="action-btn">🎵 Audio</button>
+                </div>
+            </div>
+
+            <!-- Content Grid -->
+            <div class="content-grid">
+                <!-- Left: Narrative Feed -->
+                <div class="narrative-panel">
+                    <div class="panel-header">
+                        💬 Campaign Narrative
+                    </div>
+                    <div class="narrative-feed">
+                        <div class="message">
+                            <div class="message-author">DM</div>
+                            You enter the tavern. The smell of ale and roasted meat fills the air. A figure in the corner waves you over enthusiastically.
+                        </div>
+                        <div class="message player">
+                            <div class="message-author">Thorin</div>
+                            I approach the figure cautiously, hand on my sword hilt.
+                        </div>
+                        <div class="message">
+                            <div class="message-author">DM</div>
+                            As you get closer, you see it's an old merchant with a weathered map spread before him. "Adventurers!" he exclaims, "Just who I was hoping to see!"
+                        </div>
+                        <div class="message player">
+                            <div class="message-author">Elara</div>
+                            What do you need, old timer?
+                        </div>
+                        <div class="message">
+                            <div class="message-author">DM</div>
+                            The merchant leans in conspiratorially. "I've found the location of the Forgotten Ruins. Untold riches await... but it's too dangerous for an old man like me."
+                        </div>
+                    </div>
+                    <div class="input-area">
+                        <textarea class="chat-input" rows="3" placeholder="Describe your action..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Right: Context Panel -->
+                <div class="context-panel">
+                    <div class="context-tabs">
+                        <button class="context-tab active">Character</button>
+                        <button class="context-tab">Scene</button>
+                        <button class="context-tab">Gallery</button>
+                    </div>
+                    <div class="context-content">
+                        <!-- Player Suggestion -->
+                        <div class="suggestion-box">
+                            <div class="suggestion-label">💡 PLAYER SUGGESTION</div>
+                            <div class="suggestion-text">
+                                "Ask the merchant about the dangers in the ruins"
+                            </div>
+                            <div class="suggestion-actions">
+                                <button class="suggestion-btn approve">✅ Approve</button>
+                                <button class="suggestion-btn edit">✏️</button>
+                                <button class="suggestion-btn dismiss">✖</button>
+                            </div>
+                        </div>
+
+                        <!-- Character Detail -->
+                        <div class="detail-card">
+                            <div class="detail-header">
+                                <div class="detail-icon">👤</div>
+                                <div class="detail-info">
+                                    <h3>Thorin Ironforge</h3>
+                                    <p>Human Fighter • Level 5</p>
+                                </div>
+                            </div>
+
+                            <div class="stat-grid">
+                                <div class="stat-box">
+                                    <div class="stat-label">AC</div>
+                                    <div class="stat-value">18</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-label">INIT</div>
+                                    <div class="stat-value">+3</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-label">SPEED</div>
+                                    <div class="stat-value">30ft</div>
+                                </div>
+                            </div>
+
+                            <div class="hp-display">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span style="font-size: 12px; font-weight: 600;">Hit Points</span>
+                                    <span style="font-size: 14px; font-weight: 700;">45 / 50</span>
+                                </div>
+                                <div class="hp-bar">
+                                    <div class="hp-fill" style="width: 90%"></div>
+                                </div>
+                            </div>
+
+                            <div style="font-size: 11px; color: #aaa; line-height: 1.5;">
+                                <strong>Equipment:</strong> Longsword +1, Chain Mail, Shield<br>
+                                <strong>Conditions:</strong> None<br>
+                                <strong>Notes:</strong> Leading the party into the merchant's quest
+                            </div>
+                        </div>
+
+                        <!-- Scene Info -->
+                        <div class="scene-card">
+                            <div class="scene-label">📍 Current Location</div>
+                            The Prancing Pony Tavern - A dimly lit common room filled with travelers and locals. The fire crackles warmly in the hearth.
+                        </div>
+
+                        <div class="scene-card">
+                            <div class="scene-label">👥 NPCs Present</div>
+                            • Hooded Merchant (Friendly)<br>
+                            • Bartender (Neutral)<br>
+                            • Suspicious Guard (Watching)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            const toggle = document.querySelector('.sidebar-toggle');
+            toggle.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+        }
+
+        // Tab switching
+        document.querySelectorAll('.context-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.context-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+            });
+        });
+
+        // Character selection
+        document.querySelectorAll('.character-mini').forEach(char => {
+            char.addEventListener('click', () => {
+                document.querySelectorAll('.character-mini').forEach(c => c.classList.remove('active'));
+                char.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+# Test-focused Docker image for CI/CD and testing
+FROM node:22-alpine AS base
+
+# Install additional system dependencies (including bash for test scripts)
+RUN apk add --no-cache curl git bash coreutils
+
+# Upgrade npm to latest version
+RUN npm install -g npm@latest
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install all dependencies (including dev dependencies)
+RUN npm install --legacy-peer-deps
+
+# Copy source code
+COPY . .
+
+# Make test script executable
+RUN chmod +x scripts/test.sh
+
+# Set up test environment
+ENV NODE_ENV=test
+ENV CI=true
+
+# Create test results and coverage directories
+RUN mkdir -p /app/test-results /app/coverage
+
+# Health check for test container
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD npm test -- --run || exit 1
+
+# Ensure proper memory allocation for Node
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
+# Default command runs comprehensive test suite with proper output
+# You can override this with: docker run <image> npm test -- --run
+CMD ["bash", "scripts/test.sh"]

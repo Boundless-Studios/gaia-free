@@ -1,0 +1,39 @@
+.turn-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(30, 144, 255, 0.1);
+  border: 1px solid rgba(30, 144, 255, 0.3);
+  color: #e8f2ff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin: 0;
+}
+
+.turn-indicator__dot {
+  width: 8px;
+  height: 8px;
+  background: #1e90ff;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(30, 144, 255, 0.8);
+}
+
+.turn-indicator__text {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.turn-indicator__label {
+  font-size: 10px;
+  color: #9fc8ff;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.turn-indicator__value {
+  font-weight: 600;
+  font-size: 12px;
+  color: #ffffff;
+}
+

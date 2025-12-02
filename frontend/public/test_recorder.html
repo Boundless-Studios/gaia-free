@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MediaRecorder Test</title>
+</head>
+<body>
+    <h1>MediaRecorder Test</h1>
+    <button id="start">Start Recording</button>
+    <button id="stop">Stop Recording</button>
+    <div id="log"></div>
+    
+    <script>
+        const logDiv = document.getElementById('log');
+        function log(message) {
+            const p = document.createElement('p');
+            p.textContent = `${new Date().toISOString().split('T')[1].slice(0, 8)} - ${message}`;
+            logDiv.appendChild(p);
+            console.log(message);
+        }
+        
+        let mediaRecorder;
+        let chunks = [];
+        
+        document.getElementById('start').addEventListener('click', async () => {
+            try {
+                log('Requesting microphone permission...');
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 48000
+                    } 
+                });
+                log(`Got stream with ${stream.getAudioTracks().length} audio tracks`);
+                
+                // Test different mime types
+                const mimeTypes = [
+                    'audio/webm;codecs=opus',
+                    'audio/webm',
+                    'audio/ogg;codecs=opus',
+                    'audio/ogg'
+                ];
+                
+                let supportedType = null;
+                for (const type of mimeTypes) {
+                    if (MediaRecorder.isTypeSupported(type)) {
+                        supportedType = type;
+                        log(`Supported mime type: ${type}`);
+                        break;
+                    }
+                }
+                
+                if (!supportedType) {
+                    log('ERROR: No supported mime types!');
+                    return;
+                }
+                
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: supportedType
+                });
+                
+                chunks = [];
+                let chunkCount = 0;
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        chunks.push(event.data);
+                        chunkCount++;
+                        log(`ondataavailable fired - chunk #${chunkCount}, size: ${event.data.size} bytes`);
+                    } else {
+                        log(`ondataavailable fired - but empty chunk`);
+                    }
+                };
+                
+                mediaRecorder.onstart = () => {
+                    log('MediaRecorder started');
+                };
+                
+                mediaRecorder.onstop = () => {
+                    log(`MediaRecorder stopped - total chunks: ${chunks.length}`);
+                };
+                
+                mediaRecorder.onerror = (event) => {
+                    log(`MediaRecorder error: ${event.error}`);
+                };
+                
+                // Start with timeslice to get chunks every 100ms
+                mediaRecorder.start(100);
+                log('Called mediaRecorder.start(100) - should get chunks every 100ms');
+                
+                // Also test requestData after 1 second
+                setTimeout(() => {
+                    if (mediaRecorder.state === 'recording') {
+                        log('Calling requestData() to force chunk');
+                        mediaRecorder.requestData();
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                log(`Error: ${error.message}`);
+            }
+        });
+        
+        document.getElementById('stop').addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                log('Stopping MediaRecorder...');
+            }
+        });
+    </script>
+</body>
+</html>

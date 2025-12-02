@@ -1,0 +1,378 @@
+.stacked-collaborative-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-height: 200px;
+  max-height: none;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* When header is hidden, ensure full height for sections */
+.stacked-collaborative-editor:not(:has(.stacked-editor-header)) {
+  /* Header is hidden, sections container takes full height */
+}
+
+/* Header with connection status and controls */
+.stacked-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #1a1a1a;
+  border-bottom: 1px solid #333;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: background-color 0.3s;
+}
+
+.status-dot.connected {
+  background-color: #10b981;
+}
+
+.status-dot.disconnected {
+  background-color: #ef4444;
+}
+
+.status-text {
+  font-size: 12px;
+  color: #888;
+}
+
+.submit-button {
+  padding: 6px 16px;
+  background-color: #3b82f6;
+  color: #ffffff;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.submit-button:disabled {
+  background-color: #6b7280;
+  border-color: #6b7280;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Player sections container */
+.player-sections-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+/* Individual player section - inline layout */
+.player-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+  background: #0a0a0a;
+  border: 1px solid #1a1a1a;
+  border-radius: 4px;
+  max-width: 100%;
+}
+
+.player-section.editable {
+  /* Editable section styling removed - no visual distinction needed */
+}
+
+.player-section.editable:focus-within {
+  /* Focus styling removed - cleaner appearance */
+}
+
+.player-section.readonly {
+  opacity: 0.6;
+}
+
+/* Player name container (horizontal inline layout) */
+.player-name-container {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Player name label (non-editable, distinct color) */
+.player-name {
+  color: #c0c0c0;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  line-height: 1.5;
+  user-select: none;
+  margin: 0;
+  padding: 0;
+}
+
+.you-indicator {
+  color: #3b82f6;
+  font-size: 10px;
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0;
+}
+
+/* Inline microphone control button */
+.mic-control-inline {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+}
+
+.mic-control-inline.paused {
+  color: #9ca3af;
+  border-color: #4b5563;
+}
+
+.mic-control-inline.paused:hover {
+  background-color: #1f2937;
+  color: #d1d5db;
+}
+
+.mic-control-inline.active {
+  background-color: #991b1b;
+  color: #fca5a5;
+  border-color: #dc2626;
+}
+
+.mic-control-inline.active:hover {
+  background-color: #7f1d1d;
+}
+
+/* Yellow pulse for voice too low */
+.mic-control-inline.too-low {
+  background-color: #854d0e !important;
+  border-color: #facc15 !important;
+  color: #fef08a !important;
+}
+
+@keyframes pulse-yellow {
+  0%, 100% {
+    background-color: #854d0e;
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4);
+  }
+  50% {
+    background-color: #a16207;
+    box-shadow: 0 0 8px 2px rgba(250, 204, 21, 0.6);
+  }
+}
+
+/* Player textarea - blends with container */
+.player-textarea {
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
+  background: #000000;
+  border: 1px solid #2a2a2a;
+  outline: none;
+  padding: 6px 10px;
+  margin: 0;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #ffffff;
+  resize: vertical;
+  min-height: 80px;
+  max-height: none;
+  overflow-y: auto;
+  vertical-align: top;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.player-section.editable .player-textarea {
+  cursor: text;
+}
+
+.player-section.readonly .player-textarea {
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+/* Voice active state - greyed out while speaking */
+.player-textarea.voice-active {
+  background-color: #1a1a1a;
+  color: #888;
+  cursor: not-allowed;
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.3);
+}
+
+/* Partial transcription showing in textarea */
+.player-textarea.has-partial {
+  color: #fca5a5;
+  font-style: italic;
+  border-color: #dc2626;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.08), rgba(0, 0, 0, 1));
+}
+
+.player-textarea::placeholder {
+  color: #666;
+}
+
+/* Partial overlay for live transcription preview */
+.partial-overlay {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  margin-top: 4px;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.08));
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: 4px;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 13px;
+  color: #fca5a5;
+  animation: partialPulse 1.5s ease-in-out infinite;
+}
+
+.partial-indicator {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.partial-text {
+  flex: 1;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+@keyframes partialPulse {
+  0%, 100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #666;
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Scrollbar styling */
+.player-sections-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.player-sections-container::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+.player-sections-container::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+.player-sections-container::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* Grid layout variant for player view */
+.stacked-collaborative-editor.grid-layout {
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.stacked-collaborative-editor.grid-layout .player-sections-container {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 320px));
+  grid-auto-rows: minmax(140px, auto);
+  grid-auto-flow: row dense;
+  gap: 12px;
+  padding: 10px 12px 10px 0;
+  align-content: flex-start;
+  justify-content: flex-start;
+  margin-right: auto;
+  scroll-padding-bottom: 1rem;
+}
+
+.stacked-collaborative-editor.grid-layout.player-count-1 .player-sections-container,
+.stacked-collaborative-editor.grid-layout.player-count-2 .player-sections-container {
+  max-width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.stacked-collaborative-editor.grid-layout .player-section {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px 10px;
+  margin: 0;
+  background: linear-gradient(180deg, rgba(10, 10, 10, 0.95), rgba(5, 5, 5, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  height: auto;
+}
+
+.stacked-collaborative-editor.grid-layout .player-name-container {
+  align-items: center;
+  gap: 6px;
+}
+
+.stacked-collaborative-editor.grid-layout .player-name {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.stacked-collaborative-editor.grid-layout .you-indicator {
+  font-size: 10px;
+}
+
+.stacked-collaborative-editor.grid-layout .player-textarea {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 6px 10px;
+  min-height: 120px;
+  max-height: 70vh;
+  border-radius: 6px;
+  height: auto;
+  width: 100%;
+  min-width: 220px;
+  align-self: stretch;
+  flex: 0 0 auto;
+}

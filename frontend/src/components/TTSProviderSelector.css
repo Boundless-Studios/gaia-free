@@ -1,0 +1,88 @@
+.tts-provider-selector {
+  @apply flex items-center gap-2 border border-white border-opacity-20 rounded-md px-2.5 py-1.5 transition-all duration-200 ease-in-out;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tts-provider-selector:hover {
+  @apply border-white border-opacity-30;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.provider-label {
+  @apply text-green-100 text-xs font-medium whitespace-nowrap;
+}
+
+.provider-buttons {
+  @apply flex gap-1;
+}
+
+.provider-button {
+  @apply flex items-center gap-1 text-green-100 border border-white border-opacity-20 rounded px-2 py-1 text-xs font-medium cursor-pointer transition-all duration-200 ease-in-out whitespace-nowrap min-w-[60px] justify-center;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.provider-button:hover {
+  @apply border-green-500 -translate-y-0.5;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.provider-button.active {
+  @apply border-green-500;
+  background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+}
+
+.provider-button .provider-icon {
+  @apply text-xs;
+}
+
+.provider-button .provider-name {
+  @apply text-xs whitespace-nowrap;
+}
+
+.refresh-button {
+  @apply bg-transparent border-none cursor-pointer px-1 py-0.5 rounded-sm text-xs transition-all duration-200 ease-in-out ml-1;
+  color: rgba(232, 245, 232, 0.7);
+}
+
+.refresh-button:hover {
+  color: rgba(232, 245, 232, 1);
+  background: rgba(34, 139, 34, 0.2);
+}
+
+.refresh-button:active {
+  @apply scale-95;
+}
+
+.no-providers {
+  @apply flex items-center gap-2 text-xs italic;
+  color: rgba(232, 245, 232, 0.6);
+}
+
+.provider-loading,
+.provider-error {
+  @apply text-green-100 text-xs italic;
+}
+
+.provider-error {
+  @apply text-red-400;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .tts-provider-selector {
+    @apply flex-col gap-1 px-1.5 py-1;
+  }
+  
+  .provider-buttons {
+    @apply flex-wrap justify-center;
+  }
+  
+  .provider-button {
+    @apply min-w-[48px] text-xs;
+  }
+  
+  .provider-button .provider-name {
+    @apply text-xs;
+  }
+} 

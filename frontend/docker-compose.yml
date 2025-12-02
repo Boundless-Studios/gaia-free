@@ -1,0 +1,77 @@
+services:
+  # Development service
+  dev:
+    container_name: gaia-frontend-dev
+    env_file:
+      - .settings.docker.env
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        VITE_AUTH0_REDIRECT_URI: http://localhost:3000/callback
+        VITE_AUTH0_LOGOUT_URL: http://localhost:3000/
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_ENVIRONMENT=development
+      - VITE_AUTH0_REDIRECT_URI=http://localhost:3000/callback
+      - VITE_AUTH0_LOGOUT_URL=http://localhost:3000/
+      - VITE_AUTO_TTS_ENABLED=${AUTO_TTS_ENABLED:-false}
+      # Port configuration for multi-instance
+      - FRONTEND_PORT=${FRONTEND_PORT:-3000}
+      - BACKEND_PORT=${BACKEND_PORT:-8000}
+      - STT_PORT=${STT_PORT:-8001}
+      - DEV_SERVER_PROXY_TARGET=http://${BACKEND_CONTAINER_NAME:-gaia-backend-dev}:${BACKEND_PORT:-8000}
+      - DEV_SERVER_WS_PROXY_TARGET=ws://${BACKEND_CONTAINER_NAME:-gaia-backend-dev}:${BACKEND_PORT:-8000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Production service
+  prod:
+    container_name: gaia-frontend-prod
+    env_file:
+      - .settings.docker.env
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_AUTH0_REDIRECT_URI: https://your-domain.com/callback
+        VITE_AUTH0_LOGOUT_URL: https://your-domain.com/
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-https://api.your-domain.com}
+      - VITE_STT_BASE_URL=${VITE_STT_BASE_URL:-}
+      - VITE_ENVIRONMENT=production
+      - VITE_AUTO_TTS_ENABLED=${AUTO_TTS_ENABLED:-true}
+      # Port configuration for multi-instance
+      - FRONTEND_PORT=${FRONTEND_PORT:-3000}
+      - BACKEND_PORT=${BACKEND_PORT:-8000}
+      - STT_PORT=${STT_PORT:-8001}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Test service
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./test-results:/app/test-results
+    environment:
+      - NODE_ENV=test
+      - CI=true
+      - FORCE_COLOR=1
+    tty: true
+    stdin_open: true
+
+networks:
+  default:
+    name: gaia_default
+    external: false

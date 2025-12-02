@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Sessions CLI wrapper - calls the sessions API (yert)
+# This script forwards all arguments to the sessions/api/index.js Node.js application
+
+# Resolve the actual location of this script (following symlinks)
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$SCRIPT_DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+
+# Get the project root (one level up from bin/)
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Execute the Node.js sessions API with all passed arguments
+exec node "$PROJECT_ROOT/sessions/api/index.js" "$@"
