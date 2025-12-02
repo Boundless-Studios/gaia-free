@@ -84,6 +84,7 @@ jobs:
           git clone https://x-access-token:${{ secrets.PAT }}@github.com/Boundless-Studios/gaia-private.git ../gaia-private
           cp ../gaia-private/_settings/frontend.settings.docker.env frontend/.settings.docker.env
           cp ../gaia-private/_settings/speech-to-text.settings.docker.env speech-to-text/.settings.docker.env
+          cp ../gaia-private/_config/*.env config/
 
       - name: Build docker images
         run: |
