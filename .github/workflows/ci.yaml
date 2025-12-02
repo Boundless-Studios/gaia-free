@@ -85,6 +85,7 @@ jobs:
           cp ../gaia-private/_settings/frontend.settings.docker.env frontend/.settings.docker.env
           cp ../gaia-private/_settings/speech-to-text.settings.docker.env speech-to-text/.settings.docker.env
           cp ../gaia-private/_config/*.env config/
+          ln -sf $(realpath ../gaia-private) backend/src/gaia_private
 
       - name: Build docker images
         run: |
