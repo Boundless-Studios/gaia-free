@@ -57,6 +57,7 @@ class CampaignBroadcaster:
         self.sessions: Dict[str, SessionState] = {}
         self._campaign_service = campaign_service
         self._cleanup_task: Optional[asyncio.Task] = None
+        self._missing_session_warned: Set[str] = set()  # Track warned sessions to avoid spam
         self._start_cleanup_task()
 
     def _find_connections_by_user(self, session_id: str, user_id: Optional[str]) -> List[ConnectionInfo]:
@@ -671,12 +672,15 @@ class CampaignBroadcaster:
         """Broadcast updates to all players in a session."""
         state = self.sessions.get(session_id)
         if not state:
-            self.logger.warning(
-                "No session state found when broadcasting %s for session %s | Available sessions: %s",
-                event_type,
-                session_id,
-                list(self.sessions.keys()),
-            )
+            # Only warn once per missing session to avoid log spam during streaming
+            if session_id not in self._missing_session_warned:
+                self._missing_session_warned.add(session_id)
+                self.logger.warning(
+                    "No session state found when broadcasting %s for session %s | Available sessions: %s",
+                    event_type,
+                    session_id,
+                    list(self.sessions.keys()),
+                )
             return
 
         if not state.player_connections and not state.dm_connections:
@@ -1187,6 +1191,8 @@ class CampaignBroadcaster:
         """Get or create session state."""
         if session_id not in self.sessions:
             self.sessions[session_id] = SessionState()
+            # Clear warning flag since session now exists
+            self._missing_session_warned.discard(session_id)
         return self.sessions[session_id]
 
     def _prune_state_if_empty(self, session_id: str) -> None:

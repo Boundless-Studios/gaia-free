@@ -110,6 +110,12 @@ jobs:
 
       - name: Inject private files
         run: |
+          # Verify private repo was checked out
+          if [[ ! -d gaia-private ]]; then
+            echo "ERROR: gaia-private directory not found. Private repo checkout may have failed."
+            exit 1
+          fi
+
           # Config files
           mkdir -p config
           cp -r gaia-private/_config/* config/ 2>/dev/null || true
@@ -118,9 +124,23 @@ jobs:
           mkdir -p secrets
           cp -r gaia-private/_secrets/* secrets/ 2>/dev/null || true
 
-          # Settings files (Docker needs real files, not symlinks)
-          cp gaia-private/_settings/frontend.settings.docker.env frontend/.settings.docker.env 2>/dev/null || true
-          cp gaia-private/_settings/speech-to-text.settings.docker.env speech-to-text/.settings.docker.env 2>/dev/null || true
+          # Settings files (Docker needs real files, not symlinks) - REQUIRED
+          echo "Copying settings files from gaia-private/_settings/..."
+          ls -la gaia-private/_settings/ || echo "WARNING: _settings directory not found"
+
+          cp gaia-private/_settings/frontend.settings.docker.env frontend/.settings.docker.env
+          cp gaia-private/_settings/speech-to-text.settings.docker.env speech-to-text/.settings.docker.env
+
+          # Verify files exist
+          if [[ ! -f frontend/.settings.docker.env ]]; then
+            echo "ERROR: frontend/.settings.docker.env not found after copy"
+            exit 1
+          fi
+          if [[ ! -f speech-to-text/.settings.docker.env ]]; then
+            echo "ERROR: speech-to-text/.settings.docker.env not found after copy"
+            exit 1
+          fi
+          echo "Settings files copied successfully"
 
           # Clean up private checkout
           rm -rf gaia-private
