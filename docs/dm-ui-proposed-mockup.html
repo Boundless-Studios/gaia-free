@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposed DM UI - Interactive Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #ffffff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 16px;
+            height: calc(100vh - 40px);
+        }
+
+        /* Chat Panel (Left Side) */
+        .chat-panel {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 16px;
+            overflow-y: auto;
+            border: 1px solid #2a2a2a;
+        }
+
+        .chat-header {
+            color: #4CAF50;
+            font-weight: bold;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .chat-message {
+            background: #2a2a2a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .chat-message.dm {
+            border-left: 3px solid #4CAF50;
+        }
+
+        .chat-message.player {
+            border-left: 3px solid #2196F3;
+        }
+
+        /* Main Content Area (Right Side) */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow: hidden;
+        }
+
+        /* Quick Actions Toolbar */
+        .quick-actions {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            gap: 12px;
+            border: 1px solid #2a2a2a;
+        }
+
+        .action-btn {
+            background: #2a2a2a;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: white;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .action-btn span {
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .action-btn:hover {
+            background: #3a3a3a;
+            transform: translateY(-2px);
+        }
+
+        /* Initiative Tracker */
+        .initiative-tracker {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            border-radius: 12px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .initiative-current {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .initiative-next {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        /* Tabbed Container */
+        .tabbed-container {
+            background: #1a1a1a;
+            border-radius: 12px;
+            overflow: hidden;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid #4CAF50;
+        }
+
+        .tabs {
+            display: flex;
+            background: #0f0f0f;
+            border-bottom: 2px solid #2a2a2a;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab:hover {
+            color: #ccc;
+            background: #1a1a1a;
+        }
+
+        .tab.active {
+            color: #4169e1;
+            border-bottom-color: #4169e1;
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Character Cards Grid */
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .character-card {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 12px;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .character-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .character-card.active {
+            border-color: #4CAF50;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+        }
+
+        .character-card.bloodied {
+            border-color: #ff6347;
+        }
+
+        .character-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .character-icon {
+            font-size: 24px;
+        }
+
+        .character-name {
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .character-hp {
+            font-size: 11px;
+            color: #bbb;
+            margin-bottom: 4px;
+        }
+
+        .hp-bar {
+            width: 100%;
+            height: 6px;
+            background: #0f0f0f;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .hp-fill {
+            height: 100%;
+            background: #32cd32;
+            transition: width 0.3s;
+        }
+
+        .hp-fill.bloodied {
+            background: #ff6347;
+        }
+
+        .character-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+
+        .character-status {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .character-status.bloodied {
+            background: rgba(255, 99, 71, 0.2);
+            color: #ff6347;
+        }
+
+        .character-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .character-actions span {
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .character-actions span:hover {
+            opacity: 1;
+        }
+
+        /* Player Suggestion */
+        .player-suggestion {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
+            border: 1px solid #3b82f6;
+        }
+
+        .suggestion-label {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .suggestion-text {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 6px;
+            font-style: italic;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .suggestion-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .suggestion-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .suggestion-btn.approve {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .suggestion-btn.edit {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .suggestion-btn.dismiss {
+            background: #dc2626;
+            color: white;
+        }
+
+        .suggestion-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Player Options */
+        .options-section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .option-item {
+            background: rgba(245, 158, 11, 0.1);
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border-left: 3px solid #f59e0b;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-item:hover {
+            background: rgba(245, 158, 11, 0.2);
+            transform: translateX(4px);
+        }
+
+        /* Combat Tab */
+        .combat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .combatant-card {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .combatant-card.enemy {
+            border-left-color: #dc2626;
+        }
+
+        /* Scene Tab */
+        .scene-info {
+            background: #2a2a2a;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        /* Gallery Tab */
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .image-card {
+            aspect-ratio: 1;
+            background: #2a2a2a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .image-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3a3a3a;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4a4a4a;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .chat-panel {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Left: Chat Panel -->
+        <div class="chat-panel">
+            <div class="chat-header">💬 Campaign Chat</div>
+            <div class="chat-message dm">
+                <strong>DM:</strong> You enter the tavern. The smell of ale and roasted meat fills the air. A figure in the corner waves you over.
+            </div>
+            <div class="chat-message player">
+                <strong>Thorin:</strong> I approach the figure cautiously, hand on my sword.
+            </div>
+            <div class="chat-message dm">
+                <strong>DM:</strong> As you get closer, you see it's an old merchant with a weathered map spread before him. He gestures excitedly...
+            </div>
+        </div>
+
+        <!-- Right: Main Content -->
+        <div class="main-content">
+            <!-- Quick Actions Toolbar -->
+            <div class="quick-actions">
+                <button class="action-btn" title="Roll Dice">
+                    🎲
+                    <span>Dice</span>
+                </button>
+                <button class="action-btn" title="Generate Image">
+                    🎨
+                    <span>Image</span>
+                </button>
+                <button class="action-btn" title="Chat">
+                    💬
+                    <span>Chat</span>
+                </button>
+                <button class="action-btn" title="Combat">
+                    ⚔️
+                    <span>Combat</span>
+                </button>
+                <button class="action-btn" title="Notes">
+                    📝
+                    <span>Notes</span>
+                </button>
+                <button class="action-btn" title="Audio">
+                    🎵
+                    <span>Audio</span>
+                </button>
+            </div>
+
+            <!-- Initiative Tracker -->
+            <div class="initiative-tracker">
+                <div class="initiative-current">
+                    🎯 Round 3 | Thorin's Turn (Initiative: 16)
+                </div>
+                <div class="initiative-next">
+                    Next: Goblin Scout (14)
+                </div>
+            </div>
+
+            <!-- Tabbed Container -->
+            <div class="tabbed-container">
+                <div class="tabs">
+                    <button class="tab active" data-tab="overview">📋 Overview</button>
+                    <button class="tab" data-tab="combat">⚔️ Combat</button>
+                    <button class="tab" data-tab="scene">🎭 Scene</button>
+                    <button class="tab" data-tab="gallery">🖼️ Gallery</button>
+                </div>
+
+                <div class="tab-content">
+                    <!-- Overview Tab -->
+                    <div class="tab-panel active" id="overview">
+                        <div class="section-title">Characters</div>
+                        <div class="character-grid">
+                            <div class="character-card active">
+                                <div class="character-header">
+                                    <span class="character-icon">👤</span>
+                                    <span class="character-name">Thorin</span>
+                                </div>
+                                <div class="character-hp">HP 45/50</div>
+                                <div class="hp-bar">
+                                    <div class="hp-fill" style="width: 90%"></div>
+                                </div>
+                                <div class="character-stats">
+                                    <span>AC 18</span>
+                                    <span>+3</span>
+                                </div>
+                                <div class="character-status">🗡️ ACTIVE</div>
+                                <div class="character-actions">
+                                    <span title="View Details">👁️</span>
+                                    <span title="Quick Action">🎯</span>
+                                    <span title="Send Message">💬</span>
+                                </div>
+                            </div>
+
+                            <div class="character-card">
+                                <div class="character-header">
+                                    <span class="character-icon">🧙</span>
+                                    <span class="character-name">Elara</span>
+                                </div>
+                                <div class="character-hp">HP 38/38</div>
+                                <div class="hp-bar">
+                                    <div class="hp-fill" style="width: 100%"></div>
+                                </div>
+                                <div class="character-stats">
+                                    <span>AC 14</span>
+                                    <span>+2</span>
+                                </div>
+                                <div class="character-actions">
+                                    <span title="View Details">👁️</span>
+                                    <span title="Quick Action">🎯</span>
+                                    <span title="Send Message">💬</span>
+                                </div>
+                            </div>
+
+                            <div class="character-card">
+                                <div class="character-header">
+                                    <span class="character-icon">🗡️</span>
+                                    <span class="character-name">Brock</span>
+                                </div>
+                                <div class="character-hp">HP 52/60</div>
+                                <div class="hp-bar">
+                                    <div class="hp-fill" style="width: 87%"></div>
+                                </div>
+                                <div class="character-stats">
+                                    <span>AC 16</span>
+                                    <span>+1</span>
+                                </div>
+                                <div class="character-actions">
+                                    <span title="View Details">👁️</span>
+                                    <span title="Quick Action">🎯</span>
+                                    <span title="Send Message">💬</span>
+                                </div>
+                            </div>
+
+                            <div class="character-card bloodied">
+                                <div class="character-header">
+                                    <span class="character-icon">🏹</span>
+                                    <span class="character-name">Lyra</span>
+                                </div>
+                                <div class="character-hp">HP 18/35</div>
+                                <div class="hp-bar">
+                                    <div class="hp-fill bloodied" style="width: 51%"></div>
+                                </div>
+                                <div class="character-status bloodied">🩹 BLOODIED</div>
+                                <div class="character-stats">
+                                    <span>AC 15</span>
+                                    <span>+4</span>
+                                </div>
+                                <div class="character-actions">
+                                    <span title="View Details">👁️</span>
+                                    <span title="Quick Action">🎯</span>
+                                    <span title="Send Message">💬</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Player Suggestion -->
+                        <div class="player-suggestion">
+                            <div class="suggestion-label">💡 Player Action Suggestion</div>
+                            <div class="suggestion-text">
+                                "Search the room for traps before proceeding"
+                            </div>
+                            <div class="suggestion-actions">
+                                <button class="suggestion-btn approve">✅ Approve</button>
+                                <button class="suggestion-btn edit">✏️ Edit</button>
+                                <button class="suggestion-btn dismiss">❌ Dismiss</button>
+                            </div>
+                        </div>
+
+                        <!-- Player Options -->
+                        <div class="options-section">
+                            <div class="section-title">Available Options</div>
+                            <div class="option-item">• Search the mysterious chest for valuables</div>
+                            <div class="option-item">• Talk to the innkeeper about local rumors</div>
+                            <div class="option-item">• Rest and recover hit points</div>
+                            <div class="option-item">• Investigate the strange noise from upstairs</div>
+                        </div>
+                    </div>
+
+                    <!-- Combat Tab -->
+                    <div class="tab-panel" id="combat">
+                        <div class="section-title">Combat Participants</div>
+                        <div class="combat-grid">
+                            <div class="combatant-card">
+                                <div style="font-weight: bold; margin-bottom: 8px;">👤 Thorin (16)</div>
+                                <div style="font-size: 12px; color: #bbb;">HP: 45/50 | AC: 18</div>
+                                <div style="margin-top: 8px; font-size: 11px; color: #4CAF50;">⚡ CURRENT TURN</div>
+                            </div>
+                            <div class="combatant-card enemy">
+                                <div style="font-weight: bold; margin-bottom: 8px;">👹 Goblin Scout (14)</div>
+                                <div style="font-size: 12px; color: #bbb;">HP: 12/15 | AC: 13</div>
+                            </div>
+                            <div class="combatant-card">
+                                <div style="font-weight: bold; margin-bottom: 8px;">🧙 Elara (12)</div>
+                                <div style="font-size: 12px; color: #bbb;">HP: 38/38 | AC: 14</div>
+                            </div>
+                            <div class="combatant-card enemy">
+                                <div style="font-weight: bold; margin-bottom: 8px;">👺 Orc Warrior (10)</div>
+                                <div style="font-size: 12px; color: #bbb;">HP: 28/35 | AC: 15</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scene Tab -->
+                    <div class="tab-panel" id="scene">
+                        <div class="section-title">Current Scene</div>
+                        <div class="scene-info">
+                            <strong>Location:</strong> The Prancing Pony Tavern<br><br>
+                            <strong>Description:</strong> A dimly lit common room with rough-hewn tables and benches. The air is thick with pipe smoke and the smell of spilled ale. A roaring fire crackles in the stone hearth, casting dancing shadows on the walls.<br><br>
+                            <strong>NPCs Present:</strong> Bartender (Neutral), Hooded Merchant (Friendly), Suspicious Guard (Hostile)<br><br>
+                            <strong>Notable Features:</strong> Secret door behind the bar, Locked chest under merchant's table, Wanted posters on the wall
+                        </div>
+                    </div>
+
+                    <!-- Gallery Tab -->
+                    <div class="tab-panel" id="gallery">
+                        <div class="section-title">Generated Images</div>
+                        <div class="image-grid">
+                            <div class="image-card">🏰</div>
+                            <div class="image-card">👤</div>
+                            <div class="image-card">🌲</div>
+                            <div class="image-card">⚔️</div>
+                            <div class="image-card">🗺️</div>
+                            <div class="image-card">👹</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update active panel
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                document.getElementById(tabName).classList.add('active');
+            });
+        });
+
+        // Make buttons interactive
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.style.background = '#4CAF50';
+                setTimeout(() => {
+                    btn.style.background = '#2a2a2a';
+                }, 200);
+            });
+        });
+
+        // Character card interactions
+        document.querySelectorAll('.character-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.character-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+            });
+        });
+
+        // Suggestion buttons
+        document.querySelectorAll('.suggestion-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.classList.contains('approve') ? 'Approved' :
+                              btn.classList.contains('edit') ? 'Editing' : 'Dismissed';
+                alert(`Action ${action}`);
+            });
+        });
+
+        // Option items
+        document.querySelectorAll('.option-item').forEach(item => {
+            item.addEventListener('click', () => {
+                alert('Selected: ' + item.textContent);
+            });
+        });
+    </script>
+</body>
+</html>

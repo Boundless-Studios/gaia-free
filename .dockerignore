@@ -1,0 +1,137 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+logs/
+*.log
+campaigns/
+.ollama/
+tmp/
+/tmp/
+src/logs/
+src/tmp/
+
+# Documentation
+*.md
+docs/
+README*
+LICENSE
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Environment files (except the ones we need)
+.env
+.env.local
+.env.*.local
+*.env
+!.settings.docker.env
+
+# Test artifacts
+test_output/
+test_reports/
+htmlcov/
+
+# Node modules (in case frontend is included)
+node_modules/
+src/frontend/node_modules/
+src/frontend/dist/
+src/frontend/build/
+
+# Cache and temporary files
+*.cache
+.cache/
+*.tmp
+.tmp/
+
+# Model files (if stored locally)
+models/
+*.bin
+*.safetensors
+*.ckpt
+*.pth
+
+# Audio files (except necessary ones)
+*.wav
+*.mp3
+*.ogg
+!test_audio.wav
+
+# Image files (except necessary ones)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+!test_image.png
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Secrets and credentials
+*.key
+*.pem
+*.crt
+secrets/
+credentials/
+
+# Scripts that shouldn't be in production
+scripts/claude_helpers/
+scripts/test_*.py
+scripts/*.sh
+backend/scripts/claude_helpers/
+backend/scripts/test_*.py
+!backend/scripts/entrypoint.sh
+!backend/scripts/entrypoint_cloud_run.py
+!backend/scripts/postgres-entrypoint.sh
+
+
+# Development specific files
+*.bak
+*.backup
+*.old
+TODO*
+NOTES*
+
+# Local artifact storage
+backend/docker_mount
+docker_mount

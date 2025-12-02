@@ -1,0 +1,417 @@
+.continuous-transcription {
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  width: 350px;
+  max-width: calc(100vw - 40px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  border: 1px solid #3a3a3a;
+}
+
+.continuous-transcription .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.continuous-transcription .header h3 {
+  margin: 0;
+  color: #e91e63;
+  font-size: 16px;
+}
+
+.continuous-transcription .controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  max-width: 100%;
+}
+
+.continuous-transcription .control-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.continuous-transcription .control-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.continuous-transcription .control-button.start {
+  background: #4caf50;
+  color: white;
+}
+
+.continuous-transcription .control-button.start:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.continuous-transcription .control-button.stop {
+  background: #f44336;
+  color: white;
+}
+
+.continuous-transcription .control-button.stop:hover {
+  background: #da190b;
+}
+
+.continuous-transcription .control-button.clear {
+  background: #666;
+  color: white;
+}
+
+.continuous-transcription .control-button.clear:hover:not(:disabled) {
+  background: #555;
+}
+
+.continuous-transcription .control-button.pause {
+  background: #ff9800;
+  color: white;
+}
+
+.continuous-transcription .control-button.pause:hover {
+  background: #f57c00;
+}
+
+.continuous-transcription .control-button.pause.paused {
+  background: #4caf50;
+}
+
+.continuous-transcription .control-button.pause.paused:hover {
+  background: #45a049;
+}
+
+.continuous-transcription .voice-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 8px;
+  border-radius: 20px;
+}
+
+.continuous-transcription .voice-indicator > div:first-child {
+  width: 100px;
+  height: 20px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.continuous-transcription .voice-level {
+  height: 100%;
+  transition: width 0.1s ease, background-color 0.2s ease;
+  border-radius: 10px;
+}
+
+.continuous-transcription .voice-status {
+  font-size: 20px;
+  transition: all 0.2s ease;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.continuous-transcription .voice-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4caf50;
+  transition: all 0.3s;
+  animation: pulse 1.5s infinite;
+}
+
+.continuous-transcription .voice-dot.inactive {
+  background: #666;
+  animation: none;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.continuous-transcription .voice-label {
+  font-size: 11px;
+  color: #aaa;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.continuous-transcription .voice-detected-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.continuous-transcription .voice-detected-indicator.active {
+  background: rgba(76, 175, 80, 0.9);
+  border: 1px solid #4caf50;
+  color: white;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.continuous-transcription .voice-detected-indicator.inactive {
+  background: rgba(102, 102, 102, 0.5);
+  border: 1px solid #666;
+  color: #aaa;
+}
+
+.continuous-transcription .voice-detected-indicator.inactive .voice-wave {
+  background: #666;
+  animation: none;
+}
+
+.continuous-transcription .voice-detected-indicator.inactive .voice-wave::before,
+.continuous-transcription .voice-detected-indicator.inactive .voice-wave::after {
+  display: none;
+}
+
+.continuous-transcription .voice-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.continuous-transcription .voice-detected-indicator.active .voice-status-dot {
+  background: #4caf50;
+  animation: pulse 1s infinite;
+}
+
+.continuous-transcription .voice-detected-indicator.inactive .voice-status-dot {
+  background: #666;
+}
+
+.continuous-transcription .transcription-container {
+  flex: 1;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.continuous-transcription .transcription-area {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  flex-grow: 1;
+}
+
+.continuous-transcription .transcription-textarea,
+.continuous-transcription .transcription-input {
+  width: 100%;
+  min-height: 160px;
+  max-height: 500px;
+  background: transparent;
+  color: #ddd;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+  overflow-y: auto;
+}
+
+.continuous-transcription .transcription-textarea:focus,
+.continuous-transcription .transcription-input:focus {
+  background: rgba(33, 150, 243, 0.05);
+}
+
+.continuous-transcription .transcription-textarea::placeholder,
+.continuous-transcription .transcription-input::placeholder {
+  color: #666;
+  font-style: italic;
+}
+
+.continuous-transcription .send-text-button {
+  background: #e91e63;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  align-self: flex-end;
+}
+
+.continuous-transcription .send-text-button:hover:not(:disabled) {
+  background: #c2185b;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(233, 30, 99, 0.3);
+}
+
+.continuous-transcription .send-text-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.continuous-transcription .send-text-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.continuous-transcription .status-message {
+  font-size: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 5px 0;
+}
+
+.continuous-transcription .status-message.error {
+  background: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+  border: 1px solid rgba(244, 67, 54, 0.2);
+}
+
+.continuous-transcription .status-message.info {
+  background: rgba(33, 150, 243, 0.1);
+  color: #2196f3;
+  border: 1px solid rgba(33, 150, 243, 0.2);
+}
+
+.continuous-transcription .status-message.success {
+  background: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+.continuous-transcription .error-message {
+  background: #f44336;
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.continuous-transcription .processing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  color: #2196f3;
+}
+
+.continuous-transcription .pulse {
+  width: 8px;
+  height: 8px;
+  background: #2196f3;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.continuous-transcription .send-section {
+  border-top: 1px solid #444;
+  padding-top: 10px;
+}
+
+.continuous-transcription .send-button {
+  width: 100%;
+  padding: 10px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.continuous-transcription .send-button:hover:not(:disabled) {
+  background: #1976d2;
+}
+
+.continuous-transcription .send-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.continuous-transcription .voice-wave {
+  width: 12px;
+  height: 12px;
+  background: #4caf50;
+  border-radius: 50%;
+  position: relative;
+  animation: voiceWave 1s ease-in-out infinite;
+}
+
+.continuous-transcription .voice-wave::before,
+.continuous-transcription .voice-wave::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border: 2px solid #4caf50;
+  border-radius: 50%;
+  animation: voiceRipple 1.5s ease-out infinite;
+}
+
+.continuous-transcription .voice-wave::after {
+  animation-delay: 0.5s;
+}
+
+@keyframes voiceWave {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+@keyframes voiceRipple {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}

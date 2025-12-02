@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply m-0 font-body antialiased bg-gaia-dark text-gaia-text;
+  }
+
+  code {
+    @apply font-mono;
+  }
+
+  * {
+    @apply box-border;
+  }
+
+  /* Custom scrollbar styles */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gaia-darker;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gaia-border rounded hover:bg-gaia-accent;
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a2a #050505;
+  }
+}
+
+@layer components {
+  /* Button variants */
+  .btn-primary {
+    @apply px-4 py-2 bg-gaia-accent text-white rounded-md hover:bg-gaia-accent-hover 
+           transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-gaia-light text-gaia-text rounded-md hover:bg-gaia-border 
+           transition-colors duration-200 font-medium border border-gaia-border;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-gaia-error text-white rounded-md hover:bg-red-600 
+           transition-colors duration-200 font-medium;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-gaia-light border border-gaia-border rounded-lg p-4;
+  }
+
+  .card-header {
+    @apply text-lg font-semibold mb-3 pb-2 border-b border-gaia-border;
+  }
+
+  /* Input styles */
+  .input-field {
+    @apply w-full px-3 py-2 bg-gaia-dark border border-gaia-border rounded-md 
+           text-gaia-text placeholder-gaia-text-dim focus:outline-none 
+           focus:border-gaia-accent focus:ring-1 focus:ring-gaia-accent;
+  }
+
+  /* Medieval theme elements */
+  .medieval-title {
+    @apply font-medieval text-3xl text-gaia-accent;
+  }
+
+  .medieval-subtitle {
+    @apply font-medieval text-xl text-gaia-text;
+  }
+
+  /* Animation utilities */
+  .glow-effect {
+    @apply animate-glow;
+  }
+
+  .pulse-slow {
+    @apply animate-pulse-slow;
+  }
+}
+
+@layer utilities {
+  /* Text gradients */
+  .text-gradient {
+    @apply bg-gradient-to-r from-gaia-accent to-purple-400 bg-clip-text text-transparent;
+  }
+
+  /* Glass morphism effect */
+  .glass {
+    @apply bg-gaia-light/50 backdrop-blur-sm border border-gaia-border/50;
+  }
+
+  /* Hover lift effect */
+  .hover-lift {
+    @apply transition-transform duration-200 hover:-translate-y-1;
+  }
+
+}

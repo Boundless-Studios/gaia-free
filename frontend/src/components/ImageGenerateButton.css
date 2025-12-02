@@ -1,0 +1,206 @@
+/* Container for dropdown and button */
+.image-generate-container {
+    @apply flex flex-col gap-2 w-full;
+}
+
+/* Image type dropdown */
+.image-type-dropdown {
+    @apply px-2 py-1.5 text-sm bg-gray-700 text-white border border-gray-600 rounded cursor-pointer outline-none transition-all duration-200 ease-in-out;
+}
+
+.image-type-dropdown:hover:not(:disabled) {
+    @apply bg-gray-600 border-purple-600;
+}
+
+.image-type-dropdown:disabled {
+    @apply cursor-not-allowed opacity-60;
+}
+
+.image-type-dropdown:focus {
+    @apply border-purple-600;
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+
+/* Custom type input */
+.custom-type-input {
+    @apply px-2 py-1.5 text-sm bg-gray-700 text-white border border-gray-600 rounded outline-none transition-all duration-200 ease-in-out w-[120px];
+}
+
+.custom-type-input:hover:not(:disabled) {
+    @apply bg-gray-600 border-purple-600;
+}
+
+.custom-type-input:disabled {
+    @apply cursor-not-allowed opacity-60;
+}
+
+.custom-type-input:focus {
+    @apply border-purple-600;
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+.custom-type-input::placeholder {
+    @apply text-gray-500;
+}
+
+/* Image generate button */
+.image-generate-button {
+    @apply px-3 py-1.5 text-sm bg-purple-700 text-white border-none rounded cursor-pointer flex items-center gap-1 transition-all duration-200 ease-in-out relative;
+}
+
+.image-generate-button:hover:not(:disabled) {
+    @apply bg-purple-600 -translate-y-0.5;
+}
+
+.image-generate-button:disabled {
+    @apply bg-gray-600 cursor-not-allowed opacity-60;
+}
+
+.image-generate-button.loading {
+    @apply bg-gray-600 cursor-wait;
+}
+
+.image-generate-button.has-selection {
+    @apply bg-purple-600;
+    box-shadow: 0 0 10px rgba(124, 58, 237, 0.5);
+}
+
+.image-generate-button.clicked {
+    @apply animate-pulse;
+}
+
+@keyframes buttonClick {
+    0% {
+        @apply scale-100;
+    }
+    50% {
+        @apply scale-95 bg-purple-800;
+    }
+    100% {
+        @apply scale-100;
+    }
+}
+
+/* Model Selector - reusing existing patterns from VoiceSelectionPanel */
+.model-selector-section {
+    @apply flex items-center gap-2 mb-2 text-sm text-gray-700;
+}
+
+.model-selector-label {
+    @apply flex items-center gap-1 font-medium whitespace-nowrap;
+}
+
+.model-icon {
+    @apply text-base;
+}
+
+.model-selector-dropdown {
+    @apply px-2 py-1.5 border border-gray-300 rounded bg-white text-sm text-gray-700 cursor-pointer min-w-[180px] transition-colors duration-200 ease-in-out;
+}
+
+.model-selector-dropdown:hover {
+    @apply border-blue-500;
+}
+
+.model-selector-dropdown:focus {
+    @apply outline-none border-blue-500;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.model-selector-dropdown:disabled {
+    @apply bg-gray-100 text-gray-500 cursor-not-allowed;
+}
+
+.model-selector-loading {
+    @apply flex items-center gap-1.5 text-gray-600 italic px-2 py-1.5 border border-gray-300 rounded bg-gray-50 min-w-[180px];
+}
+
+/* Reuse existing loading spinner animation */
+.loading-spinner {
+    @apply animate-spin;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive design - reusing existing patterns */
+@media (max-width: 768px) {
+    .model-selector-section {
+        @apply flex-col items-stretch gap-1.5;
+    }
+    
+    .model-selector-label {
+        @apply justify-center;
+    }
+    
+    .model-selector-dropdown {
+        @apply min-w-0;
+    }
+}
+
+.generate-icon {
+    @apply text-base;
+}
+
+.selection-indicator {
+    @apply absolute -top-0.5 -right-0.5 text-xs text-green-500;
+}
+
+/* Image modal styles */
+.generated-image-modal {
+    @apply fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-5;
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.generated-image-container {
+    @apply bg-gray-900 rounded-xl p-5 max-w-[80vw] max-h-[85vh] flex flex-col gap-4 relative border border-white border-opacity-10;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+    animation: slideUp 0.3s ease;
+    z-index: 10000;
+}
+
+@keyframes slideUp {
+    from { 
+        @apply opacity-0 translate-y-5;
+    }
+    to { 
+        @apply opacity-100 translate-y-0;
+    }
+}
+
+.close-button {
+    @apply absolute top-2.5 right-2.5 text-white border-none w-8 h-8 rounded-full text-lg cursor-pointer flex items-center justify-center transition-colors duration-200 ease-in-out;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.close-button:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.generated-image {
+    @apply max-w-full w-auto h-auto object-contain rounded-lg block mx-auto;
+    max-height: calc(85vh - 120px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.image-info {
+    @apply px-4 py-3 rounded-lg text-sm;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.image-prompt {
+    @apply m-0 mb-2 text-gray-300;
+}
+
+.image-service {
+    @apply m-0 text-gray-400 text-xs;
+}

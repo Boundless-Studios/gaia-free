@@ -1,0 +1,19 @@
+FROM postgres:16-alpine
+
+ARG ARCH=amd64
+ARG SOPS_VERSION=v3.9.3
+
+# Install SOPS and bash for secrets decryption
+RUN apk add --no-cache bash curl && \
+    SOPS_VERSION="3.9.3" && \
+    curl -LO "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.${ARCH}" && \
+    mv "sops-v${SOPS_VERSION}.linux.${ARCH}" /usr/local/bin/sops && \
+    chmod +x /usr/local/bin/sops
+
+# Copy custom entrypoint
+COPY backend/scripts/postgres-entrypoint.sh /usr/local/bin/postgres-entrypoint.sh
+RUN chmod +x /usr/local/bin/postgres-entrypoint.sh
+
+# Use custom entrypoint that decrypts secrets before starting postgres
+ENTRYPOINT ["/usr/local/bin/postgres-entrypoint.sh"]
+CMD ["postgres"]

@@ -1,0 +1,445 @@
+/* PlayerAndTurnList Container */
+.player-and-turn-list {
+  background: #1a1a1a;
+  border-radius: 8px;
+  padding: 0 16px 16px 16px;
+  color: #fff;
+  max-height: 600px;
+  overflow-y: auto;
+  overflow-x: visible;
+  width: fit-content;
+  min-width: 200px;
+}
+
+.player-and-turn-list.compact {
+  padding: 0 12px 12px 12px;
+  max-height: 90vh;
+  min-width: 200px;
+}
+
+/* PlayerAndTurnList Container - Horizontal */
+.player-and-turn-list.horizontal {
+  width: 100%;
+  max-width: 100%;
+  max-height: fit-content;
+  overflow-y: visible;
+  overflow-x: visible;
+  padding: 0 16px 16px 16px;
+}
+
+/* Turn Header - matches player view color scheme */
+.turn-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  min-height: 32px;
+}
+
+/* Turn Header - Horizontal mode (more compact) */
+.player-and-turn-list.horizontal .turn-header {
+  flex-direction: row;
+  gap: 8px;
+  padding: 6px 16px;
+  margin-bottom: 8px;
+}
+
+.player-and-turn-list.horizontal .turn-character-name {
+  max-width: none;
+  margin: 0;
+}
+
+.turn-number {
+  font-size: 14px;
+  font-weight: bold;
+  color: #f59e0b;
+  margin: 0;
+}
+
+.turn-character-name {
+  font-size: 10px;
+  color: #fbbf24;
+  font-style: italic;
+  text-align: center;
+  word-wrap: break-word;
+  max-width: 140px;
+  margin: 0;
+}
+
+/* Character List - Vertical (default) */
+.character-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Character List - Horizontal */
+.character-list.horizontal {
+  flex-direction: row;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: visible;
+  align-items: flex-start;
+  padding: 8px 0;
+}
+
+/* Horizontal scrollbar styling */
+.character-list.horizontal::-webkit-scrollbar {
+  height: 8px;
+}
+
+.character-list.horizontal::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.character-list.horizontal::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+
+.character-list.horizontal::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Character Card */
+.character-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #2a2a2a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  width: fit-content;
+}
+
+.character-card:hover {
+  background: #333;
+  transform: scale(1.05);
+  border-color: rgba(255, 215, 0, 0.5);
+}
+
+.character-card.active-turn {
+  border-color: rgba(255, 215, 0, 0.8);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4), 0 0 25px rgba(255, 215, 0, 0.2);
+  animation: activeGlow 2s ease-in-out infinite;
+}
+
+@keyframes activeGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4), 0 0 25px rgba(255, 215, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 35px rgba(255, 215, 0, 0.3);
+  }
+}
+
+.character-card.current-player {
+  background: #2d3a2d;
+}
+
+.character-card.compact {
+  padding: 6px;
+}
+
+/* Character Portrait */
+.character-portrait-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.character-portrait {
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 2px solid #555;
+}
+
+.character-card.compact .character-portrait {
+  width: 160px;
+  height: 160px;
+}
+
+/* Portrait Placeholder */
+.character-portrait-placeholder {
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
+  border: 2px solid #555;
+  background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 80px;
+}
+
+.character-card.compact .character-portrait-placeholder {
+  width: 160px;
+  height: 160px;
+  font-size: 80px;
+}
+
+.active-turn-indicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ffd700;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+}
+
+/* Character Info - removed since info is now only in tooltip */
+
+/* Character Modal */
+.character-modal {
+  position: fixed;
+  background: #1e1e1e;
+  border: 3px solid #ffd700;
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 280px;
+  max-width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.4);
+  z-index: 10000;
+  pointer-events: auto;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+
+/* Tooltip Header */
+.tooltip-header {
+  border-bottom: 1px solid #444;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.tooltip-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.tooltip-hp {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.tooltip-race-class {
+  font-size: 12px;
+  color: #aaa;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Tooltip Sections */
+.tooltip-section {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.tooltip-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.tooltip-section.compact-section {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+}
+
+.tooltip-section-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #ffd700;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.tooltip-label {
+  color: #aaa;
+  font-weight: 600;
+}
+
+.tooltip-value {
+  color: #fff;
+}
+
+/* Compact Stats Grid */
+.tooltip-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 4px;
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+
+.stat-label {
+  font-size: 9px;
+  color: #aaa;
+  font-weight: bold;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 14px;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* Info Lines */
+.tooltip-info-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 12px;
+  color: #ddd;
+}
+
+.info-icon {
+  font-size: 14px;
+}
+
+/* Appearance Line */
+.appearance-line {
+  font-size: 11px;
+  color: #bbb;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Backstory */
+.tooltip-backstory {
+  font-size: 12px;
+  color: #ccc;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* Loading and Error States */
+.loading-message,
+.error-message,
+.empty-message {
+  padding: 24px;
+  text-align: center;
+  color: #aaa;
+  font-size: 14px;
+}
+
+.error-message {
+  color: #f44336;
+}
+
+/* Scrollbar Styling */
+.player-and-turn-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.player-and-turn-list::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.player-and-turn-list::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+
+.player-and-turn-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .character-card {
+    padding: 8px;
+  }
+
+  .character-portrait {
+    width: 140px;
+    height: 140px;
+  }
+
+  .character-portrait-placeholder {
+    width: 140px;
+    height: 140px;
+    font-size: 72px;
+  }
+
+  .character-name {
+    font-size: 14px;
+  }
+
+  .character-hp {
+    font-size: 12px;
+  }
+
+  .character-modal {
+    max-width: 260px;
+    min-width: 240px;
+  }
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .player-and-turn-list {
+    background: #0d0d0d;
+  }
+
+  .character-card {
+    background: #1a1a1a;
+  }
+
+  .character-card:hover {
+    background: #222;
+  }
+}

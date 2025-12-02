@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page</title>
+</head>
+<body>
+    <h1>Test Page - Site is Working</h1>
+    <p>If you can see this, the server is running.</p>
+    <hr>
+    <h2>Testing API Connection:</h2>
+    <div id="api-status">Loading...</div>
+    <script>
+        fetch('/api/health')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('api-status').innerHTML = 
+                    '<span style="color: green;">✓ API is working: ' + JSON.stringify(data) + '</span>';
+            })
+            .catch(err => {
+                document.getElementById('api-status').innerHTML = 
+                    '<span style="color: red;">✗ API Error: ' + err.message + '</span>';
+            });
+    </script>
+</body>
+</html>

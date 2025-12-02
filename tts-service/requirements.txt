@@ -1,0 +1,22 @@
+# FastAPI for health endpoints and proxy
+fastapi==0.116.0
+uvicorn[standard]==0.35.0
+pydantic==2.11.7
+
+# Core dependencies
+requests>=2.32.4
+psutil>=7.0.0
+
+# F5-TTS dependencies - DISABLED (implementation kept but not installed)
+# gradio_client>=0.10.0
+# f5-tts>=0.1.0
+# Note: F5-TTS removed from build to eliminate PyTorch/CUDA dependencies
+
+# Audio processing
+soundfile>=0.12.1
+ffmpeg-python>=0.2.0
+
+# Development dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+httpx>=0.24.0

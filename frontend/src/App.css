@@ -1,0 +1,458 @@
+/* App Layout - Using Tailwind @apply */
+html, body, #root, .App {
+  @apply h-screen min-h-0 m-0 p-0 box-border;
+}
+
+.App {
+  @apply flex flex-col h-screen min-h-0;
+}
+
+.app-header {
+  @apply bg-gaia-dark px-8 py-4;
+  @apply border-b-2 border-gray-700;
+  @apply flex justify-between items-center;
+}
+
+.app-header h1 {
+  @apply m-0 text-green-400 text-2xl;
+}
+
+.header-controls {
+  @apply flex gap-4;
+}
+
+.test-button, .dm-toggle, .new-campaign-button, 
+.campaign-list-button, .context-button, .reset-button, .character-button {
+  @apply px-4 py-2 border-none rounded-lg;
+  @apply bg-gray-700 text-white cursor-pointer;
+  @apply transition-colors duration-200;
+}
+
+.new-campaign-button {
+  @apply bg-green-400 text-black font-bold;
+}
+
+.campaign-list-button {
+  @apply bg-indigo-500 text-white;
+}
+
+.context-button {
+  @apply bg-purple-600 text-white;
+}
+
+.context-button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.reset-button {
+  @apply bg-red-500 text-white;
+}
+
+.new-campaign-button:hover {
+  @apply bg-green-500;
+}
+
+.test-button:hover, .dm-toggle:hover {
+  @apply bg-gray-600;
+}
+
+.dm-toggle.active {
+  @apply bg-red-600;
+}
+
+.app-main {
+  @apply flex-1 flex flex-row p-4 gap-4;
+  @apply overflow-hidden;
+  height: calc(100% - 2rem);
+  min-height: 0;
+}
+
+.game-section {
+  @apply flex-[2] min-h-0 h-full flex relative;
+  @apply overflow-hidden max-h-full;
+  padding-left: 40px;
+}
+
+.chat-section {
+  @apply flex-1 bg-gaia-dark rounded-lg p-4;
+  @apply border border-gray-700;
+  @apply flex flex-col shadow-lg;
+  @apply h-full min-h-0;
+  min-width: 350px;
+  max-width: 450px;
+}
+
+.chat-header {
+  @apply mb-4 pb-2 border-b border-gray-700;
+  @apply flex justify-between items-center;
+}
+
+.chat-header h3 {
+  @apply m-0 text-gray-200 text-lg font-semibold;
+}
+
+.campaign-id-display {
+  @apply text-xs text-gray-500 font-mono;
+}
+
+.chat-messages {
+  @apply flex-1 overflow-y-auto mb-4 p-2;
+  @apply bg-gaia-light rounded;
+  @apply min-h-0;
+  max-height: none;
+}
+
+.message {
+  @apply mb-2 p-2 rounded;
+}
+
+.message.user {
+  @apply bg-blue-700 ml-8;
+}
+
+.message.assistant {
+  @apply bg-gray-700 mr-8;
+}
+
+.message.loading {
+  @apply bg-gray-600 italic;
+}
+
+.chat-input {
+  @apply flex gap-2;
+}
+
+.chat-input input {
+  @apply flex-1 p-2 border border-gray-700 rounded;
+  @apply bg-gaia-light text-white;
+}
+
+.chat-input button {
+  @apply px-4 py-2 border-none rounded;
+  @apply bg-green-400 text-black cursor-pointer font-bold;
+}
+
+.chat-input button:hover:not(:disabled) {
+  @apply bg-green-500;
+}
+
+.chat-input button:disabled {
+  @apply bg-gray-600 cursor-not-allowed;
+}
+
+/* Resume button */
+.resume-button {
+  @apply w-full px-8 py-4 border-none rounded-lg;
+  @apply text-white cursor-pointer font-bold text-lg;
+  @apply shadow-lg transition-all duration-300;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.resume-button:hover:not(:disabled) {
+  @apply shadow-xl -translate-y-0.5;
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.resume-button:disabled {
+  @apply bg-gray-600 cursor-not-allowed shadow-none;
+}
+
+/* Navigation tabs */
+.app-nav {
+  @apply flex bg-gray-800 border-b border-gray-600 p-0;
+}
+
+.nav-tab {
+  @apply px-6 py-4 border-none bg-transparent;
+  @apply text-gray-400 cursor-pointer text-base font-medium;
+  @apply transition-all duration-300;
+  @apply border-b-[3px] border-transparent;
+}
+
+.nav-tab:hover {
+  @apply bg-gray-700 text-white;
+}
+
+.nav-tab.active {
+  @apply bg-gray-900 text-white;
+  @apply border-b-blue-500;
+}
+
+.header-controls button:disabled {
+  @apply opacity-60 cursor-not-allowed transform-none;
+}
+
+.dm-mode-toggle.active,
+.protocol-toggle.active {
+  @apply bg-blue-500 text-white;
+  box-shadow: 0 0 10px rgba(33, 150, 243, 0.3);
+}
+
+.protocol-toggle {
+  @apply border-green-500;
+}
+
+.protocol-toggle:hover {
+  @apply bg-green-500;
+}
+
+.protocol-toggle.active {
+  @apply bg-green-500;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+}
+
+.dm-mode-toggle {
+  @apply relative overflow-hidden;
+  background-color: #8B0000 !important;
+}
+
+.dm-mode-toggle:hover:not(:disabled) {
+  background-color: #A52A2A !important;
+}
+
+.dm-mode-toggle.active {
+  background-color: #A52A2A !important;
+  box-shadow: 0 0 20px rgba(139, 0, 0, 0.5);
+}
+
+.dm-mode-toggle.active::before {
+  content: '';
+  @apply absolute top-0 -left-full w-full h-full;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.message-content {
+  @apply block max-w-full p-0 rounded-2xl break-words;
+}
+
+.chat-message {
+  @apply inline-block max-w-[90%] px-4 py-2.5 rounded-2xl;
+  @apply break-words bg-gray-600 text-white whitespace-pre-wrap leading-relaxed;
+}
+
+.message.user .message-content {
+  @apply bg-green-600 text-white;
+}
+
+.message.user .chat-message {
+  @apply bg-green-600 text-white ml-auto;
+}
+
+.message.assistant .chat-message {
+  @apply bg-gray-600 text-white;
+}
+
+.message-agent {
+  @apply text-xs text-gray-500 mt-1 text-left;
+}
+
+.message-thinking {
+  @apply mt-2 text-left;
+}
+
+.message-thinking details {
+  @apply bg-gray-700 rounded-lg p-2 border border-gray-600;
+}
+
+.message-thinking summary {
+  @apply cursor-pointer text-green-500 font-bold text-sm;
+}
+
+.message-thinking summary:hover {
+  @apply text-green-400;
+}
+
+.thinking-content {
+  @apply mt-2 p-2 bg-gaia-dark rounded;
+  @apply text-xs text-gray-400 whitespace-pre-wrap leading-relaxed;
+}
+
+.message-context {
+  @apply mt-1 text-left;
+}
+
+.message-context small {
+  @apply text-gray-600 text-xs;
+}
+
+.message-handoff {
+  @apply mt-2 text-left;
+}
+
+.message-handoff details {
+  @apply bg-gray-700 rounded-lg p-2 border border-orange-500;
+}
+
+.message-handoff summary {
+  @apply cursor-pointer text-orange-500 font-bold text-sm;
+}
+
+.message-handoff summary:hover {
+  @apply text-orange-400;
+}
+
+.handoff-content {
+  @apply mt-2 p-2 bg-gaia-dark rounded;
+  @apply text-xs text-gray-400 leading-relaxed;
+}
+
+.message-tools {
+  @apply mt-2 text-left;
+}
+
+.message-tools details {
+  @apply bg-gray-700 rounded-lg p-2 border border-blue-500;
+}
+
+.message-tools summary {
+  @apply cursor-pointer text-blue-500 font-bold text-sm;
+}
+
+.message-tools summary:hover {
+  @apply text-blue-400;
+}
+
+.tools-content {
+  @apply mt-2 p-2 bg-gaia-dark rounded;
+  @apply text-xs text-gray-400 leading-relaxed;
+}
+
+.loading {
+  @apply text-gray-500 italic;
+}
+
+.input-container {
+  @apply flex gap-2.5 items-end p-4;
+  @apply border-t border-gray-600 bg-gaia-dark;
+}
+
+.input-container textarea {
+  @apply flex-1 p-2.5 border border-gray-600 rounded;
+  @apply bg-gray-800 text-white resize-y;
+  @apply font-sans;
+  min-height: 40px;
+  max-height: 120px;
+}
+
+.input-container textarea:focus {
+  @apply outline-none border-green-500;
+}
+
+.input-container button {
+  @apply bg-green-500 border-none text-white;
+  @apply px-5 py-2.5 text-center no-underline;
+  @apply inline-block text-base cursor-pointer rounded;
+  @apply h-10;
+}
+
+.input-container button:disabled {
+  @apply bg-gray-400 cursor-not-allowed;
+}
+
+/* Image processor section */
+.image-section {
+  @apply flex-1 overflow-y-auto p-0 h-full;
+}
+
+/* Error banner */
+.error-banner {
+  @apply bg-red-600 text-white px-4 py-3 mx-4;
+  @apply rounded font-bold;
+}
+
+/* Welcome message */
+.welcome-message {
+  @apply text-center p-8 text-gray-400 italic;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+  .app-main {
+    @apply flex-col gap-4 h-full min-h-0;
+  }
+  
+  .game-section {
+    @apply flex-none max-h-[60vh] min-h-0 h-1/2;
+    @apply overflow-hidden;
+    padding-left: 40px;
+  }
+  
+  .chat-section {
+    @apply flex-1 min-w-0 max-w-none h-1/2 min-h-0;
+  }
+}
+
+@media (max-width: 768px) {
+  .App-header {
+    @apply flex-col text-center gap-3 px-3 py-4;
+  }
+  
+  .header-controls {
+    @apply justify-center w-full;
+  }
+  
+  .app-main {
+    @apply flex-col gap-3 p-3 h-full min-h-0;
+  }
+  
+  .game-section {
+    @apply max-h-[50vh] min-h-0 h-1/2;
+    padding-left: 20px;
+  }
+  
+  .chat-section {
+    @apply min-w-0 max-w-none h-1/2 min-h-0;
+  }
+  
+  .input-container {
+    @apply p-3;
+  }
+}
+
+/* Modal Styles */
+.campaign-manager-modal,
+.campaign-setup-modal,
+.character-management-modal {
+  @apply fixed inset-0 bg-black/80;
+  @apply flex justify-center items-center;
+  @apply z-[1000] p-5;
+}
+
+.campaign-manager-content,
+.campaign-setup-content,
+.character-management-content {
+  @apply bg-gaia-light rounded-lg w-full;
+  @apply max-h-[90vh] overflow-hidden;
+  @apply shadow-2xl;
+  max-width: 800px;
+}
+
+.campaign-setup-content {
+  @apply max-w-6xl overflow-y-auto;
+}
+
+.character-management-content {
+  @apply max-w-7xl overflow-y-auto;
+}
+
+/* Audio Recorder Styles */
+.audio-button {
+  @apply bg-pink-500 text-white border-none;
+  @apply px-4 py-2 rounded cursor-pointer;
+  @apply font-medium transition-colors duration-300;
+}
+
+.audio-button:hover {
+  @apply bg-pink-600;
+}
+
+.audio-recorder-section {
+  @apply bg-gaia-dark rounded-lg p-5 mt-5;
+  @apply shadow-lg;
+}

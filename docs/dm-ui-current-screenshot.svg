@@ -1,0 +1,111 @@
+<svg width="1400" height="900" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1400" height="900" fill="#0a0a0a"/>
+
+  <!-- Header -->
+  <rect width="1400" height="40" fill="#1a1a1a"/>
+  <rect x="0" y="40" width="1400" height="2" fill="#2a2a2a"/>
+  <text x="20" y="27" fill="#4CAF50" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Gaia Campaign Manager</text>
+
+  <!-- Header Buttons -->
+  <rect x="1100" y="10" width="80" height="24" rx="4" fill="#6366f1"/>
+  <text x="1110" y="27" fill="white" font-size="11" font-family="Arial, sans-serif">📋 Campaigns</text>
+
+  <rect x="1190" y="10" width="110" height="24" rx="4" fill="#4CAF50"/>
+  <text x="1200" y="27" fill="black" font-size="11" font-family="Arial, sans-serif">🎲 New Campaign</text>
+
+  <rect x="1310" y="10" width="70" height="24" rx="4" fill="#dc2626"/>
+  <text x="1320" y="27" fill="white" font-size="11" font-family="Arial, sans-serif">⚔️ Arena</text>
+
+  <!-- Main Container -->
+  <!-- Chat Panel -->
+  <rect x="20" y="60" width="400" height="820" rx="8" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1"/>
+  <text x="30" y="85" fill="white" font-size="14" font-family="Arial, sans-serif" font-weight="bold">💬 Chat</text>
+  <line x1="30" y1="95" x2="410" y2="95" stroke="#2a2a2a" stroke-width="1"/>
+
+  <!-- Chat Messages -->
+  <rect x="30" y="105" width="380" height="680" rx="4" fill="#0f0f0f"/>
+
+  <!-- DM Message -->
+  <rect x="40" y="115" width="360" height="60" rx="4" fill="#2a1a1a"/>
+  <rect x="40" y="115" width="3" height="60" fill="#8b4513"/>
+  <text x="50" y="130" fill="#888" font-size="10" font-family="Arial, sans-serif">DM</text>
+  <text x="50" y="145" fill="white" font-size="11" font-family="Arial, sans-serif">You find yourselves in a dimly lit tavern.</text>
+  <text x="50" y="160" fill="white" font-size="11" font-family="Arial, sans-serif">A hooded figure catches your eye...</text>
+
+  <!-- User Message -->
+  <rect x="40" y="185" width="360" height="45" rx="4" fill="#1a1a2a"/>
+  <rect x="40" y="185" width="3" height="45" fill="#4169e1"/>
+  <text x="50" y="200" fill="#888" font-size="10" font-family="Arial, sans-serif">Player</text>
+  <text x="50" y="215" fill="white" font-size="11" font-family="Arial, sans-serif">I approach the hooded figure.</text>
+
+  <!-- Chat Input -->
+  <rect x="30" y="795" width="310" height="75" rx="4" fill="#0f0f0f" stroke="#2a2a2a" stroke-width="1"/>
+  <text x="40" y="815" fill="#666" font-size="11" font-family="Arial, sans-serif">Type your action...</text>
+  <rect x="350" y="800" width="60" height="65" rx="4" fill="#4CAF50"/>
+  <text x="365" y="838" fill="black" font-size="11" font-family="Arial, sans-serif" font-weight="bold">Send</text>
+
+  <!-- Dashboard -->
+  <!-- Character List Panel -->
+  <rect x="440" y="60" width="940" height="100" rx="8" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1"/>
+  <text x="455" y="85" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">Characters in Scene</text>
+  <line x1="455" y1="93" x2="1365" y2="93" stroke="#2a2a2a" stroke-width="1"/>
+
+  <!-- Character Items (horizontal scroll) -->
+  <rect x="455" y="103" width="180" height="45" rx="4" fill="#2a2a2a"/>
+  <text x="465" y="128" fill="white" font-size="11" font-family="Arial, sans-serif">👤 Thorin | HP: 45/50 | AC: 18</text>
+
+  <rect x="645" y="103" width="180" height="45" rx="4" fill="#2a2a2a"/>
+  <text x="655" y="128" fill="white" font-size="11" font-family="Arial, sans-serif">🧙 Elara | HP: 38/38 | AC: 14</text>
+
+  <rect x="835" y="103" width="180" height="45" rx="4" fill="#2a2a2a"/>
+  <text x="845" y="128" fill="white" font-size="11" font-family="Arial, sans-serif">🗡️ Brock | HP: 52/60 | AC: 16</text>
+
+  <rect x="1025" y="103" width="180" height="45" rx="4" fill="#2a2a2a"/>
+  <text x="1035" y="128" fill="white" font-size="11" font-family="Arial, sans-serif">🏹 Lyra | HP: 18/35 | AC: 15</text>
+
+  <!-- Image Gallery Panel - TAKES UP HUGE SPACE -->
+  <rect x="440" y="175" width="940" height="500" rx="8" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1"/>
+  <text x="455" y="200" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">🖼️ Image Gallery</text>
+  <text x="1170" y="200" fill="#dc2626" font-size="11" font-family="Arial, sans-serif">⚠️ Takes 500px of vertical space</text>
+  <line x1="455" y1="208" x2="1365" y2="208" stroke="#2a2a2a" stroke-width="1"/>
+
+  <!-- Gallery Items -->
+  <rect x="455" y="220" width="200" height="150" rx="4" fill="#2a2a2a"/>
+  <text x="530" y="310" fill="#666" font-size="48" font-family="Arial, sans-serif">🏰</text>
+
+  <rect x="665" y="220" width="200" height="150" rx="4" fill="#2a2a2a"/>
+  <text x="740" y="310" fill="#666" font-size="48" font-family="Arial, sans-serif">👤</text>
+
+  <rect x="875" y="220" width="200" height="150" rx="4" fill="#2a2a2a"/>
+  <text x="950" y="310" fill="#666" font-size="48" font-family="Arial, sans-serif">🌲</text>
+
+  <rect x="1085" y="220" width="200" height="150" rx="4" fill="#2a2a2a"/>
+  <text x="1160" y="310" fill="#666" font-size="48" font-family="Arial, sans-serif">⚔️</text>
+
+  <rect x="455" y="380" width="200" height="150" rx="4" fill="#2a2a2a"/>
+  <text x="530" y="470" fill="#666" font-size="48" font-family="Arial, sans-serif">🗺️</text>
+
+  <rect x="665" y="380" width="200" height="150" rx="4" fill="#2a2a2a"/>
+  <text x="740" y="470" fill="#666" font-size="48" font-family="Arial, sans-serif">👹</text>
+
+  <rect x="875" y="380" width="200" height="150" rx="4" fill="#2a2a2a"/>
+  <text x="950" y="470" fill="#666" font-size="48" font-family="Arial, sans-serif">🏛️</text>
+
+  <!-- Player Options Panel -->
+  <rect x="440" y="690" width="940" height="90" rx="8" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1"/>
+  <text x="455" y="715" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">🎯 Player Options</text>
+  <line x1="455" y1="723" x2="1365" y2="723" stroke="#2a2a2a" stroke-width="1"/>
+
+  <rect x="455" y="733" width="900" height="18" rx="4" fill="rgba(245, 158, 11, 0.1)"/>
+  <rect x="455" y="733" width="3" height="18" fill="#f59e0b"/>
+  <text x="465" y="746" fill="white" font-size="11" font-family="Arial, sans-serif">• Search the mysterious chest in the corner</text>
+
+  <rect x="455" y="756" width="900" height="18" rx="4" fill="rgba(245, 158, 11, 0.1)"/>
+  <rect x="455" y="756" width="3" height="18" fill="#f59e0b"/>
+  <text x="465" y="769" fill="white" font-size="11" font-family="Arial, sans-serif">• Talk to the innkeeper about rumors</text>
+
+  <!-- Notice Badge -->
+  <rect x="520" y="10" width="360" height="30" rx="8" fill="#1e40af"/>
+  <text x="540" y="30" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">📌 CURRENT UI - Image gallery takes 500px</text>
+</svg>

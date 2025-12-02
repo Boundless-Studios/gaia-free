@@ -1,0 +1,15 @@
+{
+  "campaigns": [
+    {
+      "title": "Test Epic Quest",
+      "description": "An epic fantasy adventure testing the upload functionality. This campaign will test our GCS upload script.",
+      "style": "epic fantasy",
+      "key_npcs": [
+        "Test NPC 1",
+        "Test NPC 2",
+        "Test NPC 3"
+      ]
+    }
+  ],
+  "total": 1
+}

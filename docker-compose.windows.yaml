@@ -1,0 +1,11 @@
+services:
+
+  backend-prod:
+    volumes:
+      # WSLg PulseAudio socket for audio playback
+      - /mnt/wslg/runtime-dir/pulse:/mnt/wslg/runtime-dir/pulse
+
+  gpu:
+    volumes:
+      # WSLg PulseAudio socket for audio playback
+      - /mnt/wslg/runtime-dir/pulse:/mnt/wslg/runtime-dir/pulse

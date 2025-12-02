@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposed DM UI - Gaia</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: #1a1a1a;
+            border-bottom: 2px solid #2a2a2a;
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: #4CAF50;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 4px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary { background: #6366f1; color: white; }
+        .btn-success { background: #4CAF50; color: black; }
+        .btn-danger { background: #dc2626; color: white; }
+
+        /* Main Layout */
+        .main-container {
+            flex: 1;
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            overflow: hidden;
+        }
+
+        /* Chat Panel */
+        .chat-panel {
+            flex: 0 0 400px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+        }
+
+        .chat-header {
+            border-bottom: 1px solid #2a2a2a;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            background: #0f0f0f;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .message.dm {
+            background: #2a1a1a;
+            border-left: 3px solid #8b4513;
+        }
+
+        .message.user {
+            background: #1a1a2a;
+            border-left: 3px solid #4169e1;
+        }
+
+        .message-sender {
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            opacity: 0.7;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input textarea {
+            flex: 1;
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            padding: 8px;
+            color: white;
+            resize: none;
+            font-family: inherit;
+        }
+
+        /* Dashboard */
+        .dashboard {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow: hidden;
+        }
+
+        /* Quick Actions Toolbar */
+        .quick-actions {
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
+            padding: 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .quick-action-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 11px;
+        }
+
+        .quick-action-btn:hover {
+            background: #3a3a3a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .quick-action-icon {
+            font-size: 20px;
+        }
+
+        /* Initiative Tracker */
+        .initiative-bar {
+            background: linear-gradient(135deg, #1e3a8a, #1e40af);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #3b82f6;
+        }
+
+        .initiative-current {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .initiative-next {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        /* Tabs */
+        .tabs-container {
+            flex: 1;
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .tabs-header {
+            display: flex;
+            background: #0f0f0f;
+            border-bottom: 2px solid #2a2a2a;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .tab-btn:hover {
+            background: #1a1a1a;
+            color: #bbb;
+        }
+
+        .tab-btn.active {
+            color: #4169e1;
+            background: #1a1a1a;
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #4169e1;
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        /* Character Cards */
+        .character-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .character-card {
+            background: #2a2a2a;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .character-card:hover {
+            border-color: #4169e1;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(65, 105, 225, 0.3);
+        }
+
+        .character-card.active {
+            border-color: #4CAF50;
+            background: linear-gradient(135deg, #2a2a2a 0%, rgba(76, 175, 80, 0.1) 100%);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .card-icon {
+            font-size: 24px;
+        }
+
+        .card-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .card-hp {
+            margin-bottom: 8px;
+        }
+
+        .hp-label {
+            font-size: 12px;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .hp-bar-container {
+            background: #0f0f0f;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .hp-bar {
+            height: 100%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .hp-bar.healthy {
+            background: linear-gradient(90deg, #32cd32, #228b22);
+        }
+
+        .hp-bar.wounded {
+            background: linear-gradient(90deg, #ffa500, #ff8c00);
+        }
+
+        .hp-bar.bloodied {
+            background: linear-gradient(90deg, #ff6347, #dc143c);
+        }
+
+        .hp-bar.critical {
+            background: linear-gradient(90deg, #dc143c, #8b0000);
+            animation: pulse-danger 1s infinite;
+        }
+
+        @keyframes pulse-danger {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .hp-status {
+            font-size: 11px;
+            color: #ff6347;
+            font-weight: 600;
+        }
+
+        .card-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            opacity: 0.7;
+            margin-bottom: 8px;
+        }
+
+        .card-active {
+            text-align: center;
+            padding: 4px;
+            background: rgba(76, 175, 80, 0.2);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #4CAF50;
+            margin-bottom: 8px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .card-action-btn {
+            flex: 1;
+            padding: 4px;
+            background: #1a1a1a;
+            border: 1px solid #3a3a3a;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .card-action-btn:hover {
+            background: #3a3a3a;
+        }
+
+        /* Player Options */
+        .player-suggestion {
+            background: linear-gradient(135deg, #1e3a8a, #1e40af);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid #3b82f6;
+        }
+
+        .suggestion-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .suggestion-text {
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            margin-bottom: 12px;
+            font-style: italic;
+        }
+
+        .suggestion-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .suggestion-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .suggestion-btn.approve { background: #4CAF50; color: white; }
+        .suggestion-btn.modify { background: #f59e0b; color: white; }
+        .suggestion-btn.dismiss { background: #dc2626; color: white; }
+
+        .option-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .option-item {
+            padding: 12px;
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 3px solid #f59e0b;
+            border-radius: 4px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .option-item:hover {
+            background: rgba(245, 158, 11, 0.2);
+            transform: translateX(4px);
+        }
+
+        /* Combat Tab */
+        .initiative-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .initiative-item {
+            padding: 12px;
+            background: #2a2a2a;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 2px solid transparent;
+        }
+
+        .initiative-item.active {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .initiative-number {
+            font-size: 20px;
+            font-weight: 700;
+            color: #4169e1;
+            min-width: 30px;
+        }
+
+        .initiative-details {
+            flex: 1;
+        }
+
+        .initiative-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .quick-combat-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .combat-action-btn {
+            padding: 16px 8px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .combat-action-btn:hover {
+            background: #3a3a3a;
+            transform: translateY(-2px);
+        }
+
+        .combat-action-icon {
+            font-size: 24px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .combat-action-label {
+            font-size: 11px;
+        }
+
+        /* Image Gallery Grid */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+        }
+
+        .gallery-item {
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .gallery-item:hover {
+            border-color: #4169e1;
+            transform: scale(1.05);
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f0f0f;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a3a3a;
+        }
+
+        .notice {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #16a34a;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="notice">
+        ✨ PROPOSED UI - Notice the tabbed interface and better space usage
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>Gaia Campaign Manager</h1>
+        <div class="header-buttons">
+            <button class="btn btn-primary">📋 Campaigns</button>
+            <button class="btn btn-success">🎲 New Campaign</button>
+            <button class="btn btn-danger">⚔️ Arena</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Chat Panel -->
+        <div class="chat-panel">
+            <div class="chat-header">
+                <h3 style="font-size: 16px;">💬 Chat</h3>
+            </div>
+            <div class="chat-messages">
+                <div class="message dm">
+                    <div class="message-sender">DM</div>
+                    <div>You find yourselves in a dimly lit tavern. The air is thick with smoke and the smell of ale. A hooded figure in the corner catches your eye...</div>
+                </div>
+                <div class="message user">
+                    <div class="message-sender">Player</div>
+                    <div>I want to approach the hooded figure and ask if they need help.</div>
+                </div>
+                <div class="message dm">
+                    <div class="message-sender">DM</div>
+                    <div>As you approach, the figure looks up. You see the glint of steel beneath their cloak. "Help?" they whisper. "Perhaps it is I who can help you..."</div>
+                </div>
+            </div>
+            <div class="chat-input">
+                <textarea placeholder="Type your action..." rows="2"></textarea>
+                <button class="btn btn-success">Send</button>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="dashboard">
+            <!-- Quick Actions Toolbar -->
+            <div class="quick-actions">
+                <div class="quick-action-btn">
+                    <div class="quick-action-icon">🎲</div>
+                    <div>Dice</div>
+                </div>
+                <div class="quick-action-btn">
+                    <div class="quick-action-icon">🎨</div>
+                    <div>Image</div>
+                </div>
+                <div class="quick-action-btn">
+                    <div class="quick-action-icon">💬</div>
+                    <div>Chat</div>
+                </div>
+                <div class="quick-action-btn">
+                    <div class="quick-action-icon">⚔️</div>
+                    <div>Combat</div>
+                </div>
+                <div class="quick-action-btn">
+                    <div class="quick-action-icon">📝</div>
+                    <div>Notes</div>
+                </div>
+                <div class="quick-action-btn">
+                    <div class="quick-action-icon">🎵</div>
+                    <div>Audio</div>
+                </div>
+            </div>
+
+            <!-- Initiative Tracker (Combat) -->
+            <div class="initiative-bar">
+                <div class="initiative-current">
+                    🎯 Round 3 | Thorin's Turn (Init: 18)
+                </div>
+                <div class="initiative-next">
+                    Next: Goblin Chief (16) → Elara (14)
+                </div>
+            </div>
+
+            <!-- Tabbed Interface -->
+            <div class="tabs-container">
+                <div class="tabs-header">
+                    <button class="tab-btn active" onclick="switchTab('overview')">
+                        <span>📋</span> Overview
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('combat')">
+                        <span>⚔️</span> Combat
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('scene')">
+                        <span>🎭</span> Scene
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('gallery')">
+                        <span>🖼️</span> Gallery
+                    </button>
+                </div>
+
+                <div class="tab-content">
+                    <!-- Overview Tab -->
+                    <div id="overview-tab" class="tab-pane active">
+                        <h3 style="margin-bottom: 12px;">Characters in Scene</h3>
+                        <div class="character-cards">
+                            <div class="character-card active">
+                                <div class="card-header">
+                                    <div class="card-icon">👤</div>
+                                    <div class="card-name">Thorin</div>
+                                </div>
+                                <div class="card-hp">
+                                    <div class="hp-label">HP 45/50</div>
+                                    <div class="hp-bar-container">
+                                        <div class="hp-bar healthy" style="width: 90%"></div>
+                                    </div>
+                                </div>
+                                <div class="card-stats">
+                                    <span>AC 18</span>
+                                    <span>Init +3</span>
+                                </div>
+                                <div class="card-active">🗡️ ACTIVE TURN</div>
+                                <div class="card-actions">
+                                    <button class="card-action-btn">👁️</button>
+                                    <button class="card-action-btn">🎯</button>
+                                    <button class="card-action-btn">💬</button>
+                                </div>
+                            </div>
+
+                            <div class="character-card">
+                                <div class="card-header">
+                                    <div class="card-icon">🧙</div>
+                                    <div class="card-name">Elara</div>
+                                </div>
+                                <div class="card-hp">
+                                    <div class="hp-label">HP 38/38</div>
+                                    <div class="hp-bar-container">
+                                        <div class="hp-bar healthy" style="width: 100%"></div>
+                                    </div>
+                                </div>
+                                <div class="card-stats">
+                                    <span>AC 14</span>
+                                    <span>Init +2</span>
+                                </div>
+                                <div class="card-actions">
+                                    <button class="card-action-btn">👁️</button>
+                                    <button class="card-action-btn">🎯</button>
+                                    <button class="card-action-btn">💬</button>
+                                </div>
+                            </div>
+
+                            <div class="character-card">
+                                <div class="card-header">
+                                    <div class="card-icon">🗡️</div>
+                                    <div class="card-name">Brock</div>
+                                </div>
+                                <div class="card-hp">
+                                    <div class="hp-label">HP 52/60</div>
+                                    <div class="hp-bar-container">
+                                        <div class="hp-bar healthy" style="width: 87%"></div>
+                                    </div>
+                                </div>
+                                <div class="card-stats">
+                                    <span>AC 16</span>
+                                    <span>Init +1</span>
+                                </div>
+                                <div class="card-actions">
+                                    <button class="card-action-btn">👁️</button>
+                                    <button class="card-action-btn">🎯</button>
+                                    <button class="card-action-btn">💬</button>
+                                </div>
+                            </div>
+
+                            <div class="character-card">
+                                <div class="card-header">
+                                    <div class="card-icon">🏹</div>
+                                    <div class="card-name">Lyra</div>
+                                </div>
+                                <div class="card-hp">
+                                    <div class="hp-label">HP 18/35</div>
+                                    <div class="hp-bar-container">
+                                        <div class="hp-bar bloodied" style="width: 51%"></div>
+                                    </div>
+                                    <div class="hp-status">🩹 BLOODIED</div>
+                                </div>
+                                <div class="card-stats">
+                                    <span>AC 15</span>
+                                    <span>Init +4</span>
+                                </div>
+                                <div class="card-actions">
+                                    <button class="card-action-btn">👁️</button>
+                                    <button class="card-action-btn">🎯</button>
+                                    <button class="card-action-btn">💬</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin: 24px 0 12px;">Player Suggestion</h3>
+                        <div class="player-suggestion">
+                            <div class="suggestion-header">💡 Player Action</div>
+                            <div class="suggestion-text">
+                                "I want to search the room for traps before we proceed"
+                            </div>
+                            <div class="suggestion-actions">
+                                <button class="suggestion-btn approve">✅ Use as Action</button>
+                                <button class="suggestion-btn modify">✏️ Modify</button>
+                                <button class="suggestion-btn dismiss">❌ Dismiss</button>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px;">🎯 Player Options</h3>
+                        <div class="option-list">
+                            <div class="option-item">• Search the mysterious chest in the corner</div>
+                            <div class="option-item">• Talk to the innkeeper about rumors</div>
+                            <div class="option-item">• Rest and recover</div>
+                            <div class="option-item">• Investigate the strange noise upstairs</div>
+                        </div>
+                    </div>
+
+                    <!-- Combat Tab -->
+                    <div id="combat-tab" class="tab-pane">
+                        <h3 style="margin-bottom: 12px;">Initiative Order - Round 3</h3>
+                        <div class="initiative-list">
+                            <div class="initiative-item active">
+                                <div class="initiative-number">18</div>
+                                <div class="initiative-details">
+                                    <div class="initiative-name">👤 Thorin Ironforge</div>
+                                    <div class="hp-bar-container">
+                                        <div class="hp-bar healthy" style="width: 90%"></div>
+                                    </div>
+                                    <div style="font-size: 11px; opacity: 0.7;">HP: 45/50 | AC: 18 [ACTIVE]</div>
+                                </div>
+                            </div>
+                            <div class="initiative-item">
+                                <div class="initiative-number">16</div>
+                                <div class="initiative-details">
+                                    <div class="initiative-name">👹 Goblin Chief</div>
+                                    <div class="hp-bar-container">
+                                        <div class="hp-bar bloodied" style="width: 40%"></div>
+                                    </div>
+                                    <div style="font-size: 11px; opacity: 0.7;">HP: 28/70 | AC: 13</div>
+                                </div>
+                            </div>
+                            <div class="initiative-item">
+                                <div class="initiative-number">14</div>
+                                <div class="initiative-details">
+                                    <div class="initiative-name">🧙 Elara Moonwhisper</div>
+                                    <div class="hp-bar-container">
+                                        <div class="hp-bar healthy" style="width: 100%"></div>
+                                    </div>
+                                    <div style="font-size: 11px; opacity: 0.7;">HP: 38/38 | AC: 14</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px;">Quick Combat Actions</h3>
+                        <div class="quick-combat-actions">
+                            <div class="combat-action-btn">
+                                <span class="combat-action-icon">🎲</span>
+                                <span class="combat-action-label">Roll d20</span>
+                            </div>
+                            <div class="combat-action-btn">
+                                <span class="combat-action-icon">💔</span>
+                                <span class="combat-action-label">Damage</span>
+                            </div>
+                            <div class="combat-action-btn">
+                                <span class="combat-action-icon">❤️</span>
+                                <span class="combat-action-label">Heal</span>
+                            </div>
+                            <div class="combat-action-btn">
+                                <span class="combat-action-icon">🔄</span>
+                                <span class="combat-action-label">Next Turn</span>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px;">Last Action</h3>
+                        <div style="background: #2a2a2a; padding: 12px; border-radius: 4px;">
+                            <div style="margin-bottom: 8px;">Thorin attacks Goblin Chief with longsword</div>
+                            <div style="font-size: 13px; opacity: 0.8;">Roll: 17 (d20) + 5 = 22 → HIT!</div>
+                            <div style="font-size: 13px; opacity: 0.8;">Damage: 8 (1d8) + 3 = 11 slashing damage</div>
+                        </div>
+                    </div>
+
+                    <!-- Scene Tab -->
+                    <div id="scene-tab" class="tab-pane">
+                        <h3 style="margin-bottom: 12px;">📖 Current Narrative</h3>
+                        <div style="background: #2a2a2a; padding: 16px; border-radius: 8px; margin-bottom: 20px; line-height: 1.6;">
+                            The dimly lit tavern suddenly falls silent as a hooded figure bursts through the door, breathing heavily. Rain drips from their cloak onto the worn wooden floor. The innkeeper's eyes widen in recognition...<br><br>
+                            "They're coming," the figure gasps. "The Dead are rising from the old cemetery. We have minutes at most."
+                        </div>
+
+                        <h3 style="margin-bottom: 12px;">🌍 Environmental Conditions</h3>
+                        <div style="background: #2a2a2a; padding: 12px; border-radius: 4px; margin-bottom: 20px;">
+                            <div style="margin-bottom: 4px;">• Heavy rain outside</div>
+                            <div style="margin-bottom: 4px;">• Crowded tavern (30+ NPCs)</div>
+                            <div style="margin-bottom: 4px;">• Limited visibility</div>
+                            <div>• Panic starting to spread</div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px;">🎭 NPCs in Scene</h3>
+                        <div style="background: #2a2a2a; padding: 12px; border-radius: 4px; margin-bottom: 20px;">
+                            <div style="margin-bottom: 4px;">• Hooded Messenger (urgent, frightened)</div>
+                            <div style="margin-bottom: 4px;">• Innkeeper Gareth (concerned, looking to PCs)</div>
+                            <div style="margin-bottom: 4px;">• Old Man Thaddeus (skeptical)</div>
+                            <div>• Various Townfolk (nervous, some fleeing)</div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px;">⚡ Immediate Threats</h3>
+                        <div style="background: rgba(220, 38, 38, 0.1); border-left: 3px solid #dc2626; padding: 12px; border-radius: 4px;">
+                            <div style="margin-bottom: 4px;">• Undead approaching from cemetery (2-3 minutes)</div>
+                            <div style="margin-bottom: 4px;">• Potential stampede/panic in tavern</div>
+                            <div>• Unknown number of enemies</div>
+                        </div>
+                    </div>
+
+                    <!-- Gallery Tab -->
+                    <div id="gallery-tab" class="tab-pane">
+                        <h3 style="margin-bottom: 12px;">Recent Images</h3>
+                        <div class="gallery-grid">
+                            <div class="gallery-item">🏰</div>
+                            <div class="gallery-item">👤</div>
+                            <div class="gallery-item">🌲</div>
+                            <div class="gallery-item">⚔️</div>
+                            <div class="gallery-item">🗺️</div>
+                            <div class="gallery-item">👹</div>
+                            <div class="gallery-item">🏛️</div>
+                            <div class="gallery-item">🌅</div>
+                            <div class="gallery-item">🗡️</div>
+                            <div class="gallery-item">🏹</div>
+                            <div class="gallery-item">🌙</div>
+                            <div class="gallery-item">🔥</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.tab-btn').classList.add('active');
+
+            // Update tab panes
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.remove('active');
+            });
+            document.getElementById(tabId + '-tab').classList.add('active');
+        }
+    </script>
+</body>
+</html>

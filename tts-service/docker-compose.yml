@@ -1,0 +1,53 @@
+# Docker Compose configuration for TTS Service
+#
+# Usage:
+#   docker compose build        # Build the TTS service image
+#   docker compose up          # Start TTS service
+#   docker compose up -d       # Start TTS service in background
+#   docker compose logs -f     # Follow logs
+#   docker compose down        # Stop service
+
+services:
+  tts-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: gaia-tts-service-local
+    ports:
+      - "7860:7860"  # F5-TTS Gradio interface
+      - "8080:8080"  # Health/status endpoints
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      # Development: bind mounts for hot-reload
+      - ./src:/home/gaia/src
+      # Model persistence
+      - tts-models:/home/gaia/.cache/huggingface/hub
+      - tts-temp:/home/gaia/tmp
+    # Resource limits for local development
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # Give TTS models time to load
+
+volumes:
+  tts-models:
+  tts-temp:

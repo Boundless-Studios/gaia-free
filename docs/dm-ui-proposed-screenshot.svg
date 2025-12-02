@@ -1,0 +1,213 @@
+<svg width="1400" height="900" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1400" height="900" fill="#0a0a0a"/>
+
+  <!-- Header -->
+  <rect width="1400" height="40" fill="#1a1a1a"/>
+  <rect x="0" y="40" width="1400" height="2" fill="#2a2a2a"/>
+  <text x="20" y="27" fill="#4CAF50" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Gaia Campaign Manager</text>
+
+  <!-- Header Buttons -->
+  <rect x="1100" y="10" width="80" height="24" rx="4" fill="#6366f1"/>
+  <text x="1110" y="27" fill="white" font-size="11" font-family="Arial, sans-serif">📋 Campaigns</text>
+
+  <rect x="1190" y="10" width="110" height="24" rx="4" fill="#4CAF50"/>
+  <text x="1200" y="27" fill="black" font-size="11" font-family="Arial, sans-serif">🎲 New Campaign</text>
+
+  <rect x="1310" y="10" width="70" height="24" rx="4" fill="#dc2626"/>
+  <text x="1320" y="27" fill="white" font-size="11" font-family="Arial, sans-serif">⚔️ Arena</text>
+
+  <!-- Chat Panel (same as before) -->
+  <rect x="20" y="60" width="400" height="820" rx="8" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1"/>
+  <text x="30" y="85" fill="white" font-size="14" font-family="Arial, sans-serif" font-weight="bold">💬 Chat</text>
+  <line x1="30" y1="95" x2="410" y2="95" stroke="#2a2a2a" stroke-width="1"/>
+
+  <!-- Chat Messages -->
+  <rect x="30" y="105" width="380" height="680" rx="4" fill="#0f0f0f"/>
+  <rect x="40" y="115" width="360" height="60" rx="4" fill="#2a1a1a"/>
+  <rect x="40" y="115" width="3" height="60" fill="#8b4513"/>
+  <text x="50" y="130" fill="#888" font-size="10" font-family="Arial, sans-serif">DM</text>
+  <text x="50" y="145" fill="white" font-size="11" font-family="Arial, sans-serif">You find yourselves in a dimly lit tavern.</text>
+  <text x="50" y="160" fill="white" font-size="11" font-family="Arial, sans-serif">A hooded figure catches your eye...</text>
+
+  <rect x="40" y="185" width="360" height="45" rx="4" fill="#1a1a2a"/>
+  <rect x="40" y="185" width="3" height="45" fill="#4169e1"/>
+  <text x="50" y="200" fill="#888" font-size="10" font-family="Arial, sans-serif">Player</text>
+  <text x="50" y="215" fill="white" font-size="11" font-family="Arial, sans-serif">I approach the hooded figure.</text>
+
+  <!-- Chat Input -->
+  <rect x="30" y="795" width="310" height="75" rx="4" fill="#0f0f0f" stroke="#2a2a2a" stroke-width="1"/>
+  <text x="40" y="815" fill="#666" font-size="11" font-family="Arial, sans-serif">Type your action...</text>
+  <rect x="350" y="800" width="60" height="65" rx="4" fill="#4CAF50"/>
+  <text x="365" y="838" fill="black" font-size="11" font-family="Arial, sans-serif" font-weight="bold">Send</text>
+
+  <!-- Dashboard -->
+  <!-- Quick Actions Toolbar -->
+  <rect x="440" y="60" width="940" height="70" rx="8" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1"/>
+
+  <rect x="455" y="75" width="110" height="40" rx="6" fill="#2a2a2a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="495" y="97" fill="white" font-size="20" font-family="Arial, sans-serif">🎲</text>
+  <text x="483" y="115" fill="white" font-size="10" font-family="Arial, sans-serif">Dice</text>
+
+  <rect x="575" y="75" width="110" height="40" rx="6" fill="#2a2a2a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="615" y="97" fill="white" font-size="20" font-family="Arial, sans-serif">🎨</text>
+  <text x="600" y="115" fill="white" font-size="10" font-family="Arial, sans-serif">Image</text>
+
+  <rect x="695" y="75" width="110" height="40" rx="6" fill="#2a2a2a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="735" y="97" fill="white" font-size="20" font-family="Arial, sans-serif">💬</text>
+  <text x="723" y="115" fill="white" font-size="10" font-family="Arial, sans-serif">Chat</text>
+
+  <rect x="815" y="75" width="110" height="40" rx="6" fill="#2a2a2a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="855" y="97" fill="white" font-size="20" font-family="Arial, sans-serif">⚔️</text>
+  <text x="840" y="115" fill="white" font-size="10" font-family="Arial, sans-serif">Combat</text>
+
+  <rect x="935" y="75" width="110" height="40" rx="6" fill="#2a2a2a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="975" y="97" fill="white" font-size="20" font-family="Arial, sans-serif">📝</text>
+  <text x="963" y="115" fill="white" font-size="10" font-family="Arial, sans-serif">Notes</text>
+
+  <rect x="1055" y="75" width="110" height="40" rx="6" fill="#2a2a2a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="1095" y="97" fill="white" font-size="20" font-family="Arial, sans-serif">🎵</text>
+  <text x="1080" y="115" fill="white" font-size="10" font-family="Arial, sans-serif">Audio</text>
+
+  <!-- Initiative Tracker -->
+  <rect x="440" y="145" width="940" height="45" rx="8" fill="#1e3a8a" stroke="#3b82f6" stroke-width="1"/>
+  <text x="460" y="172" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">🎯 Round 3 | Thorin's Turn (Init: 18)</text>
+  <text x="980" y="172" fill="white" font-size="12" font-family="Arial, sans-serif" opacity="0.8">Next: Goblin Chief (16) → Elara (14)</text>
+
+  <!-- Tabbed Container -->
+  <rect x="440" y="205" width="940" height="675" rx="8" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1"/>
+
+  <!-- Tabs Header -->
+  <rect x="440" y="205" width="940" height="45" rx="8" fill="#0f0f0f"/>
+  <line x1="440" y1="248" x2="1380" y2="248" stroke="#2a2a2a" stroke-width="2"/>
+
+  <!-- Tab Buttons -->
+  <rect x="440" y="205" width="235" height="45" fill="#1a1a1a"/>
+  <text x="520" y="233" fill="#4169e1" font-size="12" font-family="Arial, sans-serif" font-weight="bold">📋 Overview</text>
+  <rect x="440" y="248" width="235" height="2" fill="#4169e1"/>
+
+  <rect x="675" y="205" width="235" height="45" fill="#0f0f0f"/>
+  <text x="760" y="233" fill="#888" font-size="12" font-family="Arial, sans-serif" font-weight="bold">⚔️ Combat</text>
+
+  <rect x="910" y="205" width="235" height="45" fill="#0f0f0f"/>
+  <text x="1000" y="233" fill="#888" font-size="12" font-family="Arial, sans-serif" font-weight="bold">🎭 Scene</text>
+
+  <rect x="1145" y="205" width="235" height="45" fill="#0f0f0f"/>
+  <text x="1225" y="233" fill="#888" font-size="12" font-family="Arial, sans-serif" font-weight="bold">🖼️ Gallery</text>
+
+  <!-- Tab Content - Overview Tab -->
+  <text x="455" y="275" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">Characters in Scene</text>
+
+  <!-- Character Card 1 - Active -->
+  <rect x="455" y="290" width="210" height="165" rx="8" fill="#2a2a2a" stroke="#4CAF50" stroke-width="2"/>
+  <text x="465" y="310" fill="white" font-size="22" font-family="Arial, sans-serif">👤</text>
+  <text x="495" y="310" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">Thorin</text>
+
+  <text x="465" y="330" fill="#bbb" font-size="11" font-family="Arial, sans-serif">HP 45/50</text>
+  <rect x="465" y="335" width="180" height="8" rx="4" fill="#0f0f0f"/>
+  <rect x="465" y="335" width="162" height="8" rx="4" fill="#32cd32"/>
+
+  <text x="465" y="360" fill="#aaa" font-size="11" font-family="Arial, sans-serif">AC 18</text>
+  <text x="585" y="360" fill="#aaa" font-size="11" font-family="Arial, sans-serif">Init +3</text>
+
+  <rect x="465" y="370" width="180" height="20" rx="4" fill="rgba(76, 175, 80, 0.2)"/>
+  <text x="510" y="384" fill="#4CAF50" font-size="10" font-family="Arial, sans-serif" font-weight="bold">🗡️ ACTIVE TURN</text>
+
+  <rect x="465" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="482" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">👁️</text>
+  <rect x="525" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="542" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">🎯</text>
+  <rect x="585" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="602" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">💬</text>
+
+  <!-- Character Card 2 - Elara -->
+  <rect x="675" y="290" width="210" height="165" rx="8" fill="#2a2a2a" stroke="transparent" stroke-width="2"/>
+  <text x="685" y="310" fill="white" font-size="22" font-family="Arial, sans-serif">🧙</text>
+  <text x="715" y="310" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">Elara</text>
+
+  <text x="685" y="330" fill="#bbb" font-size="11" font-family="Arial, sans-serif">HP 38/38</text>
+  <rect x="685" y="335" width="180" height="8" rx="4" fill="#0f0f0f"/>
+  <rect x="685" y="335" width="180" height="8" rx="4" fill="#32cd32"/>
+
+  <text x="685" y="360" fill="#aaa" font-size="11" font-family="Arial, sans-serif">AC 14</text>
+  <text x="805" y="360" fill="#aaa" font-size="11" font-family="Arial, sans-serif">Init +2</text>
+
+  <rect x="685" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="702" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">👁️</text>
+  <rect x="745" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="762" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">🎯</text>
+  <rect x="805" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="822" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">💬</text>
+
+  <!-- Character Card 3 - Brock -->
+  <rect x="895" y="290" width="210" height="165" rx="8" fill="#2a2a2a" stroke="transparent" stroke-width="2"/>
+  <text x="905" y="310" fill="white" font-size="22" font-family="Arial, sans-serif">🗡️</text>
+  <text x="935" y="310" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">Brock</text>
+
+  <text x="905" y="330" fill="#bbb" font-size="11" font-family="Arial, sans-serif">HP 52/60</text>
+  <rect x="905" y="335" width="180" height="8" rx="4" fill="#0f0f0f"/>
+  <rect x="905" y="335" width="156" height="8" rx="4" fill="#32cd32"/>
+
+  <text x="905" y="360" fill="#aaa" font-size="11" font-family="Arial, sans-serif">AC 16</text>
+  <text x="1025" y="360" fill="#aaa" font-size="11" font-family="Arial, sans-serif">Init +1</text>
+
+  <rect x="905" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="922" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">👁️</text>
+  <rect x="965" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="982" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">🎯</text>
+  <rect x="1025" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="1042" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">💬</text>
+
+  <!-- Character Card 4 - Lyra (Bloodied) -->
+  <rect x="1115" y="290" width="210" height="165" rx="8" fill="#2a2a2a" stroke="transparent" stroke-width="2"/>
+  <text x="1125" y="310" fill="white" font-size="22" font-family="Arial, sans-serif">🏹</text>
+  <text x="1155" y="310" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">Lyra</text>
+
+  <text x="1125" y="330" fill="#bbb" font-size="11" font-family="Arial, sans-serif">HP 18/35</text>
+  <rect x="1125" y="335" width="180" height="8" rx="4" fill="#0f0f0f"/>
+  <rect x="1125" y="335" width="92" height="8" rx="4" fill="#ff6347"/>
+
+  <text x="1125" y="355" fill="#ff6347" font-size="10" font-family="Arial, sans-serif" font-weight="bold">🩹 BLOODIED</text>
+
+  <text x="1125" y="375" fill="#aaa" font-size="11" font-family="Arial, sans-serif">AC 15</text>
+  <text x="1245" y="375" fill="#aaa" font-size="11" font-family="Arial, sans-serif">Init +4</text>
+
+  <rect x="1125" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="1142" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">👁️</text>
+  <rect x="1185" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="1202" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">🎯</text>
+  <rect x="1245" y="395" width="55" height="24" rx="4" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="1262" y="411" fill="white" font-size="12" font-family="Arial, sans-serif">💬</text>
+
+  <!-- Player Suggestion -->
+  <text x="455" y="485" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">Player Suggestion</text>
+  <rect x="455" y="495" width="870" height="100" rx="8" fill="#1e3a8a" stroke="#3b82f6" stroke-width="1"/>
+  <text x="470" y="515" fill="white" font-size="12" font-family="Arial, sans-serif" font-weight="bold">💡 Player Action</text>
+  <rect x="470" y="525" width="840" height="30" rx="4" fill="rgba(0,0,0,0.3)"/>
+  <text x="480" y="546" fill="white" font-size="11" font-family="Arial, sans-serif" font-style="italic">"I want to search the room for traps before we proceed"</text>
+
+  <rect x="470" y="565" width="110" height="22" rx="4" fill="#4CAF50"/>
+  <text x="478" y="580" fill="white" font-size="10" font-family="Arial, sans-serif" font-weight="bold">✅ Use as Action</text>
+  <rect x="590" y="565" width="70" height="22" rx="4" fill="#f59e0b"/>
+  <text x="605" y="580" fill="white" font-size="10" font-family="Arial, sans-serif" font-weight="bold">✏️ Modify</text>
+  <rect x="670" y="565" width="70" height="22" rx="4" fill="#dc2626"/>
+  <text x="682" y="580" fill="white" font-size="10" font-family="Arial, sans-serif" font-weight="bold">❌ Dismiss</text>
+
+  <!-- Player Options -->
+  <text x="455" y="625" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">🎯 Player Options</text>
+  <rect x="455" y="635" width="870" height="22" rx="4" fill="rgba(245, 158, 11, 0.1)"/>
+  <rect x="455" y="635" width="3" height="22" fill="#f59e0b"/>
+  <text x="465" y="650" fill="white" font-size="11" font-family="Arial, sans-serif">• Search the mysterious chest in the corner</text>
+
+  <rect x="455" y="665" width="870" height="22" rx="4" fill="rgba(245, 158, 11, 0.1)"/>
+  <rect x="455" y="665" width="3" height="22" fill="#f59e0b"/>
+  <text x="465" y="680" fill="white" font-size="11" font-family="Arial, sans-serif">• Talk to the innkeeper about rumors</text>
+
+  <rect x="455" y="695" width="870" height="22" rx="4" fill="rgba(245, 158, 11, 0.1)"/>
+  <rect x="455" y="695" width="3" height="22" fill="#f59e0b"/>
+  <text x="465" y="710" fill="white" font-size="11" font-family="Arial, sans-serif">• Rest and recover</text>
+
+  <!-- Notice Badge -->
+  <rect x="520" y="10" width="360" height="30" rx="8" fill="#16a34a"/>
+  <text x="540" y="30" fill="white" font-size="13" font-family="Arial, sans-serif" font-weight="bold">✨ PROPOSED UI - Tabbed with better space</text>
+</svg>

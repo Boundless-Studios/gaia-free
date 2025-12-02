@@ -1,0 +1,120 @@
+{
+  "campaigns": [
+    {
+      "title": "The Shattered Starfall: Rise of the Void Sovereign",
+      "description": "When the constellation of heroes itself falls from the sky in burning fragments, the ancient Void Sovereign imprisoned beneath the world stirs. The PCs must reunite the scattered starlight to reignite the celestial seal before the Sovereign\u2019s umbral armies drown the mortal realm in endless night.",
+      "setting": "The realm of Luminastra, a world split between the Daylands\u2014sun-kissed kingdoms of mortals\u2014and the Veiled Depths, a reversed under-realm where stars shine beneath stone skies. Leylines run like glowing rivers, and great crystal lighthouses called Astral Spires channel starlight that powers cities and wards.",
+      "theme": "Classic high fantasy\u2014hope against overwhelming darkness, heroic legacy, and the power of united hearts",
+      "starting_location": "Starhaven, a cliffside academy-city built around the cracked Astral Spire, now flickering as meteors of fallen star-heroes crash around it",
+      "main_conflict": "The Void Sovereign, sealed millennia ago when seven constellations turned into the first star-heroes, now breaks free as those stars are shattered by a shadow comet. Only by rekindling the seven virtues within new heroes and restoring the constellation can the seal be renewed.",
+      "key_npcs": [
+        "Arch-Commander Seraphiel Dawnbringer, once a constellation made flesh, now mortal and guilt-ridden over his fallen kin",
+        "Lady Nyssandra Veilshade, half-elf spy-mistress secretly descended from the Void Sovereign\u2019s lieutenants, torn between blood and duty",
+        "Dormant Spark (a tiny living star fragment), childlike yet eons old, who knows hidden paths to each fallen star",
+        "Prince Caeleth Brightlance, heir to the Sapphire Throne, desperate to prove himself a hero instead of a figurehead",
+        "General Vornak Ironshatter, war-forged veteran leading the Sovereign\u2019s Umbral Legions in relentless moonless assaults"
+      ],
+      "potential_quests": [
+        "Retrieve the First Shard from the Moonlit Gorge, where starlight wolves guard the fragment of Courage",
+        "Negotiate safe passage through the treetop city of Aetherglen, where rebel sky-pirates claim one shard as their own",
+        "Descend into the Veiled Depths to rescue the lost Star-Mage whose knowledge can repair the Astral Spire",
+        "Defend Starhaven\u2019s last lighthouse crystal against a night-long siege while refugees seek shelter within its walls",
+        "Forge the Bonded Oathblade by questing to each kingdom\u2019s sacred forge, uniting rival nations against the coming void"
+      ],
+      "style": "epic fantasy"
+    },
+    {
+      "title": "The Crimson Widow's Veil",
+      "description": "In the shadow-shrouded land of Ravencroft Hollow, a crimson fog rises each night to steal memories and add them to the web of an ancient, unseen entity. The party must untangle a conspiracy of corrupted nobles, shunned scholars, and dead gods while their own pasts fray thread by thread. Every answer found costs a piece of who they were, until only truth\u2014or madness\u2014remains.",
+      "setting": "Ravencroft Hollow: a mist-locked valley where dusk lasts for nine hours and dawn never truly comes. Three decaying towns\u2014Gravesend (port), Witherwatch (university ruins), and Briarhall (noble estates)\u2014circle an obsidian lake said to mirror what viewers have forgotten. Iron lanterns burn blood-oil to keep the fog at bay, and the dead outnumber the living in ledger and on street alike.",
+      "theme": "Gothic horror, unraveling identity, creeping dread",
+      "starting_location": "Gravesend\u2019s Gallowmere Inn, a crooked timber building on stilts above reeking tides. The party awakens in communal rooms with missing personal items, hollow gaps in their memories, and matching crimson handprints on the doors. A single note in each character\u2019s handwriting but none of their memories reads: \"Before the Widow drinks us dry, remember the name you lost.\"",
+      "main_conflict": "The Crimson Widow, a spider-like goddess once imprisoned in dream-webs, is awakening as local rituals feed her stolen memories. Each mind consumed strengthens her veil and erases reality\u2019s stitches. Unless her cult is dismantled and her true name spoken aloud beneath the blood-moon, she will drape the world in silk spun from every forgotten life and become the only thing left remembered.",
+      "key_npcs": [
+        "Lady Seraphina Briarhall\u2014last heir of a dying noble line, secretly hosting the Widow\u2019s voice in her shattered mirror",
+        "Professor Aldous Grimwald\u2014disgraced memory scholar exiled from Witherwatch, willing to barter others\u2019 recollections for forbidden lore",
+        "The Fogwalker\u2014masked vigilante who stalks streets at dusk, stealing back memories and returning them as twisted dreams",
+        "Morwyn Graves\u2014cemetery keeper who speaks with the buried, her price is always a childhood memory she never lived",
+        "Silas Voss\u2014cult priest whose gentle demeanor masks a willingness to erase entire bloodlines to complete the Widow\u2019s tapestry"
+      ],
+      "potential_quests": [
+        "Investigate why portraits in Briarhall\u2019s gallery bleed when viewed, uncovering a lineage replaced by stitched-together imposters",
+        "Retrieve a mnemonic relic from Witherwatch\u2019s sealed library while navigating corridors that rewrite themselves and the adventurers\u2019 skill sets",
+        "Rescue a child whose memories manifest as living shadows; each rescued memory becomes a future enemy",
+        "Infiltrate a masquerade ball where masks feed the wearers stolen identities; unmask the host before dawn or become the masks forever",
+        "Follow the Fogwalker into the mirror-realm beneath the obsidian lake to learn the Widow\u2019s true name\u2014spoken only by her own reflection"
+      ],
+      "style": "dark horror"
+    },
+    {
+      "title": "Crown of Whispers",
+      "description": "In the twilight kingdom of Obsidia, where shadows carry secrets and daggers bear noble crests, five great houses vie for control over an empty throne. Every alliance masks betrayal, every gift conceals poison, and every promise is written in invisible ink that appears only when blood is spilled. The players must navigate courtly machinations while determining who truly deserves\u2014or can seize\u2014the crown from the grasp of ancient conspiracies.",
+      "setting": "The Kingdom of Obsidia sprawls across a mist-shrouded valley where ancient magic has been harnessed to create \"shadow networks\"\u2014living shadows that serve as spies and couriers for those who know the secret rituals. Noble houses rule from fortified estates built upon floating islands tethered by chains of light, while commoners dwell in the misty lowlands where rumors spread like plague and changelings walk in borrowed faces. The queen lies mysteriously comatose, her mind locked in the Dreaming Palace that exists between waking and sleep, and the royal regalia has vanished along with the heir apparent.",
+      "theme": "Political intrigue and espionage",
+      "starting_location": "The Sapphire Spire, a neutral ground tower where noble houses and their retainers gather for the Grand Conclave\u2014the first council in fifty years to determine the fate of the throne. Each room is warded against scrying, and the wine flows freely as masks slip and old grudges rekindle.",
+      "main_conflict": "The ancient Pact of Five Houses that has maintained Obsidia's peace for centuries has been secretly broken by House Umbral through the creation of shadow-clones that can perfectly impersonate rival nobles. As these doppelg\u00e4ngers infiltrate the highest echelons of power, they prepare to collapse the kingdom into war, allowing House Umbral to emerge as sole rulers while claiming to be the only true defenders against chaos. The shadow-clones must be stopped before they start the Succession War, but exposing them risks revealing every house's darkest secrets.",
+      "key_npcs": [
+        "Lord Cassius Umbral - Master of Shadows who claims to seek peace but commands the whisper-networks and shadow-clones",
+        "Lady Seraphine Dawnbreaker - Uncompromising matriarch whose house officially wields light-magic while secretly harboring a blood cult",
+        "Marquis Vex Hollow - Charismatic spymaster who sells information to all sides while playing an elaborate game of quadruple-cross",
+        "Princess Mira (the Comatose Sovereign) - The sleeping queen who appears in dreams to deliver cryptic warnings that may be traps or truths",
+        "Corwin the Fool - The court jester who remembers everyone's secrets but speaks only in riddles and nursery rhymes that conceal assassination orders"
+      ],
+      "potential_quests": [
+        "Investigate the murder of a second-born son whose death was staged as suicide, uncovering coded messages in his supposed suicide note that reveal the identity of his killer and the next target",
+        "Steal the Dagger of Truths from House Umbral's vault\u2014a magical blade that forces those cut by it to speak only truth, but whose theft will certainly spark diplomatic outrage",
+        "Sabotage the wedding alliance between House Hollow and House Dawnbreaker by exposing one of the betrothed as a shadow-clone, ideally without revealing which house created the fake",
+        "Infiltrate the Dreaming Palace through shared dreaming to discover whether Princess Mira is truly unconscious or if someone has stolen her sleeping mind to manipulate the throne",
+        "Navigate the Shadow Tournament where noble houses send champions to compete for the right to speak first at conclave, while determining which competitors are real and which are shadow-clones sent to assassinate rivals"
+      ],
+      "style": "political intrigue"
+    },
+    {
+      "title": "The Verdant Expanse",
+      "description": "Centuries ago, the continent of Viridia sank beneath the waves, its mystical heartland preserved by powerful druidic magic. Now the mists have finally parted, revealing a pristine wilderness untouched by mortal hands and brimming with the remnannts of a lost civilization whose magic warped both land and life itself.",
+      "setting": "The Verdant Expanse is a newly-emerged continent covered in overgrown ruins, living stone forests, crystalline rivers that flow upward, and floating islands tethered by massive vines. Ancient elven cities lie partially phased between planes, while beast-like descendants of the original inhabitants have evolved into entirely new species. The few humanoid settlements are temporary research outposts and waystations established by distant kingdoms racing to claim territory.",
+      "theme": "Pristine wilderness exploration and discovery of pre-calamity civilization",
+      "starting_location": "Camp Horizon, a hastily-constructed wooden fortress at the continent's only safe harbor, populated by rival explorers, scholars hoping to unlock druidic secrets, and merchants selling supplies at extortionate prices",
+      "main_conflict": "Three major factions race to uncover the Heart-Spring - the continent's magical core - while the ancient druidic defenses begin awakening to expel all intruders, threatening to sink Viridia once more",
+      "key_npcs": [
+        "Quercus Shadeleaf, a treant prophet who remembers the sinking and offers cryptic warnings about disturbing the balance",
+        "Professor Elara Brightfeather, gnomish archaeologist whose obsession with ancient magic may unleash horrors best left buried",
+        "Captain Grimsby Stonebeard, githyanki privateer who claims salvage rights over any magical artifacts found",
+        "Zephyr-Voice, a couatl spirit who tests explorers' worthiness with increasingly dangerous trials",
+        "Thane Korvak Ironhide, leader of the Stonefist Expeditionary Force whose brutal efficiency masks a desperate search for a cure to a plague ravaging his homeland"
+      ],
+      "potential_quests": [
+        "Map the Whispering Woods where trees grow upside-down and gravity works in reverse",
+        "Locate the Observatory of Stars - an ancient elven star-mapping tower that predicts the continent's next sinking",
+        "Negotiate with the Beastclaw tribes who claim descent from the original inhabitants and guard the path to the Heart-Spring",
+        "Recover the Codex of Roots from a library trapped in a time bubble before rival explorers destroy it",
+        "Discover why expeditions sent to the Singing Desert have vanished, leaving only musical footprints leading nowhere"
+      ],
+      "style": "exploration"
+    },
+    {
+      "title": "Crimson Skies of the Sapphire Archipelago",
+      "description": "Sail the treacherous Sapphire Archipelago where ghost ships haunt moonlit waters and every coral-crowned island hides forgotten treasures. As the empires wage distant wars, pirate fleets carve kingdoms from sea and sand, bound by blood oaths and black powder.",
+      "setting": "The Sapphire Archipelago\u2014eight hundred scattered islands floating between two warring empires. Crystal-clear lagoons hide leviathan graveyards, while floating fortress-cities made from captured galleons serve as lawless ports. Ancient cyclopean ruins rise from jungle-choked islands, holding pre-sunken civilization secrets.",
+      "theme": "Swashbuckling adventure with supernatural secrets",
+      "starting_location": "Tortuga's Wake\u2014a floating pirate city built from lashed-together ships surrounding a massive sea turtle's shell. Players begin as new crew aboard the Crimson Kraken, a notorious pirate vessel recruiting for a legendary treasure hunt.",
+      "main_conflict": "Captain Blackheart Bloodwake has awakened something ancient beneath the waves\u2014an eldritch kraken that grants him control over wind and wave, but demands ever-increasing sacrifices. As his ghost fleet grows, the free pirates must unite or be dragged into the crushing depths.",
+      "key_npcs": [
+        "Captain Isadora 'Sea Witch' Valdris - Crimson Kraken's captain seeking redemption for past sins",
+        "Admiral Thaddeus Ironclad - Naval commander determined to bring order through brutal conquest",
+        "First Mate Jalen Fletcher - Mutinous quartermaster with a map tattooed on his back",
+        "Madame Coraline - Tavern keeper with a network of informants and a mechanical parrot spy",
+        "Tide Speaker Zarola - Mysterious merfolk shaman warning of the approaching Deep Hunger"
+      ],
+      "potential_quests": [
+        "Race to claim Captain Bloodwake's lost treasure map before rival crews and imperial spies",
+        "Investigate disappearing ships near the Siren's Teeth\u2014not to rescue, but to salvage their cargo",
+        "Navigate the Maelstrom Maze\u2014a shifting storm where time flows differently and treasure islands appear",
+        "Broker an alliance between the Sea Elves and pirate fleets against the common threat",
+        "Steal the Imperial Dreadnought 'Invincible' to stop it from bombarding the free ports into submission"
+      ],
+      "style": "pirate adventure"
+    }
+  ],
+  "total": 5
+}

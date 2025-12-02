@@ -1,0 +1,14 @@
+{
+  "characters": [
+    {
+      "name": "Test Warrior",
+      "character_class": "Fighter",
+      "type": "warrior",
+      "backstory": "A brave warrior seeking glory and adventure across the land. This is a test character with a proper backstory.",
+      "gender": "male",
+      "facial_expression": "determined",
+      "build": "muscular"
+    }
+  ],
+  "total": 1
+}

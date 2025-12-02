@@ -1,0 +1,394 @@
+name: Deploy Cloud Run (Matrix)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment (stg or prod)
+        required: true
+        default: stg
+      region:
+        description: GCP region
+        required: true
+        default: us-west1
+      ref:
+        description: Git branch, tag, or commit SHA to deploy
+        required: false
+        default: main
+      deploy_vars:
+        description: 'JSON object of deployment env vars (set via DEPLOY_* prefix, e.g. {"FORCE_PREGEN":"true"})'
+        required: false
+        default: '{}'
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'speech-to-text/**'
+      - 'tts-service/**'
+      - '.github/workflows/deploy-cloudrun-matrix.yml'
+
+jobs:
+  # TODO: Re-enable tests once CI environment is properly configured
+  # test-backend:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #   env:
+  #     PYTHON_VERSION: '3.11'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: ${{ env.PYTHON_VERSION }}
+  #     - name: Install backend deps
+  #       working-directory: backend
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -r requirements.txt
+  #     - name: Run backend tests (not slow)
+  #       working-directory: backend
+  #       run: |
+  #         python run_tests.py --markers "not slow"
+
+  deploy:
+    runs-on: ubuntu-latest
+    # needs: test-backend  # Re-enable when tests are fixed
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: backend
+            context: .
+            dockerfile: backend/Dockerfile.cloudrun
+            service_var_prefix: BACKEND_SERVICE
+            default_port: 8080
+            env_file_pattern: config/cloudrun.${ENV}.env
+            repo_suffix: gaia-backend
+          - service: frontend
+            context: .
+            dockerfile: frontend/Dockerfile
+            service_var_prefix: FRONTEND_SERVICE
+            default_port: 3000
+            env_file_pattern: config/cloudrun.frontend.${ENV}.env
+            repo_suffix: gaia-frontend
+          - service: stt
+            context: .
+            dockerfile: speech-to-text/Dockerfile
+            service_var_prefix: STT_SERVICE
+            default_port: 8001
+            env_file_pattern: config/cloudrun.stt.${ENV}.env
+            repo_suffix: gaia-stt
+          - service: tts
+            context: .
+            dockerfile: tts-service/Dockerfile
+            service_var_prefix: TTS_SERVICE
+            default_port: 8080
+            env_file_pattern: config/cloudrun.tts.${ENV}.env
+            repo_suffix: gaia-tts
+
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REGION: ${{ inputs.region || 'us-west1' }}
+      ENV_NAME: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') && 'prod' || inputs.environment || 'stg' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Load config defaults (config/gcp.env)
+        run: |
+          if [[ -f config/gcp.env ]]; then
+            while IFS='=' read -r k v; do
+              [[ -z "$k" || "$k" =~ ^# ]] && continue
+              if [[ "$k" =~ ^[A-Z0-9_]+$ ]]; then
+                if [[ -z "${!k}" ]]; then
+                  echo "$k=$v" >> "$GITHUB_ENV"
+                fi
+              fi
+            done < config/gcp.env
+          fi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker to use Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev -q
+
+      - name: Install sops
+        run: |
+          SOPS_VERSION="3.9.3"
+          curl -LO "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64"
+          sudo mv "sops-v${SOPS_VERSION}.linux.amd64" /usr/local/bin/sops
+          sudo chmod +x /usr/local/bin/sops
+          sops --version
+
+      - name: Decrypt secrets and sync to Secret Manager
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          if [[ -z "${SOPS_AGE_KEY}" ]]; then
+            echo "SOPS_AGE_KEY is not set. Skipping Secret Manager sync.";
+          else
+            sops -d secrets/.secrets.env > secrets/.secrets.env.decrypted;
+            python3 scripts/cloud_run/sync_secrets_to_sm.py \
+              --input secrets/.secrets.env.decrypted \
+              --project "$PROJECT_ID" \
+              --env "$ENV_NAME" \
+              --out-env-file /tmp/env_unused.txt \
+              --out-secrets-flags secrets_flags.txt;
+          fi
+
+      - name: Build secrets flags for gcloud
+        id: secretflags
+        run: |
+          FLAGS=""
+          SECRET_KEYS=""
+          if [[ -f secrets_flags.txt ]]; then
+            while IFS= read -r line; do
+              [[ -z "$line" ]] && continue
+              key="${line%%=*}"
+              if [[ -n "$key" ]]; then
+                SECRET_KEYS+="${key}"$'\n'
+              fi
+              FLAGS+=" --set-secrets ${line}"
+            done < secrets_flags.txt
+          fi
+          echo "FLAGS=${FLAGS}" >> $GITHUB_OUTPUT
+          if [[ -n "$SECRET_KEYS" ]]; then
+            {
+              echo "SECRET_KEYS<<EOF"
+              printf '%s' "$SECRET_KEYS"
+              echo
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "SECRET_KEYS=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve service name and env file
+        id: svc
+        env:
+          SERVICE_PREFIX: ${{ matrix.service_var_prefix }}
+          ENV_NAME: ${{ env.ENV_NAME }}
+        run: |
+          SUFFIX="${ENV_NAME^^}"
+          VAR="${SERVICE_PREFIX}_${SUFFIX}"
+          SERVICE_NAME="${!VAR:-}"
+          if [[ -z "$SERVICE_NAME" ]]; then
+            # fallback naming
+            SERVICE_NAME="gaia-${{ matrix.service }}-${ENV_NAME}"
+          fi
+          echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_OUTPUT
+
+          # Resolve env file pattern
+          ENV_PATTERN='${{ matrix.env_file_pattern }}'
+          ENV_FILE=$(echo "$ENV_PATTERN" | sed "s/\${ENV}/$ENV_NAME/g")
+          if [[ ! -f "$ENV_FILE" ]]; then
+            echo "Creating minimal env file at $ENV_FILE";
+            mkdir -p "$(dirname "$ENV_FILE")"
+            echo "ENV=$ENV_NAME" > "$ENV_FILE"
+            echo "PORT=${{ matrix.default_port }}" >> "$ENV_FILE"
+          fi
+          echo "ENV_FILE=$ENV_FILE" >> $GITHUB_OUTPUT
+
+      - name: Compute image tag and optional repo override
+        id: image
+        env:
+          REPO_DEFAULT_SUFFIX: ${{ matrix.repo_suffix }}
+        run: |
+          SHA_SHORT="${GITHUB_SHA::7}"
+          # Per-service repo override in config: ARTIFACT_REGISTRY_REPO_<SERVICE>
+          SERVICE_UPPER="${{ matrix.service }}"; SERVICE_UPPER=${SERVICE_UPPER^^}
+          VAR_REPO="ARTIFACT_REGISTRY_REPO_${SERVICE_UPPER}"
+          REPO_OVERRIDE="${!VAR_REPO:-}"
+          if [[ -n "$REPO_OVERRIDE" ]]; then
+            # Per-service repo format: registry/project/repo-name/image:tag
+            IMAGE="${REPO_OVERRIDE}/${{ matrix.service }}-${ENV_NAME}:${SHA_SHORT}"
+          elif [[ -n "${ARTIFACT_REGISTRY_REPO:-}" ]]; then
+            # Use base repo if set (single repo for all images)
+            IMAGE="${ARTIFACT_REGISTRY_REPO}/${{ matrix.service }}-${ENV_NAME}:${SHA_SHORT}"
+          else
+            # Fallback using repo suffix from matrix
+            IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_DEFAULT_SUFFIX}/${{ matrix.service }}-${ENV_NAME}:${SHA_SHORT}"
+          fi
+          echo "IMAGE=${IMAGE}" >> $GITHUB_OUTPUT
+
+      - name: Extract build args from env (VITE_* only)
+        id: buildargs
+        run: |
+          BUILD_ARGS=""
+          if [[ -f "${{ steps.svc.outputs.ENV_FILE }}" ]]; then
+            while IFS='=' read -r k v; do
+              [[ -z "$k" || "$k" =~ ^# ]] && continue
+              if [[ "$k" =~ ^VITE_ ]]; then
+                BUILD_ARGS+=" --build-arg ${k}=${v}"
+              fi
+            done < "${{ steps.svc.outputs.ENV_FILE }}"
+          fi
+          echo "ARGS=${BUILD_ARGS}" >> $GITHUB_OUTPUT
+
+      - name: Build image (${{ matrix.service }})
+        run: |
+          docker build \
+            -f "${{ matrix.dockerfile }}" \
+            ${{ steps.buildargs.outputs.ARGS }} \
+            -t "${{ steps.image.outputs.IMAGE }}" \
+            "${{ matrix.context }}"
+
+      - name: Push image (${{ matrix.service }})
+        run: docker push "${{ steps.image.outputs.IMAGE }}"
+
+      - name: Compose Cloud Run env file
+        id: composeenv
+        run: |
+          set -euo pipefail
+          ENV_FILE="${{ steps.svc.outputs.ENV_FILE }}"
+          OUT_FILE="/tmp/${{ matrix.service }}.cloudrun.env"
+
+          # Start with base config if it exists, then merge environment-specific overrides
+          BASE_CONFIG="config/cloudrun.base.env"
+          if [[ -f "$BASE_CONFIG" ]]; then
+            cp "$BASE_CONFIG" "$OUT_FILE"
+            # Append environment-specific overrides (they will override base values below)
+            if [[ -f "$ENV_FILE" ]]; then
+              cat "$ENV_FILE" >> "$OUT_FILE"
+            fi
+          else
+            # Fallback: just use environment file if base doesn't exist
+            cp "$ENV_FILE" "$OUT_FILE"
+          fi
+
+          # Remove duplicate keys, keeping last occurrence (environment-specific wins)
+          python3 scripts/cloud_run/deduplicate_env_keys.py "$OUT_FILE"
+
+          add_if_missing() {
+            local key="$1"; shift
+            local val="$1"; shift
+            if ! grep -qE "^${key}=" "$OUT_FILE"; then
+              echo "${key}=${val}" >> "$OUT_FILE"
+            fi
+          }
+
+          # Global non-secrets from config
+          if [[ -n "${CAMPAIGN_STORAGE_PATH:-}" ]]; then
+            add_if_missing CAMPAIGN_STORAGE_PATH "$CAMPAIGN_STORAGE_PATH"
+          fi
+          SUFFIX="${ENV_NAME^^}"
+          CAMPAIGNS_VAR="CAMPAIGN_STORAGE_BUCKET_${SUFFIX}"
+          MEDIA_VAR="MEDIA_BUCKET_${SUFFIX}"
+          CAMPAIGNS_VAL="${!CAMPAIGNS_VAR:-}"
+          MEDIA_VAL="${!MEDIA_VAR:-}"
+          if [[ -n "$CAMPAIGNS_VAL" ]]; then
+            add_if_missing CAMPAIGN_STORAGE_BUCKET "$CAMPAIGNS_VAL"
+          fi
+          if [[ -n "$MEDIA_VAL" ]]; then
+            add_if_missing MEDIA_BUCKET "$MEDIA_VAL"
+          fi
+
+          # Extract PORT before removing it
+          CONT_PORT=$(grep -E "^PORT=" "$OUT_FILE" | cut -d"=" -f2- || echo "${{ matrix.default_port }}")
+          echo "CONT_PORT=$CONT_PORT" >> $GITHUB_OUTPUT
+          
+          # Remove PORT from env file - Cloud Run sets this automatically
+          sed -i "/^PORT=/d" "$OUT_FILE"
+          echo "OUT_ENV_FILE=$OUT_FILE" >> $GITHUB_OUTPUT
+          echo "Composed env file:"; cat "$OUT_FILE"
+
+      - name: Deploy to Cloud Run (${{ matrix.service }})
+        run: |
+          ENV_FILE="${{ steps.composeenv.outputs.OUT_ENV_FILE }}"
+          DB_INSTANCE_CONNECTION_NAME=$(grep -E '^DB_INSTANCE_CONNECTION_NAME=' "$ENV_FILE" | cut -d'=' -f2- || true)
+          CONT_PORT="${{ steps.composeenv.outputs.CONT_PORT }}"
+
+          ENV_FILE_FLAG=("--env-vars-file=$ENV_FILE")
+          CLOUDSQL_FLAG=()
+          [[ -n "$DB_INSTANCE_CONNECTION_NAME" ]] && CLOUDSQL_FLAG+=("--add-cloudsql-instances=${DB_INSTANCE_CONNECTION_NAME}")
+          PORT_FLAG=()
+          [[ -n "$CONT_PORT" ]] && PORT_FLAG+=("--port=${CONT_PORT}")
+
+          # Parse deploy_vars JSON and merge into env file (non-secret keys only)
+          DEPLOY_VARS='${{ inputs.deploy_vars }}'
+          SECRET_KEYS_RAW='${{ steps.secretflags.outputs.SECRET_KEYS }}'
+          if [[ -n "$DEPLOY_VARS" ]]; then
+            SECRET_KEYS_FILE="$(mktemp)"
+            printf '%s\n' "$SECRET_KEYS_RAW" | tr -d '\r' | sed '/^$/d' > "$SECRET_KEYS_FILE"
+            python3 scripts/cloud_run/apply_deploy_env_overrides.py \
+              --env-file "$ENV_FILE" \
+              --deploy-vars "$DEPLOY_VARS" \
+              --secret-keys-file "$SECRET_KEYS_FILE"
+            rm -f "$SECRET_KEYS_FILE"
+          fi
+
+          # Service account default
+          SA_DEFAULT="${RUNTIME_SERVICE_ACCOUNT:-gaia-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com}"
+
+          gcloud run deploy "${{ steps.svc.outputs.SERVICE_NAME }}" \
+            --image="${{ steps.image.outputs.IMAGE }}" \
+            --region="$REGION" \
+            --service-account="$SA_DEFAULT" \
+            --execution-environment=gen2 \
+            --concurrency=80 \
+            --min-instances=0 \
+            --max-instances=1 \
+            --cpu=1 \
+            --memory=2Gi \
+            --labels="env=${ENV_NAME},tier=${{ matrix.service }}" \
+            --ingress=all \
+            --allow-unauthenticated \
+            "${ENV_FILE_FLAG[@]}" \
+            "${CLOUDSQL_FLAG[@]}" \
+            ${{ steps.secretflags.outputs.FLAGS }} \
+            "${PORT_FLAG[@]}"
+
+      - name: Verify health (${{ matrix.service }})
+        run: |
+          SERVICE_NAME="${{ steps.svc.outputs.SERVICE_NAME }}"
+          echo "Checking health for service: $SERVICE_NAME"
+
+          URL=$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format 'value(status.url)' 2>&1)
+          if [[ -z "$URL" ]]; then
+            echo "ERROR: Failed to get service URL"
+            gcloud run services describe "$SERVICE_NAME" --region "$REGION"
+            exit 1
+          fi
+          echo "Service URL: $URL"
+
+          # Pick health path per service
+          PATH_SUFFIX="/health"
+          if [[ "${{ matrix.service }}" == "backend" ]]; then
+            PATH_SUFFIX="/api/health"
+          elif [[ "${{ matrix.service }}" == "frontend" ]]; then
+            PATH_SUFFIX="/health"
+          elif [[ "${{ matrix.service }}" == "stt" ]]; then
+            PATH_SUFFIX="/health"
+          elif [[ "${{ matrix.service }}" == "tts" ]]; then
+            PATH_SUFFIX="/health"
+          fi
+
+          # Try up to 10 times with delay
+          echo "Testing health endpoint: ${URL}${PATH_SUFFIX}"
+          for i in {1..10}; do
+            if curl -sf "${URL}${PATH_SUFFIX}" >/dev/null; then
+              echo "Health check OK: ${URL}${PATH_SUFFIX}"
+              exit 0
+            fi
+            echo "Waiting for service to become healthy... (attempt $i/10)"
+            sleep 6
+          done
+
+          echo "Health check failed for ${URL}${PATH_SUFFIX}"
+          curl -v "${URL}${PATH_SUFFIX}" || true
+          exit 1

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Current DM UI - Gaia</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: #1a1a1a;
+            border-bottom: 2px solid #2a2a2a;
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: #4CAF50;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 4px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-primary { background: #6366f1; color: white; }
+        .btn-success { background: #4CAF50; color: black; }
+        .btn-danger { background: #dc2626; color: white; }
+
+        /* Main Layout */
+        .main-container {
+            flex: 1;
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            overflow: hidden;
+        }
+
+        /* Chat Panel */
+        .chat-panel {
+            flex: 0 0 400px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+        }
+
+        .chat-header {
+            border-bottom: 1px solid #2a2a2a;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            background: #0f0f0f;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .message.dm {
+            background: #2a1a1a;
+            border-left: 3px solid #8b4513;
+        }
+
+        .message.user {
+            background: #1a1a2a;
+            border-left: 3px solid #4169e1;
+        }
+
+        .message-sender {
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            opacity: 0.7;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input textarea {
+            flex: 1;
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            padding: 8px;
+            color: white;
+            resize: none;
+            font-family: inherit;
+        }
+
+        /* Dashboard */
+        .dashboard {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+        }
+
+        .panel {
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
+            padding: 16px;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Character List */
+        .character-list-panel {
+            flex: 0 0 auto;
+        }
+
+        .character-list {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .character-item {
+            flex: 0 0 auto;
+            padding: 8px 12px;
+            background: #2a2a2a;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        /* Image Gallery - Takes up lots of space */
+        .gallery-panel {
+            flex: 0 0 500px;
+            min-height: 500px;
+        }
+
+        .gallery-scroll {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .gallery-item {
+            flex: 0 0 200px;
+            height: 150px;
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            opacity: 0.5;
+        }
+
+        /* Player Options */
+        .player-options-panel {
+            flex: 0 0 auto;
+        }
+
+        .option-item {
+            padding: 8px 12px;
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 3px solid #f59e0b;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        /* Combat Status */
+        .combat-panel {
+            flex: 0 0 auto;
+        }
+
+        .combatant {
+            padding: 8px;
+            background: #2a2a2a;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .hp-bar-container {
+            background: #0f0f0f;
+            height: 6px;
+            border-radius: 3px;
+            margin: 4px 0;
+            overflow: hidden;
+        }
+
+        .hp-bar {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s ease;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f0f0f;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a3a3a;
+        }
+
+        .notice {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e40af;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="notice">
+        📌 CURRENT UI - Notice the image gallery taking 500px of space
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>Gaia Campaign Manager</h1>
+        <div class="header-buttons">
+            <button class="btn btn-primary">📋 Campaigns</button>
+            <button class="btn btn-success">🎲 New Campaign</button>
+            <button class="btn btn-danger">⚔️ Arena</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Chat Panel -->
+        <div class="chat-panel">
+            <div class="chat-header">
+                <h3 style="font-size: 16px;">💬 Chat</h3>
+            </div>
+            <div class="chat-messages">
+                <div class="message dm">
+                    <div class="message-sender">DM</div>
+                    <div>You find yourselves in a dimly lit tavern. The air is thick with smoke and the smell of ale. A hooded figure in the corner catches your eye...</div>
+                </div>
+                <div class="message user">
+                    <div class="message-sender">Player</div>
+                    <div>I want to approach the hooded figure and ask if they need help.</div>
+                </div>
+                <div class="message dm">
+                    <div class="message-sender">DM</div>
+                    <div>As you approach, the figure looks up. You see the glint of steel beneath their cloak. "Help?" they whisper. "Perhaps it is I who can help you..."</div>
+                </div>
+            </div>
+            <div class="chat-input">
+                <textarea placeholder="Type your action..." rows="2"></textarea>
+                <button class="btn btn-success">Send</button>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="dashboard">
+            <!-- Character List -->
+            <div class="panel character-list-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Characters in Scene</span>
+                </div>
+                <div class="character-list">
+                    <div class="character-item">👤 Thorin | HP: 45/50 | AC: 18</div>
+                    <div class="character-item">🧙 Elara | HP: 38/38 | AC: 14</div>
+                    <div class="character-item">🗡️ Brock | HP: 52/60 | AC: 16</div>
+                    <div class="character-item">🏹 Lyra | HP: 18/35 | AC: 15</div>
+                    <div class="character-item">👹 Goblin | HP: 28/70 | AC: 13</div>
+                </div>
+            </div>
+
+            <!-- Image Gallery - Takes up 500px! -->
+            <div class="panel gallery-panel">
+                <div class="panel-header">
+                    <span class="panel-title">🖼️ Image Gallery</span>
+                    <span style="margin-left: auto; font-size: 12px; opacity: 0.6;">⚠️ Takes 500px of vertical space</span>
+                </div>
+                <div class="gallery-scroll">
+                    <div class="gallery-item">🏰</div>
+                    <div class="gallery-item">👤</div>
+                    <div class="gallery-item">🌲</div>
+                    <div class="gallery-item">⚔️</div>
+                    <div class="gallery-item">🗺️</div>
+                    <div class="gallery-item">👹</div>
+                    <div class="gallery-item">🏛️</div>
+                </div>
+            </div>
+
+            <!-- Player Options -->
+            <div class="panel player-options-panel">
+                <div class="panel-header">
+                    <span class="panel-title">🎯 Player Options</span>
+                </div>
+                <div class="option-item">• Search the mysterious chest in the corner</div>
+                <div class="option-item">• Talk to the innkeeper about rumors</div>
+                <div class="option-item">• Rest and recover</div>
+                <div class="option-item">• Investigate the strange noise upstairs</div>
+            </div>
+
+            <!-- Combat Status -->
+            <div class="panel combat-panel">
+                <div class="panel-header">
+                    <span class="panel-title">⚔️ Combat Status</span>
+                </div>
+                <div class="combatant">
+                    <div>18 - 👤 Thorin Ironforge</div>
+                    <div class="hp-bar-container">
+                        <div class="hp-bar" style="width: 90%"></div>
+                    </div>
+                    <div style="font-size: 11px; opacity: 0.7;">HP: 45/50 | AC: 18</div>
+                </div>
+                <div class="combatant">
+                    <div>16 - 👹 Goblin Chief</div>
+                    <div class="hp-bar-container">
+                        <div class="hp-bar" style="width: 40%; background: #dc2626;"></div>
+                    </div>
+                    <div style="font-size: 11px; opacity: 0.7;">HP: 28/70 | AC: 13</div>
+                </div>
+                <div class="combatant">
+                    <div>14 - 🧙 Elara Moonwhisper</div>
+                    <div class="hp-bar-container">
+                        <div class="hp-bar" style="width: 100%"></div>
+                    </div>
+                    <div style="font-size: 11px; opacity: 0.7;">HP: 38/38 | AC: 14</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

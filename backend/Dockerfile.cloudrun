@@ -1,0 +1,41 @@
+# syntax=docker/dockerfile:1
+# Cloud Run Dockerfile - minimal, stateless runtime
+
+ARG PYTHON_VERSION=3.11
+
+FROM python:${PYTHON_VERSION}-slim AS base
+
+# Install minimal dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+ARG USER_UID=1000
+ARG USER_GID=1000
+RUN groupadd --gid ${USER_GID} gaia && \
+    useradd --uid ${USER_UID} --gid ${USER_GID} --create-home --shell /bin/bash gaia
+
+USER gaia
+WORKDIR /home/gaia
+
+# Install Python dependencies (copy only requirements first for better caching)
+COPY --chown=gaia:gaia backend/requirements.txt ./backend/requirements.txt
+RUN pip install --user -r backend/requirements.txt
+
+# Set environment
+ENV PATH=/home/gaia/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    # Make gaia/gaia_private importable, plus backend modules
+    PYTHONPATH=/home/gaia/backend/src:/home/gaia/backend:/home/gaia
+
+# Copy repository sources (root build context)
+COPY --chown=gaia:gaia . .
+
+# Health check port expected by Cloud Run is $PORT (default 8080)
+EXPOSE 8080
+
+# Use the lightweight Cloud Run entrypoint
+ENTRYPOINT ["python", "/home/gaia/backend/scripts/entrypoint_cloud_run.py"]

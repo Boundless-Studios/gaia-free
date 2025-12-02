@@ -1,0 +1,126 @@
+.character-portrait-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.portrait-preview-container {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #4a5568;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.portrait-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.portrait-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: #a0aec0;
+}
+
+.portrait-placeholder-icon {
+  font-size: 4rem;
+  opacity: 0.5;
+}
+
+.portrait-placeholder-text {
+  margin: 0;
+  font-size: 1rem;
+  opacity: 0.7;
+}
+
+.portrait-generating-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: white;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #4299e1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.portrait-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.generate-portrait-button {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.generate-portrait-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+
+.generate-portrait-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.portrait-error {
+  padding: 0.75rem;
+  background: rgba(245, 101, 101, 0.1);
+  border: 1px solid rgba(245, 101, 101, 0.3);
+  border-radius: 6px;
+  color: #fc8181;
+  font-size: 0.875rem;
+}
+
+.portrait-prompt-info {
+  padding: 0.5rem;
+  background: rgba(66, 153, 225, 0.1);
+  border-radius: 6px;
+  color: #90cdf4;
+  font-size: 0.75rem;
+  max-height: 60px;
+  overflow-y: auto;
+}
+
+.portrait-prompt-info small {
+  display: block;
+  line-height: 1.4;
+}

@@ -1,0 +1,93 @@
+# syntax=docker/dockerfile:1
+# Test Dockerfile - For running test suite
+
+ARG PYTHON_VERSION=3.11
+ARG OLLAMA_MODEL=llama3.2:1b
+ARG USE_SMALLER_MODEL=true
+ARG FLUX_MODEL_PATH=runwayml/stable-diffusion-v1-5
+
+# Build stage with test dependencies
+FROM python:${PYTHON_VERSION}-slim AS builder
+
+# Install build dependencies with cache mount
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies with cache mount
+WORKDIR /build
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --user -r requirements.txt && \
+    pip install --user pytest pytest-asyncio pytest-cov pytest-mock
+
+# Test runtime stage
+FROM python:${PYTHON_VERSION}-slim AS test
+ARG OLLAMA_MODEL
+ARG USE_SMALLER_MODEL
+ARG FLUX_MODEL_PATH
+
+# Install runtime dependencies with cache mount
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y \
+    ffmpeg \
+    alsa-utils \
+    pulseaudio-utils \
+    curl \
+    ca-certificates \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Ollama
+RUN curl -fsSL https://ollama.ai/install.sh | sh
+
+# Create non-root user with consistent UID
+ARG USER_UID=1000
+ARG USER_GID=1000
+RUN groupadd --gid ${USER_GID} gaia && \
+    useradd --uid ${USER_UID} --gid ${USER_GID} --create-home --shell /bin/bash gaia
+
+USER gaia
+WORKDIR /home/gaia
+
+# Copy Python packages from builder (includes test dependencies)
+COPY --from=builder --chown=gaia:gaia /root/.local /home/gaia/.local
+ENV PATH=/home/gaia/.local/bin:$PATH
+
+# Set environment variables
+ENV PYTHONPATH=/home/gaia/src \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    OLLAMA_HOST=0.0.0.0:11434 \
+    OLLAMA_MODELS=/home/gaia/.ollama/models \
+    USE_SMALLER_MODEL=${USE_SMALLER_MODEL} \
+    FLUX_MODEL_PATH=${FLUX_MODEL_PATH}
+
+# Create necessary directories
+RUN mkdir -p logs campaigns .ollama/models
+
+# Pre-download test model with cache
+RUN --mount=type=cache,target=/home/gaia/.ollama/models,uid=1000,gid=1000 \
+    /bin/bash -c "ollama serve &" && sleep 10 && \
+    ollama pull ${OLLAMA_MODEL} && \
+    pkill ollama || true
+
+# Copy application code and test files
+COPY --chown=gaia:gaia src/ ./src/
+COPY --chown=gaia:gaia scripts/ ./scripts/
+COPY --chown=gaia:gaia test/ ./test/
+COPY --chown=gaia:gaia scripts/entrypoint.sh /home/gaia/entrypoint.sh
+
+# Make entrypoint executable
+RUN chmod +x /home/gaia/entrypoint.sh
+
+EXPOSE 8000
+
+# No health check needed for test container
+
+# Use entrypoint for cleaner startup
+ENTRYPOINT ["/home/gaia/entrypoint.sh"]
+CMD ["-v"]

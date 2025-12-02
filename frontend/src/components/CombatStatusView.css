@@ -1,0 +1,200 @@
+/* Combat Status View - Matches TurnView and NarrativeView styling */
+
+.combat-status-view {
+  margin-bottom: 16px;
+}
+
+.combat-status-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.combat-status-icon {
+  font-size: 24px;
+}
+
+.combat-status-title {
+  flex: 1;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.combat-round-info {
+  font-size: 14px;
+  color: #888;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.combat-status-content {
+  padding: 16px;
+}
+
+.combat-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.combatant-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.2s ease;
+}
+
+.combatant-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.combatant-card.active {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.1);
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
+}
+
+.combatant-card.unconscious {
+  opacity: 0.6;
+  border-color: #666;
+}
+
+.combatant-card.unconscious .combatant-name {
+  color: #999;
+  text-decoration: line-through;
+}
+
+.combatant-card.enemy {
+  border-color: rgba(244, 67, 54, 0.5);
+  background: rgba(244, 67, 54, 0.05);
+}
+
+.combatant-card.enemy .combatant-name {
+  color: #f44336;
+}
+
+.combatant-card.enemy:hover {
+  background: rgba(244, 67, 54, 0.1);
+  border-color: rgba(244, 67, 54, 0.7);
+}
+
+.combatant-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.active-indicator {
+  font-size: 14px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+.unconscious-indicator {
+  font-size: 14px;
+}
+
+.combatant-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #888;
+  min-width: 30px;
+  font-weight: 500;
+}
+
+.stat-bar-container {
+  flex: 1;
+  position: relative;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.stat-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.stat-value {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  padding-left: 8px;
+}
+
+.stat-value-simple {
+  flex: 1;
+  font-size: 13px;
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+.stat-row.status-effects {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.status-effects-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.status-effect-tag {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  font-weight: 500;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .combat-status-grid {
+    grid-template-columns: 1fr;
+  }
+}

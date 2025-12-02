@@ -1,0 +1,39 @@
+/* ImagePopup Styles - Using Tailwind @apply */
+.image-popup-overlay {
+  @apply fixed inset-0 bg-black/85;
+  @apply flex items-center justify-center;
+  @apply z-[4000] opacity-0 cursor-pointer;
+  @apply transition-opacity duration-300 ease-in-out;
+}
+
+.image-popup-overlay.visible {
+  @apply opacity-100;
+}
+
+.image-popup-container {
+  @apply relative max-w-[80vw] max-h-[80vh];
+  @apply bg-gaia-light rounded-xl overflow-hidden cursor-default;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+}
+
+.image-popup-close {
+  @apply absolute top-2.5 right-2.5;
+  @apply w-10 h-10 bg-black/70 text-white;
+  @apply border-none rounded-full text-2xl cursor-pointer;
+  @apply flex items-center justify-center;
+  @apply transition-colors duration-300 z-[4100];
+}
+
+.image-popup-close:hover {
+  @apply bg-red-600/80;
+}
+
+.image-popup-image {
+  @apply w-full h-full object-contain block;
+}
+
+.image-popup-caption {
+  @apply absolute bottom-0 left-0 right-0;
+  @apply text-white p-5 text-sm text-center;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+}

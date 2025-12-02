@@ -1,0 +1,2 @@
+# Exclude docker mount directory (contains large model files and images)
+docker_mount/

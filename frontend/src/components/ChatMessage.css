@@ -1,0 +1,220 @@
+/* Chat Message Component - Using Tailwind @apply */
+.chat-message-container {
+  @apply mb-3 p-3 rounded-lg border-l-4 border-l-transparent relative transition-all duration-300;
+  @apply hover:shadow-lg hover:-translate-y-0.5;
+  background: linear-gradient(135deg, #3a3a3a 0%, #2d2d2d 100%);
+}
+
+/* Different styles for different senders */
+.chat-message-container.user {
+  @apply border-l-green-500;
+  background: linear-gradient(135deg, #2e4a30 0%, #234a26 100%);
+}
+
+.chat-message-container.dm {
+  border-left: 4px solid #f59e0b;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.chat-message-container.assistant {
+  @apply border-l-blue-500;
+  background: linear-gradient(135deg, #2e3a4a 0%, #23303a 100%);
+}
+
+.chat-message-container.system {
+  @apply border-l-gray-500;
+  background: linear-gradient(135deg, #3a3a3a 0%, #2d2d2d 100%);
+}
+
+/* Message header */
+.chat-message-header {
+  @apply flex justify-between items-center mb-2;
+}
+
+.chat-message-sender {
+  @apply text-sm font-semibold text-gray-200;
+}
+
+.chat-message-audio {
+  @apply text-base ml-2; 
+}
+
+.chat-message-container.user .chat-message-sender {
+  @apply text-green-300;
+}
+
+.chat-message-container.dm .chat-message-sender {
+  color: #f59e0b;
+}
+
+.chat-message-container.assistant .chat-message-sender {
+  @apply text-blue-300;
+}
+
+.chat-message-container.system .chat-message-sender {
+  @apply text-gray-400;
+}
+
+/* Message content */
+.chat-message-content {
+  @apply relative leading-relaxed select-text;
+  font-size: 0.95rem;
+  color: #f3f4f6;
+}
+
+/* Selection highlighting */
+.chat-message-content ::selection {
+  background: rgba(76, 175, 80, 0.3);
+  color: white;
+}
+
+.chat-message-content ::-moz-selection {
+  background: rgba(76, 175, 80, 0.3);
+  color: white;
+}
+
+/* Timestamp */
+.chat-message-timestamp {
+  @apply text-xs text-gray-500 mt-1.5 text-right;
+}
+
+/* Structured message sections */
+.message-narrative-section,
+.message-answer-section {
+  margin-bottom: 12px;
+}
+
+.message-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.message-narrative-section:last-child,
+.message-answer-section:last-child {
+  margin-bottom: 0;
+}
+
+.message-section-label {
+  @apply text-sm font-semibold;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.message-quick-play-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.message-quick-play-button:hover {
+  transform: translateY(-1px);
+}
+
+.message-quick-play-button--active {
+  transform: translateY(0);
+}
+
+.message-narrative-section .message-section-label {
+  color: #3b82f6;
+}
+
+.message-answer-section .message-section-label {
+  color: #fbbf24;
+}
+
+.message-narrative-section .message-quick-play-button {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #bfdbfe;
+}
+
+.message-narrative-section .message-quick-play-button:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.message-narrative-section .message-quick-play-button--active {
+  background: rgba(59, 130, 246, 0.45);
+  border-color: rgba(59, 130, 246, 0.6);
+  color: #f8fafc;
+}
+
+.message-answer-section .message-quick-play-button {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fde68a;
+}
+
+.message-answer-section .message-quick-play-button:hover {
+  background: rgba(251, 191, 36, 0.3);
+}
+
+.message-answer-section .message-quick-play-button--active {
+  background: rgba(251, 191, 36, 0.45);
+  border-color: rgba(251, 191, 36, 0.6);
+  color: #fffff0;
+}
+
+.message-section-content {
+  @apply leading-relaxed;
+  font-size: 0.95rem;
+  padding: 12px;
+  border-radius: 0 8px 8px 0;
+  line-height: 1.5;
+}
+
+.message-narrative-section .message-section-content {
+  background: rgba(59, 130, 246, 0.15);
+  border-left: 3px solid #3b82f6;
+  color: #ffffff;
+}
+
+.message-answer-section .message-section-content {
+  background: rgba(251, 191, 36, 0.15);
+  border-left: 3px solid #fbbf24;
+  color: #ffffff;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .chat-message-container {
+    @apply p-2.5 mb-2.5;
+  }
+
+  .chat-message-header {
+    @apply flex-col items-start gap-1.5;
+  }
+
+  .chat-message-content {
+    @apply text-sm;
+  }
+
+  .message-section-content {
+    font-size: 0.875rem;
+    padding: 6px 10px;
+  }
+
+  .message-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .message-quick-play-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -1,0 +1,280 @@
+# Docker Compose orchestration for Gaia backend and frontend
+# 
+# This file orchestrates both backend and frontend services using profiles
+# for environment-specific deployments (dev, prod, test)
+#
+# Usage:
+#   docker compose --profile dev up      # Start development environment
+#   docker compose --profile prod up     # Start production environment  
+#   docker compose --profile test up     # Run test environment
+#   docker compose --profile gpu up      # Start with GPU support
+#
+# Individual service control:
+#   docker compose up backend-dev        # Start only backend in dev mode
+#   docker compose up frontend-test      # Start only frontend in test mode
+#   docker compose up backend-gpu        # Start only backend with GPU support
+#
+# Note: All services share the default network automatically
+
+services:
+  # =============================================================================
+  # BACKEND SERVICES
+  # =============================================================================
+  
+  # Backend Development
+  backend-dev:
+    extends:
+      file: backend/docker-compose.yml
+      service: dev
+    container_name: ${BACKEND_CONTAINER_NAME:-gaia-backend-dev}
+    profiles: ["dev"]
+    environment:
+      # Disable Cloudflare tunnel for local development
+      DISABLE_CLOUDFLARE_TUNNEL: "true"
+      # Use staging bucket for dev images (with hostname prefix)
+      IMAGE_STORAGE_BUCKET: "gaia-media-stg"
+      ENVIRONMENT: "development"
+      DISABLE_AUTH: ${DISABLE_AUTH:-false}
+    volumes:
+      # Mount gcloud credentials for GCS access in dev
+      - ${HOME}/.config/gcloud:/home/gaia/.config/gcloud:ro
+      # Mount images directory for local fallback (until migration completes)
+      - ./backend/docker_mount/images:/home/gaia/images
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 40
+      start_period: 10s
+
+  # Backend GPU Development (no tunnel)
+  backend-gpu:
+    extends:
+      file: backend/docker-compose.yml
+      service: gpu
+    container_name: ${BACKEND_CONTAINER_NAME:-gaia-backend-gpu}
+    profiles: ["gpu"]  # Only for gpu profile
+    environment:
+      # Disable Cloudflare tunnel for local GPU development
+      DISABLE_CLOUDFLARE_TUNNEL: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Backend Production (GPU with tunnel)
+  backend-prod:
+    extends:
+      file: backend/docker-compose.yml
+      service: gpu  # Use GPU configuration
+    container_name: ${BACKEND_CONTAINER_NAME:-gaia-backend-prod}
+    profiles: ["prod"]  # Production profile
+    # Tunnel will use CLOUDFLARE_TUNNEL from environment
+    volumes:
+      # Add volume mounts for hot-reload in production
+      - ./backend/src:/home/gaia/src:ro
+      - ./backend/scripts:/home/gaia/scripts:ro
+      - ./backend/test:/home/gaia/test:ro
+      - ./backend/audio_samples:/home/gaia/audio_samples:ro
+      # Mount auth and db submodules
+      - ./auth:/home/gaia/auth
+      - ./db:/home/gaia/db
+      # Use docker_mount for persistent data
+      - ./backend/docker_mount/logs:/home/gaia/logs
+      - ./campaign_storage:/home/gaia/campaign_storage
+      - ./backend/docker_mount/images:/home/gaia/images
+      - ./backend/docker_mount/tts_temp:/tmp/gaia_auto_tts
+      - /run/user/1000:/run/user/1000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Backend Test
+  backend-test:
+    extends:
+      file: backend/docker-compose.yml
+      service: test
+    container_name: ${BACKEND_CONTAINER_NAME:-gaia-backend-test}
+    profiles: ["test"]
+
+  # =============================================================================
+  # FRONTEND SERVICES
+  # =============================================================================
+  
+  # Frontend Development (for backend-dev profile)
+  frontend-dev:
+    extends:
+      file: frontend/docker-compose.yml
+      service: dev
+    container_name: ${FRONTEND_CONTAINER_NAME:-gaia-frontend-dev}
+    profiles: ["dev"]
+    environment:
+      # Pass backend container name so Vite proxy can connect to correct backend
+      - BACKEND_CONTAINER_NAME=gaia-backend-dev
+      - DEV_SERVER_PROXY_TARGET=http://gaia-backend-dev:8000
+      - DEV_SERVER_WS_PROXY_TARGET=ws://gaia-backend-dev:8000
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    # No hard dependencies - frontend can connect to whichever backend is running
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Frontend Development for GPU backend
+  frontend-dev-gpu:
+    extends:
+      file: frontend/docker-compose.yml
+      service: dev
+    container_name: ${FRONTEND_CONTAINER_NAME:-gaia-frontend-dev}
+    profiles: ["gpu"]
+    environment:
+      # Pass backend container name so Vite proxy can connect to GPU backend
+      - BACKEND_CONTAINER_NAME=gaia-backend-gpu
+      - DEV_SERVER_PROXY_TARGET=http://gaia-backend-gpu:8000
+      - DEV_SERVER_WS_PROXY_TARGET=ws://gaia-backend-gpu:8000
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    # No hard dependencies - frontend can connect to whichever backend is running
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Frontend Production
+  frontend-prod:
+    extends:
+      file: frontend/docker-compose.yml
+      service: prod
+    container_name: ${FRONTEND_CONTAINER_NAME:-gaia-frontend-prod}
+    profiles: ["prod"]
+    depends_on:
+      backend-prod:
+        condition: service_healthy
+    volumes:
+      # Add volume mounts for hot-reload in production
+      - ./frontend:/app
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Frontend Test
+  frontend-test:
+    extends:
+      file: frontend/docker-compose.yml
+      service: test
+    container_name: ${FRONTEND_CONTAINER_NAME:-gaia-frontend-test}
+    profiles: ["test"]
+
+  # =============================================================================
+  # DATABASE SERVICE
+  # =============================================================================
+  
+  # PostgreSQL Database (runs with dev, gpu, and prod profiles)
+  postgres:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.postgres
+    container_name: ${POSTGRES_CONTAINER_NAME:-gaia-postgres}
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gaia}
+      POSTGRES_USER: ${POSTGRES_USER:-gaia}
+      # POSTGRES_PASSWORD is set in docker-compose.override.yml (gitignored)
+      # The override file contains the decrypted password from SOPS secrets
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Additional PostgreSQL configurations
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=en_US.UTF-8"
+      PGDATA: /var/lib/postgresql/data/pgdata
+      SOPS_AGE_KEY_FILE: /run/secrets/age-key.txt
+      ENCRYPTED_SECRETS_PATH: /secrets/.secrets.env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+      - ${HOME}/.config/sops/age/keys.txt:/run/secrets/age-key.txt:ro
+      - ./secrets:/secrets:ro
+    profiles: ["dev", "gpu", "prod"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gaia} -d ${POSTGRES_DB:-gaia}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # =============================================================================
+  # SPEECH-TO-TEXT SERVICE
+  # =============================================================================
+
+  # Speech-to-Text Service (runs with all profiles)
+  stt-service:
+    build:
+      context: .
+      dockerfile: speech-to-text/Dockerfile
+    container_name: ${STT_CONTAINER_NAME:-gaia-stt-service}
+    ports:
+      - "${STT_PORT:-8001}:8001"
+    env_file:
+      - ./speech-to-text/.settings.docker.env
+    environment:
+      - AUDIO_STORAGE_PATH=/app/audio_storage
+      - SOPS_AGE_KEY_FILE=/run/secrets/age-key.txt
+      - ENCRYPTED_SECRETS_PATH=/app/secrets/.secrets.env
+    command: ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+    volumes:
+      - ./speech-to-text/src:/app/src
+      - ./auth:/app/auth
+      - ./db:/app/db
+      - ${HOME}/.config/sops/age/keys.txt:/run/secrets/age-key.txt:ro
+      - ./secrets:/app/secrets:ro
+      - gaia-stt-storage:/app/audio_storage
+    profiles: ["dev", "gpu", "prod", "test"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+# Only define volumes that are actually used in production
+# Note: Volume names can be overridden via environment variables for multi-instance setup
+volumes:
+  gaia-logs:
+    name: ${LOG_VOLUME:-gaia-logs}
+  gaia-campaigns:
+    name: ${CAMPAIGN_VOLUME:-gaia-campaigns}
+  gaia-stt-storage:
+    name: gaia-stt-storage
+  postgres-data:
+    name: ${POSTGRES_VOLUME:-postgres-data}

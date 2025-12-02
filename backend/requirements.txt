@@ -1,0 +1,70 @@
+fastapi==0.116.0
+uvicorn[standard]==0.35.0
+pydantic==2.11.7
+slowapi>=0.1.9  # Rate limiting for FastAPI
+email-validator>=2.0.0
+openai==1.93.2
+openai-agents>=0.1.0
+requests>=2.32.4
+python-multipart>=0.0.20
+python-dotenv>=1.0.0
+psutil>=7.0.0
+# TTS dependencies
+aiofiles>=23.2.1
+aiohttp>=3.8.0
+soundfile>=0.12.1
+# Fallback TTS options
+pyttsx3>=2.90
+gtts>=2.3.2
+# Note: Advanced TTS (F5-TTS, parler-tts) handled by external TTS service
+
+# Development dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+httpx>=0.24.0
+# ElevenLabs TTS (high quality)
+elevenlabs>=0.3.0
+
+# F5-TTS removed from build (PyTorch/CUDA dependency)
+# gradio_client>=0.10.0  # Was used to connect to F5-TTS service
+# f5-tts>=0.1.0          # No longer used
+
+# Speech-to-Text functionality moved to standalone STT service on port 8001
+# Frontend connects directly to the STT service for transcription
+# websockets and ffmpeg-python still needed for WebSocket chat and audio processing
+websockets>=15.0.1
+ffmpeg-python>=0.2.0
+
+# Collaborative editing with Yjs CRDT
+pycrdt>=0.10.0
+
+# Image generation dependencies
+# google-generativeai>=0.8.3  # Using google-genai instead
+google-genai>=1.27.0
+Pillow>=10.0.0
+
+# Runware AI SDK for image generation
+runware==0.4.25
+
+# Note: Local image generation dependencies (torch, diffusers, etc.) removed
+# All image generation now handled by remote services
+
+# Cloud storage + audio metadata
+google-cloud-storage>=2.18.0
+mutagen>=1.47.0
+google-cloud-secret-manager>=2.20.0
+
+# Database dependencies
+sqlalchemy==2.0.43  # Latest stable SQLAlchemy 2.0
+alembic==1.16.4  # Latest migration tool
+asyncpg==0.30.0  # Latest PostgreSQL async driver (fastest for async)
+psycopg[binary]==3.2.9  # Latest PostgreSQL driver (psycopg3 - recommended)
+psycopg2-binary==2.9.10  # Legacy PostgreSQL driver (for compatibility)
+
+# Authentication dependencies
+authlib==1.3.0  # OAuth2 client library
+python-jose[cryptography]==3.3.0  # JWT handling
+passlib[bcrypt]==1.7.4  # Password hashing (for future local auth)
+
+pytest-asyncio

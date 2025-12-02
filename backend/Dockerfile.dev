@@ -1,0 +1,85 @@
+# syntax=docker/dockerfile:1
+# Development Dockerfile - For local development with hot-reload
+
+ARG PYTHON_VERSION=3.11
+
+# Build stage - reuse from production Dockerfile via COPY --from
+FROM python:${PYTHON_VERSION}-slim AS builder
+
+# Install build dependencies with cache mount
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies with cache mount
+WORKDIR /build
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --user -r requirements.txt
+
+# Development runtime stage
+FROM python:${PYTHON_VERSION}-slim AS development
+
+ARG ARCH=amd64
+ARG SOPS_VERSION=v3.9.3
+
+# Install runtime dependencies with cache mount
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y \
+    ffmpeg \
+    alsa-utils \
+    pulseaudio-utils \
+    curl \
+    ca-certificates \
+    procps \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install cloudflared
+RUN wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH} -O /usr/local/bin/cloudflared && \
+    chmod +x /usr/local/bin/cloudflared
+
+# Install SOPS for secrets decryption
+RUN wget -q https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.${ARCH} -O /usr/local/bin/sops && \
+    chmod +x /usr/local/bin/sops
+
+# Create non-root user with consistent UID
+ARG USER_UID=1000
+ARG USER_GID=1000
+RUN groupadd --gid ${USER_GID} gaia && \
+    useradd --uid ${USER_UID} --gid ${USER_GID} --create-home --shell /bin/bash gaia
+
+USER gaia
+WORKDIR /home/gaia
+
+# Copy Python packages from builder
+COPY --from=builder --chown=gaia:gaia /root/.local /home/gaia/.local
+ENV PATH=/home/gaia/.local/bin:$PATH
+
+# Set environment variables
+ENV PYTHONPATH=/home/gaia:/home/gaia/src \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_CACHE_DIR=/home/gaia/.cache/pip
+
+# Create necessary directories with proper permissions
+RUN mkdir -p tmp campaigns .cache/pip && \
+    chown -R gaia:gaia .cache tmp campaigns && \
+    chmod -R 755 .cache tmp campaigns
+
+# Copy entrypoint script
+COPY --chown=gaia:gaia scripts/entrypoint.sh /home/gaia/entrypoint.sh
+RUN chmod +x /home/gaia/entrypoint.sh
+
+# Development health check with faster intervals
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health || exit 1
+
+EXPOSE 8000
+
+# Use entrypoint for cleaner startup
+ENTRYPOINT ["/home/gaia/entrypoint.sh"]
+CMD ["--reload"]

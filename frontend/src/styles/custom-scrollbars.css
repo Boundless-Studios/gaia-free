@@ -1,0 +1,22 @@
+/* Custom scrollbar styles for narrative view */
+.scrollbar-narrative::-webkit-scrollbar {
+  width: 14px;
+}
+
+.scrollbar-narrative::-webkit-scrollbar-track {
+  background: rgba(76, 175, 80, 0.2);
+  border-radius: 7px;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.scrollbar-narrative::-webkit-scrollbar-thumb {
+  background: rgba(76, 175, 80, 0.7);
+  border-radius: 7px;
+  border: 1px solid rgba(76, 175, 80, 0.9);
+  box-shadow: inset 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+.scrollbar-narrative::-webkit-scrollbar-thumb:hover {
+  background: rgba(76, 175, 80, 0.9);
+  box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.4);
+}
