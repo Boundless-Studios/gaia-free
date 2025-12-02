@@ -106,7 +106,7 @@ jobs:
         with:
           repository: Boundless-Studios/gaia-private
           path: gaia-private
-          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          token: ${{ secrets.PAT }}
 
       - name: Inject private files
         run: |
