@@ -292,20 +292,21 @@ secrets/
 *.key
 
 # =============================================================================
-# Private Repository Content (gaia-private subtree)
+# Private Repository Content (symlinks to private repos)
 # =============================================================================
-# The backend/src/gaia_private directory is managed via git subtree for team members
+# Private repos are cloned as siblings and symlinked in via `make setup-private`
 # Public contributors will not have access to this content
-# After `make setup-private`, symlinks are created for config/secrets files
-backend/src/gaia_private/
+
+# Symlinks to private repos (created by setup-private.sh)
+backend/src/gaia_private
+backend/src/gaia_campaigns
+scripts
+infra
+campaign_storage
 
 # Config files - only .example versions in public repo
 config/*.env
 !config/*.env.example
-
-# Infrastructure - only .example versions in public repo
-infra/opentofu/gcp/*.tfvars
-!infra/opentofu/gcp/*.tfvars.example
 
 # Database migrations with real user data
 db/migrations/06-production-admin-users.sql

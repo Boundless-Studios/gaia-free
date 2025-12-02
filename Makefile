@@ -122,26 +122,24 @@ e2e-test: backend-dev-up
 # =============================================================================
 # Private Repository Management (Boundless Studios team only)
 # =============================================================================
+# Private repos are cloned as siblings and symlinked in (not subtrees)
+# This keeps private content out of gaia-free's git history
 
 .PHONY: setup-private
-setup-private: ## Setup private subtree (requires gaia-private repo access)
-	@./scripts/setup-private.sh
+setup-private: ## Setup private repos (clone + symlink)
+	@./setup-private.sh
 
 .PHONY: update-private
 update-private: ## Pull latest changes from gaia-private
-	git subtree pull --prefix=backend/src/gaia_private gaia-private main --squash -m "Update gaia_private subtree"
+	@cd ../gaia-private && git pull origin main
 
-.PHONY: push-private
-push-private: ## Push changes to gaia-private repository
-	git subtree push --prefix=backend/src/gaia_private gaia-private main
-
-.PHONY: prepare-private
-prepare-private: ## Prepare content for initial gaia-private repo setup (one-time use)
-	@./scripts/prepare-private-repo.sh
+.PHONY: update-campaigns
+update-campaigns: ## Pull latest changes from gaia-campaigns
+	@cd ../gaia-campaigns && git pull origin main
 
 .PHONY: check-private
 check-private: ## Check if private setup is complete
-	@if [ -f "backend/src/gaia_private/__init__.py" ]; then \
+	@if [ -L "backend/src/gaia_private" ] && [ -f "backend/src/gaia_private/__init__.py" ]; then \
 		echo "✓ Private code is available"; \
 	else \
 		echo "✗ Private code not set up. Run 'make setup-private' if you have access."; \
