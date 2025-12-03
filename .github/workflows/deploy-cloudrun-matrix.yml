@@ -123,7 +123,8 @@ jobs:
           # Secrets (required for deployment)
           mkdir -p secrets
           if [[ -d gaia-private/_secrets ]]; then
-            cp -r gaia-private/_secrets/* secrets/
+            # Use cp with explicit source to include dotfiles (.secrets.env)
+            cp -r gaia-private/_secrets/. secrets/
             echo "Secrets copied successfully"
             ls -la secrets/
           else
