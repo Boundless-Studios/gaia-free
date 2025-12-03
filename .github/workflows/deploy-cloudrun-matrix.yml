@@ -120,9 +120,25 @@ jobs:
           mkdir -p config
           cp -r gaia-private/_config/* config/ 2>/dev/null || true
 
-          # Secrets
+          # Secrets (required for deployment)
           mkdir -p secrets
-          cp -r gaia-private/_secrets/* secrets/ 2>/dev/null || true
+          if [[ -d gaia-private/_secrets ]]; then
+            cp -r gaia-private/_secrets/* secrets/
+            echo "Secrets copied successfully"
+            ls -la secrets/
+          else
+            echo "ERROR: gaia-private/_secrets directory not found"
+            echo "Contents of gaia-private:"
+            ls -la gaia-private/ || echo "gaia-private directory is empty or missing"
+            exit 1
+          fi
+
+          # Verify encrypted secrets file exists
+          if [[ ! -f secrets/.secrets.env ]]; then
+            echo "ERROR: secrets/.secrets.env not found after copy"
+            echo "The private repo may be missing _secrets/.secrets.env"
+            exit 1
+          fi
 
           # Settings files (Docker needs real files, not symlinks) - REQUIRED
           echo "Copying settings files from gaia-private/_settings/..."
