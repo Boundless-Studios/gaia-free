@@ -375,6 +375,9 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
             game_style=style_enum,
         )
 
+        # Set scene storage mode to database for new campaigns
+        campaign_data.set_scene_storage_mode("database")
+
         if setup_characters and player_count > 0:
             campaign_data.custom_data["player_count"] = player_count
             campaign_data.custom_data["setup_characters"] = True

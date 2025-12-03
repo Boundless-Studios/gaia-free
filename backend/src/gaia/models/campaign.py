@@ -145,3 +145,47 @@ class CampaignData:
         self.total_sessions += 1
         self.total_playtime_hours += session_duration_hours
         self.last_played = datetime.now()
+
+    def get_scene_storage_mode(self) -> str:
+        """Get the scene storage mode for this campaign.
+
+        Returns:
+            "database" or "filesystem"
+
+        Default behavior:
+        - New campaigns without this setting: "database" (preferred)
+        - Existing campaigns: "filesystem" (backwards compatibility)
+        """
+        if not self.custom_data:
+            # No custom_data means old campaign, use filesystem for backwards compat
+            return "filesystem"
+
+        # Check if mode is explicitly set
+        mode = self.custom_data.get("scene_storage_mode")
+        if mode in ("database", "filesystem"):
+            return mode
+
+        # Not set - determine based on whether campaign has existing scenes
+        # If campaign has scenes dict populated, it's using filesystem
+        if self.scenes:
+            return "filesystem"
+
+        # New campaign, use database by default
+        return "database"
+
+    def set_scene_storage_mode(self, mode: str) -> None:
+        """Set the scene storage mode for this campaign.
+
+        Args:
+            mode: "database" or "filesystem"
+
+        Raises:
+            ValueError: If mode is invalid
+        """
+        if mode not in ("database", "filesystem"):
+            raise ValueError(f"Invalid scene_storage_mode: {mode}. Must be 'database' or 'filesystem'")
+
+        if not self.custom_data:
+            self.custom_data = {}
+
+        self.custom_data["scene_storage_mode"] = mode
