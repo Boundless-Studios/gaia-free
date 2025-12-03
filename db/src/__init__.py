@@ -7,6 +7,7 @@ and base models for SQLAlchemy ORM.
 
 from .connection import DatabaseManager, get_db, get_async_db, db_manager
 from .base import Base, BaseModel
+from .models import DMPreferences, PlayerPreferences, CampaignSettings
 
 __all__ = [
     'DatabaseManager',
@@ -14,5 +15,8 @@ __all__ = [
     'get_async_db',
     'db_manager',
     'Base',
-    'BaseModel'
+    'BaseModel',
+    'DMPreferences',
+    'PlayerPreferences',
+    'CampaignSettings'
 ]
