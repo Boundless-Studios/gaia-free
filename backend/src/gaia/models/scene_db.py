@@ -73,8 +73,8 @@ class Scene(BaseModel):
     # Entity display name overrides (JSONB object: {entity_id: display_name})
     entity_display_names: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
-    # Metadata
-    metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # Scene metadata (named scene_metadata to avoid SQLAlchemy reserved 'metadata')
+    scene_metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     # Soft delete support
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
@@ -112,7 +112,7 @@ class Scene(BaseModel):
                 except ValueError:
                     role = CharacterRole.NPC_SUPPORT
 
-                capabilities_int = entity.metadata.get("capabilities", 0)
+                capabilities_int = entity.entity_metadata.get("capabilities", 0)
                 try:
                     capabilities = CharacterCapability(capabilities_int)
                 except ValueError:
@@ -126,8 +126,8 @@ class Scene(BaseModel):
                     is_present=entity.is_present,
                     joined_at=entity.joined_at,
                     left_at=entity.left_at,
-                    source=entity.metadata.get("source"),
-                    metadata=entity.metadata,
+                    source=entity.entity_metadata.get("source"),
+                    metadata=entity.entity_metadata,
                 )
                 participants.append(participant)
 
@@ -183,7 +183,7 @@ class Scene(BaseModel):
             npcs_present=npcs_present,
             pcs_present=pcs_present,
             narrative_notes=self.narrative_notes or [],
-            metadata=self.metadata or {},
+            metadata=self.scene_metadata or {},
             timestamp=self.scene_timestamp,
             outcomes=self.outcomes or [],
             objectives_completed=self.objectives_completed or [],
@@ -246,7 +246,7 @@ class Scene(BaseModel):
             in_combat=scene_info.in_combat,
             combat_data=scene_info.combat_data,
             entity_display_names=entity_display_names,
-            metadata=scene_info.metadata or {},
+            scene_metadata=scene_info.metadata or {},
             is_deleted=False,
             deleted_at=None,
             scene_timestamp=scene_info.timestamp,
@@ -306,8 +306,8 @@ class SceneEntity(BaseModel):
     # Role (primarily for characters)
     role: Mapped[Optional[str]] = mapped_column(String(50))
 
-    # Entity-specific metadata (JSONB)
-    metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # Entity-specific metadata (named entity_metadata to avoid SQLAlchemy reserved 'metadata')
+    entity_metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     # Relationships
     scene: Mapped["Scene"] = relationship("Scene", back_populates="entities")
@@ -330,11 +330,11 @@ class SceneEntity(BaseModel):
         """
         entity_id = participant.character_id or f"unnamed_{participant.display_name}"
 
-        # Store capabilities and source in metadata
-        metadata = dict(participant.metadata) if participant.metadata else {}
-        metadata["capabilities"] = int(participant.capabilities)
+        # Store capabilities and source in entity_metadata
+        entity_metadata = dict(participant.metadata) if participant.metadata else {}
+        entity_metadata["capabilities"] = int(participant.capabilities)
         if participant.source:
-            metadata["source"] = participant.source
+            entity_metadata["source"] = participant.source
 
         return cls(
             scene_id=scene_id,
@@ -344,7 +344,7 @@ class SceneEntity(BaseModel):
             joined_at=participant.joined_at,
             left_at=participant.left_at,
             role=participant.role.value,
-            metadata=metadata,
+            entity_metadata=entity_metadata,
         )
 
     def mark_departed(self, timestamp: Optional[datetime] = None) -> None:

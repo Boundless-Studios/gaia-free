@@ -309,7 +309,7 @@ class SceneRepository:
                         entity_type=entity_type,
                         role=role,
                         is_present=True,
-                        metadata=metadata or {},
+                        entity_metadata=metadata or {},
                     )
                     session.add(entity)
                     logger.info(f"Added entity {entity_id} ({entity_type}) to scene {scene_id}")

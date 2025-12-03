@@ -38,8 +38,8 @@ CREATE TABLE IF NOT EXISTS game.scenes (
     -- Entity display name overrides (map of entity_id -> display_name)
     entity_display_names JSONB DEFAULT '{}'::jsonb NOT NULL,
 
-    -- Metadata
-    metadata JSONB DEFAULT '{}'::jsonb NOT NULL,
+    -- Scene metadata (named scene_metadata to avoid SQLAlchemy reserved 'metadata')
+    scene_metadata JSONB DEFAULT '{}'::jsonb NOT NULL,
 
     -- Soft delete support
     is_deleted BOOLEAN DEFAULT false NOT NULL,
@@ -67,8 +67,8 @@ CREATE TABLE IF NOT EXISTS game.scene_entities (
     -- Role in scene (optional, primarily for characters)
     role VARCHAR(50),  -- 'player', 'dm_controlled_npc', 'enemy', 'ally', etc.
 
-    -- Metadata for entity-specific scene data
-    metadata JSONB DEFAULT '{}'::jsonb NOT NULL,
+    -- Entity metadata (named entity_metadata to avoid SQLAlchemy reserved 'metadata')
+    entity_metadata JSONB DEFAULT '{}'::jsonb NOT NULL,
 
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -99,8 +99,8 @@ CREATE INDEX IF NOT EXISTS idx_scene_entities_role ON game.scene_entities(role) 
 -- Create GIN indexes for JSONB columns (fast array/object searches)
 CREATE INDEX IF NOT EXISTS idx_scenes_objectives_gin ON game.scenes USING GIN (objectives);
 CREATE INDEX IF NOT EXISTS idx_scenes_turn_order_gin ON game.scenes USING GIN (turn_order);
-CREATE INDEX IF NOT EXISTS idx_scenes_metadata_gin ON game.scenes USING GIN (metadata);
-CREATE INDEX IF NOT EXISTS idx_scene_entities_metadata_gin ON game.scene_entities USING GIN (metadata);
+CREATE INDEX IF NOT EXISTS idx_scenes_metadata_gin ON game.scenes USING GIN (scene_metadata);
+CREATE INDEX IF NOT EXISTS idx_scene_entities_metadata_gin ON game.scene_entities USING GIN (entity_metadata);
 
 -- Create update triggers for updated_at columns
 CREATE TRIGGER update_game_scenes_updated_at
