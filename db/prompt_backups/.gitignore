@@ -1,0 +1,8 @@
+# Ignore generated SQL backups (they contain potentially sensitive prompt content)
+*.sql
+individual/
+
+# Keep the directory structure
+!.gitkeep
+!.gitignore
+!README.md
