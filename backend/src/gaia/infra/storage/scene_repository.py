@@ -417,3 +417,178 @@ class SceneRepository:
         except Exception as e:
             logger.error(f"Error getting entities for scene {scene_id}: {e}")
             raise
+
+    # ========== Synchronous methods for use from sync contexts ==========
+
+    def create_scene_sync(
+        self, scene_info: SceneInfo, campaign_id: uuid.UUID
+    ) -> str:
+        """Synchronous version of create_scene for use from sync contexts."""
+        try:
+            with self.db_manager.get_sync_session() as session:
+                # Check if scene already exists
+                existing = session.get(Scene, scene_info.scene_id)
+                if existing and not existing.is_deleted:
+                    raise ValueError(
+                        f"Scene {scene_info.scene_id} already exists for campaign {campaign_id}"
+                    )
+
+                # Convert SceneInfo to Scene model
+                scene = Scene.from_scene_info(scene_info, campaign_id)
+
+                # Create SceneEntity records for all participants
+                for participant in scene_info.participants:
+                    entity = SceneEntity.from_scene_participant(
+                        scene_info.scene_id, participant
+                    )
+                    scene.entities.append(entity)
+
+                # Add and commit
+                session.add(scene)
+                session.commit()
+
+                logger.info(
+                    f"Created scene {scene_info.scene_id} for campaign {campaign_id} "
+                    f"with {len(scene.entities)} entities (sync)"
+                )
+                return scene_info.scene_id
+
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.error(f"Error creating scene {scene_info.scene_id} (sync): {e}")
+            raise
+
+    def get_scene_sync(self, scene_id: str) -> Optional[SceneInfo]:
+        """Synchronous version of get_scene for use from sync contexts."""
+        try:
+            with self.db_manager.get_sync_session() as session:
+                # Load scene with entities
+                stmt = (
+                    select(Scene)
+                    .where(and_(Scene.scene_id == scene_id, Scene.is_deleted == False))
+                    .options(selectinload(Scene.entities))
+                )
+                result = session.execute(stmt)
+                scene = result.scalar_one_or_none()
+
+                if not scene:
+                    return None
+
+                # Convert to SceneInfo
+                return scene.to_scene_info()
+
+        except Exception as e:
+            logger.error(f"Error retrieving scene {scene_id} (sync): {e}")
+            raise
+
+    def update_scene_sync(self, scene_id: str, updates: dict) -> bool:
+        """Synchronous version of update_scene for use from sync contexts."""
+        # Define mutable fields (can be updated)
+        mutable_fields = {
+            "outcomes",
+            "objectives_completed",
+            "objectives_added",
+            "description_updates",
+            "completion_status",
+            "duration_turns",
+            "turn_order",
+            "current_turn_index",
+            "in_combat",
+            "combat_data",
+            "entity_display_names",
+            "last_updated",
+        }
+
+        # Check for attempts to update immutable fields
+        immutable_attempts = set(updates.keys()) - mutable_fields
+        if immutable_attempts:
+            raise ValueError(
+                f"Cannot update immutable fields: {immutable_attempts}. "
+                f"Only these fields can be updated: {mutable_fields}"
+            )
+
+        try:
+            with self.db_manager.get_sync_session() as session:
+                # Load scene
+                scene = session.get(Scene, scene_id)
+                if not scene or scene.is_deleted:
+                    logger.warning(f"Scene {scene_id} not found or deleted (sync)")
+                    return False
+
+                # Update fields
+                for field, value in updates.items():
+                    if hasattr(scene, field):
+                        setattr(scene, field, value)
+
+                # Update timestamp
+                scene.last_updated = datetime.now(timezone.utc)
+
+                session.commit()
+                logger.info(f"Updated scene {scene_id} with fields: {list(updates.keys())} (sync)")
+                return True
+
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.error(f"Error updating scene {scene_id} (sync): {e}")
+            raise
+
+    def get_recent_scenes_sync(
+        self, campaign_id: uuid.UUID, limit: int = 5
+    ) -> List[SceneInfo]:
+        """Synchronous version of get_recent_scenes."""
+        try:
+            with self.db_manager.get_sync_session() as session:
+                stmt = (
+                    select(Scene)
+                    .where(
+                        and_(
+                            Scene.campaign_id == campaign_id,
+                            Scene.is_deleted == False,
+                        )
+                    )
+                    .order_by(Scene.scene_timestamp.desc())
+                    .limit(limit)
+                    .options(selectinload(Scene.entities))
+                )
+
+                result = session.execute(stmt)
+                scenes = result.scalars().all()
+
+                return [scene.to_scene_info() for scene in scenes]
+
+        except Exception as e:
+            logger.error(f"Error getting recent scenes for campaign {campaign_id} (sync): {e}")
+            raise
+
+    def get_scenes_by_location_sync(
+        self, campaign_id: uuid.UUID, location_id: str, limit: int = 10
+    ) -> List[SceneInfo]:
+        """Synchronous version of get_scenes_by_location."""
+        try:
+            with self.db_manager.get_sync_session() as session:
+                stmt = (
+                    select(Scene)
+                    .where(
+                        and_(
+                            Scene.campaign_id == campaign_id,
+                            Scene.location_id == location_id,
+                            Scene.is_deleted == False,
+                        )
+                    )
+                    .order_by(Scene.scene_timestamp.desc())
+                    .limit(limit)
+                    .options(selectinload(Scene.entities))
+                )
+
+                result = session.execute(stmt)
+                scenes = result.scalars().all()
+
+                return [scene.to_scene_info() for scene in scenes]
+
+        except Exception as e:
+            logger.error(
+                f"Error getting scenes for campaign {campaign_id} at location {location_id} (sync): {e}"
+            )
+            raise

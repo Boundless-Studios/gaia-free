@@ -7,7 +7,6 @@ Supports dual storage backends:
 Storage mode is determined by campaign's scene_storage_mode setting.
 """
 
-import asyncio
 import json
 import os
 import uuid
@@ -96,30 +95,6 @@ class EnhancedSceneManager:
 
         logger.info(f"🎭 Enhanced Scene Manager initialized for campaign: {campaign_id} (storage: {self._storage_mode})")
 
-    def _run_async(self, coro):
-        """Run an async coroutine from sync context.
-
-        Args:
-            coro: Async coroutine to run
-
-        Returns:
-            Result of the coroutine
-        """
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop and loop.is_running():
-            # We're in an async context, create a task
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                future = pool.submit(asyncio.run, coro)
-                return future.result()
-        else:
-            # No running loop, we can use asyncio.run
-            return asyncio.run(coro)
-
     def create_scene(self, scene_info: SceneInfo) -> str:
         """Create and store a new scene. This should only be used for new scenes.
 
@@ -136,12 +111,10 @@ class EnhancedSceneManager:
         if not scene_info.scene_id:
             scene_info.scene_id = self._generate_scene_id()
 
-        # Use database storage if configured
+        # Use database storage if configured (using sync methods to avoid event loop issues)
         if self._storage_mode == "database" and self._repository and self._campaign_uuid:
             try:
-                scene_id = self._run_async(
-                    self._repository.create_scene(scene_info, self._campaign_uuid)
-                )
+                scene_id = self._repository.create_scene_sync(scene_info, self._campaign_uuid)
                 self._scene_cache[scene_info.scene_id] = scene_info
                 logger.info(f"Created scene {scene_id} in database")
                 return scene_id
@@ -227,7 +200,7 @@ class EnhancedSceneManager:
             logger.warning(f"No valid update fields provided for scene {scene_id}")
             return False
 
-        # Try database update first if configured
+        # Try database update first if configured (using sync methods to avoid event loop issues)
         if self._storage_mode == "database" and self._repository:
             try:
                 # Map npc_display_names to entity_display_names for database
@@ -236,9 +209,7 @@ class EnhancedSceneManager:
                     entity_names = db_updates.pop('npc_display_names')
                     db_updates['entity_display_names'] = entity_names
 
-                result = self._run_async(
-                    self._repository.update_scene(scene_id, db_updates)
-                )
+                result = self._repository.update_scene_sync(scene_id, db_updates)
                 if result:
                     # Invalidate cache
                     self._scene_cache.pop(scene_id, None)
@@ -341,12 +312,10 @@ class EnhancedSceneManager:
         if scene_id in self._scene_cache:
             return self._scene_cache[scene_id]
 
-        # Try database first if configured
+        # Try database first if configured (using sync methods to avoid event loop issues)
         if self._storage_mode == "database" and self._repository:
             try:
-                scene_info = self._run_async(
-                    self._repository.get_scene(scene_id)
-                )
+                scene_info = self._repository.get_scene_sync(scene_id)
                 if scene_info:
                     self._scene_cache[scene_id] = scene_info
                     return scene_info
@@ -400,12 +369,10 @@ class EnhancedSceneManager:
         Returns:
             List of SceneInfo objects, most recent first
         """
-        # Try database first if configured
+        # Try database first if configured (using sync methods to avoid event loop issues)
         if self._storage_mode == "database" and self._repository and self._campaign_uuid:
             try:
-                scenes = self._run_async(
-                    self._repository.get_recent_scenes(self._campaign_uuid, limit)
-                )
+                scenes = self._repository.get_recent_scenes_sync(self._campaign_uuid, limit)
                 if scenes:
                     return scenes
                 # Empty result, try filesystem as fallback
@@ -470,13 +437,11 @@ class EnhancedSceneManager:
         Returns:
             List of SceneInfo objects at the specified location
         """
-        # Try database first if configured
+        # Try database first if configured (using sync methods to avoid event loop issues)
         if self._storage_mode == "database" and self._repository and self._campaign_uuid:
             try:
-                scenes = self._run_async(
-                    self._repository.get_scenes_by_location(
-                        self._campaign_uuid, location_id, limit
-                    )
+                scenes = self._repository.get_scenes_by_location_sync(
+                    self._campaign_uuid, location_id, limit
                 )
                 if scenes:
                     return scenes
