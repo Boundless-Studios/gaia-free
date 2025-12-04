@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.2.4",
+    "socket.io-client": "^4.7.4",
     "@base-ui-components/react": "^1.0.0-beta.2",
     "@codemirror/state": "^6.4.0",
     "@codemirror/view": "^6.23.0",

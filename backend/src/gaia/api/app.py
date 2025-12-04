@@ -89,6 +89,10 @@ from gaia.connection.ws_helpers import (
 )
 from gaia.connection.websocket.audio_websocket_handler import AudioWebSocketHandler
 
+# Socket.IO server for real-time communication
+from gaia.connection.socketio_server import sio, create_socketio_app
+from gaia.connection.socketio_broadcaster import socketio_broadcaster
+
 def extract_narrative_for_tts(result: dict) -> Optional[str]:
     """Extract narrative text from API result for TTS."""
     if "structured_data" in result and "narrative" in result["structured_data"]:
@@ -381,6 +385,11 @@ async def lifespan(app: FastAPI):
     logger.info("[OK] API server shutdown complete")
 
 app = FastAPI(title="Gaia Web API", version="1.0.0", lifespan=lifespan)
+
+# Wrap FastAPI app with Socket.IO for real-time communication
+# This creates a combined ASGI app that handles both HTTP/WebSocket (FastAPI)
+# and Socket.IO connections
+socket_app = create_socketio_app(app)
 
 # Include Auth0 endpoints
 app.include_router(auth0_router)  # Auth0 authentication endpoints
@@ -3073,4 +3082,5 @@ async def refresh_campaign_state(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    # Use socket_app to include Socket.IO support
+    uvicorn.run(socket_app, host="0.0.0.0", port=8000) 
