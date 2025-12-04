@@ -13,7 +13,7 @@ from gaia.utils.singleton import SingletonMeta
 from gaia_private.session.session_storage import SessionStorage
 from gaia.infra.storage.campaign_store import get_campaign_store
 from gaia.mechanics.character.character_manager import CharacterManager
-from gaia.models import CampaignData, GameStyle
+from gaia.models import CampaignData, GameStyle, GameTheme
 
 logger = logging.getLogger(__name__)
 
@@ -379,6 +379,7 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
             title=title,
             description=description,
             game_style=style_enum,
+            game_theme=GameTheme.FANTASY,
         )
 
         # Set scene storage mode to database for new campaigns
