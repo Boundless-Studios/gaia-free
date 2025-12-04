@@ -1,10 +1,9 @@
 """
 Admin endpoints for managing registered users (allowlist).
 
-Access control: restricted to specific admin emails via Auth0 token verification.
+Access control: restricted to users with is_admin=True in the database.
 """
 
-import os
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -19,26 +18,16 @@ from auth.src.models import User
 from auth.src.auth0_jwt_verifier import get_auth0_verifier
 
 
-def _get_super_admin_emails() -> set:
-    """Get super admin emails from environment variable or use defaults."""
-    env_emails = os.getenv("SUPER_ADMIN_EMAILS", "")
-    if env_emails:
-        return {email.strip() for email in env_emails.split(",") if email.strip()}
-    # Fallback to empty set - must be configured via environment
-    return set()
-
-
-SUPER_ADMIN_EMAILS = _get_super_admin_emails()
-
 security = HTTPBearer(auto_error=True)
 
 
 async def require_super_admin(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> Dict[str, Any]:
-    """Verify Auth0 token and restrict access to SUPER_ADMIN_EMAILS.
+    db: AsyncSession = Depends(get_async_db),
+) -> User:
+    """Verify Auth0 token and require is_admin=True in database.
 
-    Returns minimal auth info on success.
+    Returns the User object on success.
     """
     token = credentials.credentials if credentials else None
     verifier = get_auth0_verifier()
@@ -53,10 +42,20 @@ async def require_super_admin(
     if not email:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token missing email claim")
 
-    if email not in SUPER_ADMIN_EMAILS:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+    # Look up user in database and check admin status
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
 
-    return {"email": email, "sub": payload.get("sub")}
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not found in database")
+
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is not active")
+
+    if not user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    return user
 
 
 class RegisterUserRequest(BaseModel):
@@ -224,32 +223,14 @@ class TestEmailRequest(BaseModel):
 @router.post("/test-email")
 async def test_email(
     req: TestEmailRequest,
-    auth_info: Dict[str, Any] = Depends(require_super_admin),
-    db: AsyncSession = Depends(get_async_db)
+    admin_user: User = Depends(require_super_admin),
 ):
     """
     Test email sending functionality in production.
 
     Sends a test email to verify SMTP configuration is working correctly.
-    Restricted to super admins only AND the admin user must be active in the database.
+    Restricted to admin users only.
     """
-    # Verify the admin user is active in the database
-    admin_email = auth_info.get("email")
-    result = await db.execute(select(User).where(User.email == admin_email))
-    admin_user = result.scalar_one_or_none()
-
-    if not admin_user:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin user not found in database. Please register first."
-        )
-
-    if not getattr(admin_user, "is_active", True):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin user is not active. Cannot use test email endpoint."
-        )
-
     from gaia.services.email.service import get_email_service
 
     email_service = get_email_service()
