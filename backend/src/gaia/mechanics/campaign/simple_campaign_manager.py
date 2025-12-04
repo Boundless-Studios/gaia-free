@@ -359,16 +359,8 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
         title: str = "New Campaign",
         description: str = "",
         game_style: str = "balanced",
-        setup_characters: bool = False,
-        player_count: int = 0,
     ) -> Dict[str, Any]:
-        """Create and persist a new campaign using the simple storage layout.
-
-        Note: This is the low-level campaign creation used by tests and simple scripts.
-        For production API usage, see CampaignService.create_campaign() in
-        gaia/api/routes/campaigns.py which adds owner tracking, room structure,
-        and world settings.
-        """
+        """Create and persist a new campaign using the simple storage layout."""
         try:
             style_enum = GameStyle(game_style.lower())
         except ValueError:
@@ -385,10 +377,6 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
         # Set scene storage mode to database for new campaigns
         campaign_data.set_scene_storage_mode("database")
 
-        if setup_characters and player_count > 0:
-            campaign_data.custom_data["player_count"] = player_count
-            campaign_data.custom_data["setup_characters"] = True
-
         self.storage.resolve_session_dir(session_id, create=True)
 
         data_saved = self.save_campaign_data(session_id, campaign_data)
@@ -400,8 +388,6 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
                 "game_style": game_style,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "success": False,
-                "character_setup_created": False,
-                "player_count": 0,
             }
 
         self.save_campaign(session_id, [], name=title)
@@ -425,8 +411,6 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
             "game_style": game_style,
             "created_at": campaign_data.created_at.isoformat(),
             "success": True,
-            "character_setup_created": bool(setup_characters and player_count > 0),
-            "player_count": player_count if setup_characters else 0,
         }
     
     def load_campaign(self, campaign_id: str):

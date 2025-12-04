@@ -211,8 +211,6 @@ class CampaignService:
             title=request.name,
             description=request.description or f"A new adventure in {request.setting}",
             game_style=request.game_style or "balanced",
-            setup_characters=False,
-            player_count=request.player_count or 4,
         )
 
         if not result.get("success"):
