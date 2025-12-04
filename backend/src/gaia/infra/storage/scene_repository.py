@@ -593,3 +593,83 @@ class SceneRepository:
                 f"Error getting scenes for campaign {campaign_id} at location {location_id} (sync): {e}"
             )
             raise
+
+    def add_participant_sync(
+        self,
+        scene_id: str,
+        character_id: str,
+        display_name: str,
+        role: str = "dm_controlled_npc",
+        is_original: bool = False,
+    ) -> bool:
+        """Add a participant (character) to a scene by creating a SceneEntity record.
+
+        This is the proper way to add NPCs/PCs to a scene when using database storage.
+        The npcs_present/npcs_added lists are computed dynamically from SceneEntity records.
+
+        Args:
+            scene_id: Scene identifier
+            character_id: Character identifier (e.g., "npc:bartender")
+            display_name: Display name for the character
+            role: Character role (e.g., "player", "dm_controlled_npc", "enemy")
+            is_original: Whether character was present at scene creation
+
+        Returns:
+            True if successful, False if scene not found
+        """
+        try:
+            with self.db_manager.get_sync_session() as session:
+                # Load scene
+                scene = session.get(Scene, scene_id)
+                if not scene or scene.is_deleted:
+                    logger.warning(f"Scene {scene_id} not found or deleted (sync)")
+                    return False
+
+                # Check if entity already exists
+                existing = session.execute(
+                    select(SceneEntity).where(
+                        and_(
+                            SceneEntity.scene_id == scene_id,
+                            SceneEntity.entity_id == character_id,
+                            SceneEntity.entity_type == "character",
+                        )
+                    )
+                ).scalar_one_or_none()
+
+                if existing:
+                    # Update existing entity
+                    existing.is_present = True
+                    existing.left_at = None
+                    existing.role = role
+                    logger.info(f"Updated existing participant {character_id} in scene {scene_id}")
+                else:
+                    # Create new entity
+                    entity = SceneEntity(
+                        scene_id=scene_id,
+                        entity_id=character_id,
+                        entity_type="character",
+                        is_present=True,
+                        role=role,
+                        entity_metadata={
+                            "is_original": is_original,
+                            "display_name": display_name,
+                        },
+                    )
+                    session.add(entity)
+                    logger.info(f"Added participant {character_id} to scene {scene_id}")
+
+                # Update entity_display_names on the scene
+                if scene.entity_display_names is None:
+                    scene.entity_display_names = {}
+                # Create a new dict to trigger SQLAlchemy change detection
+                updated_names = dict(scene.entity_display_names)
+                updated_names[character_id] = display_name
+                scene.entity_display_names = updated_names
+
+                scene.last_updated = datetime.now(timezone.utc)
+                session.commit()
+                return True
+
+        except Exception as e:
+            logger.error(f"Error adding participant {character_id} to scene {scene_id} (sync): {e}")
+            raise

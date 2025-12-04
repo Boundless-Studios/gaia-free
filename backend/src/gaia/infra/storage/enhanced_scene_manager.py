@@ -209,19 +209,42 @@ class EnhancedSceneManager:
         # Try database update first if configured (using sync methods to avoid event loop issues)
         if self._storage_mode == "database" and self._repository:
             try:
-                # Map npc_display_names to entity_display_names for database
+                # Handle npcs_added/npcs_present specially - use add_participant instead
                 db_updates = dict(filtered_updates)
-                if 'npc_display_names' in db_updates:
-                    entity_names = db_updates.pop('npc_display_names')
-                    db_updates['entity_display_names'] = entity_names
+                npcs_to_add = db_updates.pop('npcs_added', None)
+                npcs_present = db_updates.pop('npcs_present', None)
+                display_names = db_updates.pop('npc_display_names', {}) or {}
 
-                result = self._repository.update_scene_sync(scene_id, db_updates)
-                if result:
-                    # Invalidate cache
-                    self._scene_cache.pop(scene_id, None)
-                    logger.info(f"Updated scene {scene_id} in database")
-                    return True
-                # Scene not found in DB, try filesystem
+                # Also map npc_display_names to entity_display_names for database
+                if display_names:
+                    existing_names = db_updates.get('entity_display_names', {}) or {}
+                    existing_names.update(display_names)
+                    db_updates['entity_display_names'] = existing_names
+
+                # Add participants via SceneEntity records
+                if npcs_to_add:
+                    for character_id in npcs_to_add:
+                        display_name = display_names.get(character_id, character_id)
+                        self._repository.add_participant_sync(
+                            scene_id=scene_id,
+                            character_id=character_id,
+                            display_name=display_name,
+                            role="dm_controlled_npc",
+                            is_original=False,
+                        )
+                    logger.info(f"Added {len(npcs_to_add)} participants to scene {scene_id} via SceneEntity")
+
+                # If there are remaining updates, apply them
+                if db_updates:
+                    result = self._repository.update_scene_sync(scene_id, db_updates)
+                    if not result:
+                        # Scene not found in DB, try filesystem
+                        return self._update_scene_filesystem(scene_id, filtered_updates)
+
+                # Invalidate cache
+                self._scene_cache.pop(scene_id, None)
+                logger.info(f"Updated scene {scene_id} in database")
+                return True
             except ValueError:
                 raise
             except Exception as e:
@@ -304,6 +327,88 @@ class EnhancedSceneManager:
 
         # Update cache
         self._scene_cache[scene_info.scene_id] = scene_info
+
+    def add_participant(
+        self,
+        scene_id: str,
+        character_id: str,
+        display_name: str,
+        role: str = "dm_controlled_npc",
+        is_original: bool = False,
+    ) -> bool:
+        """Add a participant (character) to a scene.
+
+        For database storage, this creates a SceneEntity record. The npcs_present
+        and npcs_added lists are computed dynamically from these records.
+
+        For filesystem storage, this updates the npcs_added and npcs_present lists
+        directly on the scene.
+
+        Args:
+            scene_id: Scene identifier
+            character_id: Character identifier (e.g., "npc:bartender")
+            display_name: Display name for the character
+            role: Character role (e.g., "player", "dm_controlled_npc", "enemy")
+            is_original: Whether character was present at scene creation
+
+        Returns:
+            True if successful, False otherwise
+        """
+        logger.info(f"🎭 add_participant called: {character_id} -> scene {scene_id} (storage_mode={self._storage_mode})")
+
+        # Use database method if configured
+        if self._storage_mode == "database" and self._repository:
+            try:
+                result = self._repository.add_participant_sync(
+                    scene_id=scene_id,
+                    character_id=character_id,
+                    display_name=display_name,
+                    role=role,
+                    is_original=is_original,
+                )
+                if result:
+                    # Invalidate cache so next get_scene fetches fresh data
+                    self._scene_cache.pop(scene_id, None)
+                    logger.info(f"✅ Added participant {character_id} to scene {scene_id} in database")
+                    return True
+                # Scene not found in DB, try filesystem fallback
+            except Exception as e:
+                logger.error(f"Database add_participant failed, trying filesystem: {e}")
+
+        # Filesystem fallback - update npcs_added and npcs_present directly
+        return self._add_participant_filesystem(scene_id, character_id, display_name)
+
+    def _add_participant_filesystem(
+        self,
+        scene_id: str,
+        character_id: str,
+        display_name: str,
+    ) -> bool:
+        """Add participant using filesystem storage (legacy method)."""
+        scene = self.get_scene(scene_id)
+        if not scene:
+            logger.warning(f"Cannot add participant - scene not found: {scene_id}")
+            return False
+
+        # Update npcs_added if not already present
+        if character_id not in scene.npcs_added:
+            scene.npcs_added.append(character_id)
+
+        # Update npcs_present if not already present
+        if character_id not in scene.npcs_present:
+            scene.npcs_present.append(character_id)
+
+        # Update display name mapping
+        if scene.metadata is None:
+            scene.metadata = {}
+        npc_names = scene.metadata.setdefault('npc_display_names', {})
+        npc_names[character_id] = display_name
+
+        scene.last_updated = datetime.now()
+        self._store_scene_internal(scene)
+
+        logger.info(f"✅ Added participant {character_id} to scene {scene_id} in filesystem")
+        return True
 
     def get_scene(self, scene_id: str) -> Optional[SceneInfo]:
         """Retrieve a specific scene by ID.
