@@ -9,7 +9,7 @@ import shutil
 from typing import Any, Dict
 
 from gaia.models.scene_info import SceneInfo
-from gaia_private.session.scene.enhanced_scene_manager import EnhancedSceneManager
+from gaia.infra.storage.enhanced_scene_manager import EnhancedSceneManager
 from gaia_private.session.scene.scene_updater import SceneUpdater
 from gaia_private.session.scene.scene_payloads import SceneAnalysisPayload, StructuredScenePayload
 from gaia_private.session.scene.objectives_extractor import ObjectivesExtractor
