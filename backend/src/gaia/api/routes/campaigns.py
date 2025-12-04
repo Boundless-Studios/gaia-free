@@ -212,7 +212,10 @@ class CampaignService:
             game_style=game_style_enum,
             game_theme=GameTheme.FANTASY
         )
-        
+
+        # Set scene storage mode to database for new campaigns
+        campaign.set_scene_storage_mode("database")
+
         # Save campaign
         data_saved = self.campaign_manager.save_campaign_data(campaign_id, campaign)
         if not data_saved:
