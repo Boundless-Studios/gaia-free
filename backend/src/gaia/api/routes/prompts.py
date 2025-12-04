@@ -1,21 +1,19 @@
 """
 Admin endpoints for managing versioned agent prompts
 
-Access control: restricted to super admin emails via Auth0 token verification.
+Access control: restricted to users with is_admin=True in the database.
 """
 
 from typing import List, Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.src import get_async_db
 from gaia_private.prompts.models.db_models import Prompt
 from auth.src.models import User
-from auth.src.auth0_jwt_verifier import get_auth0_verifier
 from gaia_private.prompts.prompt_service import PromptService
 from gaia_private.prompts.models import (
     PromptResponse,
@@ -26,65 +24,8 @@ from gaia_private.prompts.models import (
     TestPromptResponse,
 )
 
-
-# Hardcoded super-admin allowlist (same as admin_endpoints.py)
-SUPER_ADMIN_EMAILS = {
-    "admin@example.com",
-    "admin2@example.com",
-    "user1@example.com",
-    "user2@example.com",
-}
-
-security = HTTPBearer(auto_error=True)
-
-
-async def require_super_admin(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_async_db),
-) -> User:
-    """
-    Verify Auth0 token and restrict access to SUPER_ADMIN_EMAILS.
-
-    Returns User object on success.
-    """
-    token = credentials.credentials if credentials else None
-    verifier = get_auth0_verifier()
-    if not verifier:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Auth0 not configured"
-        )
-
-    payload = verifier.verify_access_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token"
-        )
-
-    email = payload.get("email")
-    if not email:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token missing email claim"
-        )
-
-    if email not in SUPER_ADMIN_EMAILS:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized"
-        )
-
-    # Get user from database
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User {email} not found in database"
-        )
-
-    return user
+# Import require_super_admin from admin module for consistency
+from gaia.api.routes.admin import require_super_admin
 
 
 # API Router

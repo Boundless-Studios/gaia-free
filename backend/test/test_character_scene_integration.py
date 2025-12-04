@@ -7,7 +7,7 @@ import uuid
 
 from gaia_private.agents.tools.formatters.character_updater import update_character
 from gaia_private.agents.tools.persistence_hooks import get_persistence_hook
-from gaia_private.session.scene.enhanced_scene_manager import EnhancedSceneManager
+from gaia.infra.storage.enhanced_scene_manager import EnhancedSceneManager
 from gaia.mechanics.campaign.simple_campaign_manager import SimpleCampaignManager
 from gaia.utils.singleton import SingletonMeta
 from gaia.models.scene_info import SceneInfo

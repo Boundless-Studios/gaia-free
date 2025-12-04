@@ -11,6 +11,7 @@ import { getButtonClass } from './lib/tailwindComponents';
 import AuthError from './components/AuthError.jsx';
 import RegistrationFlow from './components/RegistrationFlow.jsx';
 import PromptManager from './components/admin/PromptManager.jsx';
+import SceneInspector from './components/admin/SceneInspector.jsx';
 import { AudioDebugPage } from './components/debug/AudioDebugPage.jsx';
 import { AudioStreamProvider } from './context/audioStreamContext.jsx';
 import CollaborativeEditorTest from './pages/CollaborativeEditorTest.jsx';
@@ -276,6 +277,7 @@ const AppWithAuth0 = () => {
 
             {/* Admin routes */}
             <Route path="/admin/prompts" element={<PromptManager />} />
+            <Route path="/admin/scenes" element={<SceneInspector />} />
 
             {/* Debug routes */}
             <Route path="/debug/audio" element={
@@ -348,6 +350,14 @@ const AppWithAuth0 = () => {
               element={
                 <ProtectedRoute>
                   <PromptManager />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/scenes"
+              element={
+                <ProtectedRoute>
+                  <SceneInspector />
                 </ProtectedRoute>
               }
             />

@@ -75,6 +75,7 @@ from gaia.infra.audio.provider_manager import provider_manager
 from gaia.api.routes.internal import router as internal_router
 from gaia.api.routes.combat import router as combat_router
 from gaia.api.routes.admin import router as admin_router
+from gaia.api.routes.scene_admin import router as scene_admin_router
 from gaia.api.routes.prompts import router as prompts_router
 
 from gaia.api.routes.chat import router as chat_router
@@ -395,6 +396,7 @@ app.include_router(chat_router)
 app.include_router(room_router)  # Game room management endpoints
 app.include_router(combat_router)  # Combat management endpoints
 app.include_router(admin_router)  # Admin endpoints (email-restricted)
+app.include_router(scene_admin_router)  # Scene inspection admin endpoints
 app.include_router(prompts_router)  # Prompt management endpoints (admin-only)
 app.include_router(sfx_router)  # Sound effects endpoints
 

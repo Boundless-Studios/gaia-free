@@ -13,7 +13,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from gaia.models.scene_info import SceneInfo
-from gaia_private.session.scene.enhanced_scene_manager import EnhancedSceneManager
+from gaia.infra.storage.enhanced_scene_manager import EnhancedSceneManager
 from gaia_private.session.scene.scene_transition_detector import SceneTransitionDetector, TransitionIndicator
 from gaia_private.session.scene.scene_updater import SceneUpdater
 from gaia_private.session.scene.scene_payloads import SceneAnalysisPayload, StructuredScenePayload

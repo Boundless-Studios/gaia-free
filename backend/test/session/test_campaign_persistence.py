@@ -8,6 +8,7 @@ integration with the full campaign creation flow rather than direct directory cr
 import pytest
 import tempfile
 import shutil
+import uuid
 from pathlib import Path
 
 from gaia.mechanics.campaign.simple_campaign_manager import SimpleCampaignManager
@@ -214,3 +215,41 @@ class TestCampaignPersistence:
         assert metadata is not None
         assert "last_loaded_at" in metadata
         assert "updated_at" in metadata
+
+    def test_create_campaign_sets_uuid_and_storage_mode(self, campaign_manager):
+        """Test that create_campaign sets campaign_uuid and scene_storage_mode.
+
+        This is critical for database scene storage - without campaign_uuid,
+        scenes fall back to filesystem storage.
+        """
+        campaign_id = "test_uuid_campaign"
+
+        # Create campaign using the create_campaign method
+        result = campaign_manager.create_campaign(
+            session_id=campaign_id,
+            title="UUID Test Campaign",
+            description="Testing UUID generation",
+            game_style="balanced"
+        )
+
+        # Verify creation succeeded
+        assert result["success"] is True
+        assert result["campaign_id"] == campaign_id
+
+        # Load the campaign and verify custom_data
+        loaded = campaign_manager.load_campaign(campaign_id)
+        assert loaded is not None
+
+        # Verify scene_storage_mode is set to database
+        assert loaded.custom_data.get("scene_storage_mode") == "database"
+
+        # Verify campaign_uuid is set and is a valid UUID
+        campaign_uuid = loaded.custom_data.get("campaign_uuid")
+        assert campaign_uuid is not None, "campaign_uuid should be set in custom_data"
+
+        # Verify it's a valid UUID string
+        try:
+            parsed_uuid = uuid.UUID(campaign_uuid)
+            assert str(parsed_uuid) == campaign_uuid
+        except ValueError:
+            pytest.fail(f"campaign_uuid '{campaign_uuid}' is not a valid UUID")

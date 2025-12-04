@@ -27,29 +27,23 @@ class TestCharacterCampaignIntegration:
         return SimpleCampaignManager(temp_dir)
     
     def test_create_campaign_with_character_setup(self, campaign_manager):
-        """Test creating a campaign with character setup."""
-        # Create campaign with character setup
+        """Test creating a campaign and its character manager."""
         result = campaign_manager.create_campaign(
             session_id="campaign_001",
             title="Fellowship of the Ring",
             description="The journey begins",
             game_style="balanced",
-            setup_characters=True,
-            player_count=4
         )
 
         assert result["success"] is True
-        assert result["character_setup_created"] is True
-        assert result["player_count"] == 4
 
         # Check character manager created
         char_manager = campaign_manager.get_character_manager("campaign_001")
         assert char_manager is not None
 
-        # Check campaign data has setup info
+        # Check campaign data loaded
         campaign = campaign_manager.load_campaign("campaign_001")
-        assert campaign.custom_data.get('player_count') == 4
-        assert campaign.custom_data.get('setup_characters') is True
+        assert campaign.title == "Fellowship of the Ring"
     
     def test_campaign_character_workflow(self, campaign_manager):
         """Test full character workflow within a campaign."""
@@ -57,8 +51,6 @@ class TestCharacterCampaignIntegration:
         campaign_manager.create_campaign(
             session_id="campaign_002",
             title="The Two Towers",
-            setup_characters=True,
-            player_count=3
         )
 
         # 2. Get character manager

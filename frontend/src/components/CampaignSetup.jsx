@@ -719,7 +719,7 @@ const CampaignSetup = ({ isOpen, onComplete, onCancel, onCreateBlank }) => {
           Back
         </Button>
         <Button
-          onClick={createCampaign}
+          onClick={() => createCampaign()}
           disabled={loading}
           variant="primary"
           loading={loading}

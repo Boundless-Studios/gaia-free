@@ -8,7 +8,7 @@ from gaia_private.orchestration.combat_orchestrator import CombatOrchestrator
 from gaia_private.models.combat.agent_io.initiation import CombatInitiationRequest, SceneContext, CombatantInfo
 from gaia_private.session.scene.scene_integration import SceneIntegration
 from gaia_private.session.turn_manager import TurnManager
-from gaia_private.session.scene.enhanced_scene_manager import EnhancedSceneManager
+from gaia.infra.storage.enhanced_scene_manager import EnhancedSceneManager
 from gaia.models.scene_info import SceneInfo
 
 
