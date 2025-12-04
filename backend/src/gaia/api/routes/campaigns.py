@@ -197,36 +197,26 @@ class CampaignService:
         owner_user_id: Optional[str] = None,
         owner_email: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Create a new campaign."""
+        """Create a new campaign with full production setup.
+
+        Delegates core creation to SimpleCampaignManager.create_campaign(), then adds
+        API-specific setup (world settings, room structure, ownership).
+        """
         # Generate campaign ID
         campaign_id = self._get_next_campaign_id()
-        
-        # Convert game style
-        game_style_enum = self._parse_game_style(request.game_style)
-        
-        # Create campaign data
-        campaign = CampaignData(
-            campaign_id=campaign_id,
+
+        # Use SimpleCampaignManager for core campaign creation
+        result = self.campaign_manager.create_campaign(
+            session_id=campaign_id,
             title=request.name,
             description=request.description or f"A new adventure in {request.setting}",
-            game_style=game_style_enum,
-            game_theme=GameTheme.FANTASY
+            game_style=request.game_style or "balanced",
         )
-        
-        # Save campaign
-        data_saved = self.campaign_manager.save_campaign_data(campaign_id, campaign)
-        if not data_saved:
-            raise HTTPException(status_code=500, detail="Failed to persist campaign data")
 
-        history_saved = self.campaign_manager.save_campaign(
-            campaign_id,
-            [],
-            name=campaign.title,
-        )
-        
-        if not history_saved:
-            raise HTTPException(status_code=500, detail="Failed to save campaign")
+        if not result.get("success"):
+            raise HTTPException(status_code=500, detail="Failed to create campaign")
 
+        # Add API-specific setup: world settings and room structure
         max_player_seats = request.player_count or 4
         world_settings = {
             "setting": request.setting,
@@ -242,14 +232,14 @@ class CampaignService:
             owner_email=owner_email,
             max_player_seats=max_player_seats,
         )
-        
+
         logger.info(f"Created new campaign: {campaign_id}")
-        
+
         return {
             "id": campaign_id,
-            "name": campaign.title,
-            "description": campaign.description,
-            "created_at": campaign.created_at.isoformat(),
+            "name": result["title"],
+            "description": result["description"],
+            "created_at": result["created_at"],
             "campaign_id": campaign_id,
             "success": True
         }

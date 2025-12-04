@@ -3,6 +3,7 @@ Simple Campaign Manager V2 - Uses new directory structure: campaigns/ID - Name/l
 """
 import json
 import logging
+import uuid
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timezone
@@ -13,7 +14,7 @@ from gaia.utils.singleton import SingletonMeta
 from gaia_private.session.session_storage import SessionStorage
 from gaia.infra.storage.campaign_store import get_campaign_store
 from gaia.mechanics.character.character_manager import CharacterManager
-from gaia.models import CampaignData, GameStyle
+from gaia.models import CampaignData, GameStyle, GameTheme
 
 logger = logging.getLogger(__name__)
 
@@ -359,8 +360,6 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
         title: str = "New Campaign",
         description: str = "",
         game_style: str = "balanced",
-        setup_characters: bool = False,
-        player_count: int = 0,
     ) -> Dict[str, Any]:
         """Create and persist a new campaign using the simple storage layout."""
         try:
@@ -373,11 +372,13 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
             title=title,
             description=description,
             game_style=style_enum,
+            game_theme=GameTheme.FANTASY,
         )
 
-        if setup_characters and player_count > 0:
-            campaign_data.custom_data["player_count"] = player_count
-            campaign_data.custom_data["setup_characters"] = True
+        # Set scene storage mode to database for new campaigns
+        campaign_data.set_scene_storage_mode("database")
+        # Generate UUID for database scene storage (required by EnhancedSceneManager)
+        campaign_data.custom_data["campaign_uuid"] = str(uuid.uuid4())
 
         self.storage.resolve_session_dir(session_id, create=True)
 
@@ -390,8 +391,6 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
                 "game_style": game_style,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "success": False,
-                "character_setup_created": False,
-                "player_count": 0,
             }
 
         self.save_campaign(session_id, [], name=title)
@@ -415,10 +414,8 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
             "game_style": game_style,
             "created_at": campaign_data.created_at.isoformat(),
             "success": True,
-            "character_setup_created": bool(setup_characters and player_count > 0),
-            "player_count": player_count if setup_characters else 0,
         }
-    
+
     def load_campaign(self, campaign_id: str):
         """Load campaign from disk.
         

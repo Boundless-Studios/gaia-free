@@ -302,7 +302,7 @@ secrets/
 # Symlinks to private repos (created by setup-private.sh)
 backend/src/gaia_private
 scripts/private
-infra
+/infra
 campaign_storage
 
 # Config files - only .example versions in public repo
