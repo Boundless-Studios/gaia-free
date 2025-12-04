@@ -51,8 +51,6 @@ class TestCharacterCampaignIntegration:
         campaign_manager.create_campaign(
             session_id="campaign_002",
             title="The Two Towers",
-            setup_characters=True,
-            player_count=3
         )
 
         # 2. Get character manager
