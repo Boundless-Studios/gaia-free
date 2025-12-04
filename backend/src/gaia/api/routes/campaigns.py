@@ -197,7 +197,12 @@ class CampaignService:
         owner_user_id: Optional[str] = None,
         owner_email: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Create a new campaign."""
+        """Create a new campaign with full production setup.
+
+        This is the production API handler that creates campaigns with owner tracking,
+        room structure, and world settings. For simpler test/script usage, see
+        SimpleCampaignManager.create_campaign().
+        """
         # Generate campaign ID
         campaign_id = self._get_next_campaign_id()
         

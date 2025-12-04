@@ -362,7 +362,13 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
         setup_characters: bool = False,
         player_count: int = 0,
     ) -> Dict[str, Any]:
-        """Create and persist a new campaign using the simple storage layout."""
+        """Create and persist a new campaign using the simple storage layout.
+
+        Note: This is the low-level campaign creation used by tests and simple scripts.
+        For production API usage, see CampaignService.create_campaign() in
+        gaia/api/routes/campaigns.py which adds owner tracking, room structure,
+        and world settings.
+        """
         try:
             style_enum = GameStyle(game_style.lower())
         except ValueError:

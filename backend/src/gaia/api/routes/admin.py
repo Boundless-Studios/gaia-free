@@ -4,6 +4,7 @@ Admin endpoints for managing registered users (allowlist).
 Access control: restricted to specific admin emails via Auth0 token verification.
 """
 
+import os
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -18,13 +19,16 @@ from auth.src.models import User
 from auth.src.auth0_jwt_verifier import get_auth0_verifier
 
 
-# Hardcoded super-admin allowlist as requested
-SUPER_ADMIN_EMAILS = {
-    "admin@example.com",
-    "admin2@example.com",
-    "user1@example.com",
-    "user2@example.com",
-}
+def _get_super_admin_emails() -> set:
+    """Get super admin emails from environment variable or use defaults."""
+    env_emails = os.getenv("SUPER_ADMIN_EMAILS", "")
+    if env_emails:
+        return {email.strip() for email in env_emails.split(",") if email.strip()}
+    # Fallback to empty set - must be configured via environment
+    return set()
+
+
+SUPER_ADMIN_EMAILS = _get_super_admin_emails()
 
 security = HTTPBearer(auto_error=True)
 

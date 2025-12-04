@@ -27,13 +27,8 @@ from gaia_private.prompts.models import (
 )
 
 
-# Hardcoded super-admin allowlist (same as admin_endpoints.py)
-SUPER_ADMIN_EMAILS = {
-    "admin@example.com",
-    "admin2@example.com",
-    "user1@example.com",
-    "user2@example.com",
-}
+# Import super admin emails from admin module for consistency
+from gaia.api.routes.admin import SUPER_ADMIN_EMAILS
 
 security = HTTPBearer(auto_error=True)
 
