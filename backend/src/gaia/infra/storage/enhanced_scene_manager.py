@@ -107,24 +107,30 @@ class EnhancedSceneManager:
         Raises:
             ValueError: If scene already exists
         """
+        logger.info(f"📝 create_scene called for {scene_info.scene_id} (storage_mode={self._storage_mode})")
+
         # Ensure scene has an ID
         if not scene_info.scene_id:
             scene_info.scene_id = self._generate_scene_id()
 
         # Use database storage if configured (using sync methods to avoid event loop issues)
         if self._storage_mode == "database" and self._repository and self._campaign_uuid:
+            logger.info(f"📝 Attempting database create for scene {scene_info.scene_id}, campaign_uuid={self._campaign_uuid}")
             try:
                 scene_id = self._repository.create_scene_sync(scene_info, self._campaign_uuid)
                 self._scene_cache[scene_info.scene_id] = scene_info
-                logger.info(f"Created scene {scene_id} in database")
+                logger.info(f"✅ Created scene {scene_id} in database")
                 return scene_id
             except ValueError:
                 raise
             except Exception as e:
-                logger.error(f"Database create failed, falling back to filesystem: {e}")
+                logger.error(f"❌ Database create failed, falling back to filesystem: {e}", exc_info=True)
                 # Fall through to filesystem storage
+        else:
+            logger.info(f"📝 Skipping database (mode={self._storage_mode}, repo={self._repository is not None}, uuid={self._campaign_uuid})")
 
         # Filesystem storage (legacy or fallback)
+        logger.info(f"📝 Creating scene {scene_info.scene_id} in filesystem")
         return self._create_scene_filesystem(scene_info)
 
     def _create_scene_filesystem(self, scene_info: SceneInfo) -> str:

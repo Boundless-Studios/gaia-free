@@ -1,20 +1,12 @@
-"""SQLAlchemy models for scene persistence in PostgreSQL."""
+"""SQLAlchemy model for scene persistence in PostgreSQL."""
 
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
-from sqlalchemy import (
-    Boolean,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-    UniqueConstraint,
-)
+from sqlalchemy import Boolean, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 
@@ -22,6 +14,9 @@ from db.src.base import BaseModel
 from gaia.models.scene_info import SceneInfo
 from gaia.models.scene_participant import SceneParticipant
 from gaia.models.character.enums import CharacterRole, CharacterCapability
+
+if TYPE_CHECKING:
+    from gaia.models.scene_entity_db import SceneEntity
 
 
 class Scene(BaseModel):
@@ -36,9 +31,9 @@ class Scene(BaseModel):
 
     # Primary key
     scene_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    # Campaign association - no FK constraint until campaigns are in DB
     campaign_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("game.campaigns.campaign_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -101,8 +96,14 @@ class Scene(BaseModel):
         Returns:
             SceneInfo dataclass instance
         """
-        # Convert scene_entities to SceneParticipant objects
+        # Convert scene_entities to SceneParticipant objects and compute NPC/PC lists
         participants = []
+        npcs_involved = []  # All NPCs ever in scene
+        npcs_present = []   # Currently present NPCs
+        pcs_present = []    # PCs in scene
+        npcs_added = []     # NPCs who joined after scene start
+        npcs_removed = []   # NPCs who left the scene
+
         for entity in self.entities:
             if entity.entity_type == "character":
                 # Extract role and capabilities from metadata or use defaults
@@ -131,44 +132,20 @@ class Scene(BaseModel):
                 )
                 participants.append(participant)
 
-        # Extract character IDs by role for snapshot fields
-        npcs_involved = [
-            e.entity_id
-            for e in self.entities
-            if e.entity_type == "character" and e.role != CharacterRole.PLAYER.value
-        ]
-        npcs_present = [
-            e.entity_id
-            for e in self.entities
-            if e.entity_type == "character"
-            and e.is_present
-            and e.role != CharacterRole.PLAYER.value
-        ]
-        pcs_present = [
-            e.entity_id
-            for e in self.entities
-            if e.entity_type == "character"
-            and e.is_present
-            and e.role == CharacterRole.PLAYER.value
-        ]
+                # Compute NPC/PC tracking from entity data
+                is_npc = role != CharacterRole.PLAYER
+                is_original = entity.entity_metadata.get("is_original", True)
 
-        # Compute npcs_added and npcs_removed from entity tracking
-        # NPCs added = NPCs with joined_at > scene_timestamp
-        npcs_added = [
-            e.entity_id
-            for e in self.entities
-            if e.entity_type == "character"
-            and e.role != CharacterRole.PLAYER.value
-            and e.joined_at > self.scene_timestamp
-        ]
-        # NPCs removed = NPCs with left_at set
-        npcs_removed = [
-            e.entity_id
-            for e in self.entities
-            if e.entity_type == "character"
-            and e.role != CharacterRole.PLAYER.value
-            and e.left_at is not None
-        ]
+                if is_npc:
+                    npcs_involved.append(entity.entity_id)
+                    if entity.is_present:
+                        npcs_present.append(entity.entity_id)
+                    if not is_original:
+                        npcs_added.append(entity.entity_id)
+                    if entity.left_at is not None:
+                        npcs_removed.append(entity.entity_id)
+                else:
+                    pcs_present.append(entity.entity_id)
 
         return SceneInfo(
             scene_id=self.scene_id,
@@ -257,103 +234,3 @@ class Scene(BaseModel):
         """Mark scene as deleted (soft delete)."""
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
-
-
-class SceneEntity(BaseModel):
-    """Generic scene-entity association model.
-
-    Maps to game.scene_entities table. Tracks any entity type in a scene:
-    characters, items, objects, quests, locations, etc.
-
-    When characters are moved to database, this table will have foreign key
-    relationships to the character table.
-    """
-
-    __tablename__ = "scene_entities"
-    __table_args__ = (
-        UniqueConstraint("scene_id", "entity_id", "entity_type", name="uq_scene_entity"),
-        {"schema": "game"},
-    )
-
-    # Primary key
-    scene_entity_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-
-    # Foreign keys
-    scene_id: Mapped[str] = mapped_column(
-        String(255),
-        ForeignKey("game.scenes.scene_id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    # Entity identification
-    entity_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    entity_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-
-    # Presence tracking
-    is_present: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    joined_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-    )
-    left_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-
-    # Role (primarily for characters)
-    role: Mapped[Optional[str]] = mapped_column(String(50))
-
-    # Entity-specific metadata (named entity_metadata to avoid SQLAlchemy reserved 'metadata')
-    entity_metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-
-    # Relationships
-    scene: Mapped["Scene"] = relationship("Scene", back_populates="entities")
-
-    @classmethod
-    def from_scene_participant(
-        cls, scene_id: str, participant: SceneParticipant
-    ) -> "SceneEntity":
-        """Create SceneEntity from SceneParticipant.
-
-        Converts a SceneParticipant (character-specific) to a generic
-        SceneEntity database record.
-
-        Args:
-            scene_id: Scene this entity belongs to
-            participant: SceneParticipant to convert
-
-        Returns:
-            SceneEntity model instance
-        """
-        entity_id = participant.character_id or f"unnamed_{participant.display_name}"
-
-        # Store capabilities and source in entity_metadata
-        entity_metadata = dict(participant.metadata) if participant.metadata else {}
-        entity_metadata["capabilities"] = int(participant.capabilities)
-        if participant.source:
-            entity_metadata["source"] = participant.source
-
-        return cls(
-            scene_id=scene_id,
-            entity_id=entity_id,
-            entity_type="character",
-            is_present=participant.is_present,
-            joined_at=participant.joined_at,
-            left_at=participant.left_at,
-            role=participant.role.value,
-            entity_metadata=entity_metadata,
-        )
-
-    def mark_departed(self, timestamp: Optional[datetime] = None) -> None:
-        """Mark entity as no longer present in the scene."""
-        self.is_present = False
-        self.left_at = timestamp or datetime.now(timezone.utc)
-
-    def restore(self, timestamp: Optional[datetime] = None) -> None:
-        """Mark entity as present again in the scene."""
-        self.is_present = True
-        self.joined_at = timestamp or datetime.now(timezone.utc)
-        self.left_at = None

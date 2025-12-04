@@ -6,7 +6,8 @@
 -- Create scenes table
 CREATE TABLE IF NOT EXISTS game.scenes (
     scene_id VARCHAR(255) PRIMARY KEY,
-    campaign_id UUID NOT NULL REFERENCES game.campaigns(campaign_id) ON DELETE CASCADE,
+    -- No FK constraint - campaigns aren't in database yet (stored in filesystem)
+    campaign_id UUID NOT NULL,
 
     -- Immutable creation fields
     title VARCHAR(500) NOT NULL,

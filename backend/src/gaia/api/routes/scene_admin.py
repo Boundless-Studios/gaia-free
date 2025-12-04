@@ -13,7 +13,8 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from db.src import get_async_db
-from gaia.models.scene_db import Scene, SceneEntity
+from gaia.models.scene_db import Scene
+from gaia.models.scene_entity_db import SceneEntity
 from gaia.api.routes.admin import require_super_admin
 
 router = APIRouter(

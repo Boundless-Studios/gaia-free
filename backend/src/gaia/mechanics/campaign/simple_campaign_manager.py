@@ -3,6 +3,7 @@ Simple Campaign Manager V2 - Uses new directory structure: campaigns/ID - Name/l
 """
 import json
 import logging
+import uuid
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timezone
@@ -376,6 +377,8 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
 
         # Set scene storage mode to database for new campaigns
         campaign_data.set_scene_storage_mode("database")
+        # Generate UUID for database scene storage (required by EnhancedSceneManager)
+        campaign_data.custom_data["campaign_uuid"] = str(uuid.uuid4())
 
         self.storage.resolve_session_dir(session_id, create=True)
 
@@ -412,7 +415,7 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
             "created_at": campaign_data.created_at.isoformat(),
             "success": True,
         }
-    
+
     def load_campaign(self, campaign_id: str):
         """Load campaign from disk.
         
