@@ -1525,32 +1525,6 @@ const PlayerRoomShell = ({
     }
   }, [isTranscribing, audioPermissionState]);
 
-  // Reset microphone permission (clear localStorage and re-prompt)
-  const resetMicPermission = useCallback(async () => {
-    console.log('🎤 Resetting microphone permission...');
-    localStorage.removeItem('audioPermissionState');
-    audioPermissionRequestedRef.current = false;
-    setAudioPermissionState('pending');
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 48000
-        }
-      });
-      stream.getTracks().forEach(track => track.stop());
-      console.log('🎤 Microphone permission granted after reset');
-      setAudioPermissionState('granted');
-      localStorage.setItem('audioPermissionState', 'granted');
-    } catch (error) {
-      console.error('🎤 Microphone permission denied after reset:', error);
-      setAudioPermissionState('denied');
-      localStorage.setItem('audioPermissionState', 'denied');
-    }
-  }, []);
-
   // Collaborative editing WebSocket connection
   useEffect(() => {
     if (!campaignId || !user || !user.email) {
@@ -1960,7 +1934,6 @@ const PlayerRoomShell = ({
               collabIsConnected={collabIsConnected}
               // Voice input props
               audioPermissionState={audioPermissionState}
-              onResetMicPermission={resetMicPermission}
               userEmail={userEmail}
               isTranscribing={isTranscribing}
               onToggleTranscription={toggleVoiceTranscription}

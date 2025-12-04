@@ -37,8 +37,6 @@ const CollaborativeStackedEditor = forwardRef(({
   isTranscribing = false,
   onToggleTranscription = null,
   showMicButton = false,
-  audioPermissionState = 'pending',
-  onResetMicPermission = null,
   voiceLevel = 0
 }, ref) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -783,26 +781,6 @@ const CollaborativeStackedEditor = forwardRef(({
                     </>
                   );
                 })()}
-                {/* Show reset button when mic permission is denied */}
-                {isMySection && !showMicButton && audioPermissionState === 'denied' && onResetMicPermission && (
-                  <button
-                    className="mic-reset-btn"
-                    onClick={onResetMicPermission}
-                    title="Microphone access was denied. Click to try again."
-                    style={{
-                      marginLeft: '8px',
-                      padding: '2px 8px',
-                      fontSize: '12px',
-                      backgroundColor: '#ef4444',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    🎤 Enable Mic
-                  </button>
-                )}
               </div>
               <textarea
                 ref={(el) => {
@@ -860,8 +838,6 @@ CollaborativeStackedEditor.propTypes = {
   isTranscribing: PropTypes.bool,
   onToggleTranscription: PropTypes.func,
   showMicButton: PropTypes.bool,
-  audioPermissionState: PropTypes.oneOf(['pending', 'granted', 'denied', 'prompt']),
-  onResetMicPermission: PropTypes.func,
   voiceLevel: PropTypes.number,
 };
 
@@ -876,8 +852,6 @@ CollaborativeStackedEditor.defaultProps = {
   isTranscribing: false,
   onToggleTranscription: null,
   showMicButton: false,
-  audioPermissionState: 'pending',
-  onResetMicPermission: null,
   voiceLevel: 0,
 };
 

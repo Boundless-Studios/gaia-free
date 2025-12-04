@@ -14,7 +14,6 @@ const PlayerControls = ({
   voiceActivityLevel = 0,
   onLoadCampaignData,
   audioPermissionState = 'pending',
-  onResetMicPermission = null,
   onToggleTranscription = null,
   // Collaborative editing props
   collabWebSocket = null,
@@ -134,8 +133,6 @@ const PlayerControls = ({
                   isTranscribing={isTranscribing}
                   onToggleTranscription={onToggleTranscription}
                   showMicButton={audioPermissionState === 'granted'}
-                  audioPermissionState={audioPermissionState}
-                  onResetMicPermission={onResetMicPermission}
                   voiceLevel={voiceActivityLevel}
                 />
               </div>

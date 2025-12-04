@@ -125,16 +125,8 @@ const VoiceInputScribeV2 = ({
       analyserRef.current.fftSize = 2048;
 
       // Connect to backend STT service (which proxies to ElevenLabs Scribe V2)
-      // In production, use the same host with /stt prefix (cloudflared routes it)
-      // In development, connect directly to localhost:8001
-      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-      let wsUrl;
-      if (isProduction) {
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        wsUrl = `${wsProtocol}//${window.location.host}/stt/transcribe/realtime`;
-      } else {
-        wsUrl = 'ws://localhost:8001/stt/transcribe/realtime';
-      }
+      const sttBaseUrl = API_CONFIG.STT_BASE_URL || 'http://localhost:8001';
+      const wsUrl = sttBaseUrl.replace(/^http/, 'ws') + '/stt/transcribe/realtime';
 
       // Get auth token and pass via WebSocket subprotocol (more secure than URL query param)
       let wsProtocols = [];
