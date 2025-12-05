@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
-const CAMPAIGN_START_TRACE = '[CAMPAIGN_START_FLOW]';
+const STREAMING_TRACE = '[STREAMING]';
 
 /**
  * Custom hook to manage streaming message state per session
@@ -48,7 +48,7 @@ export function useStreamingState(currentCampaignId) {
           : previousContent.length > 0;
 
         console.debug(
-          `${CAMPAIGN_START_TRACE} updateStreamingNarrative`,
+          `${STREAMING_TRACE} updateStreamingNarrative`,
           {
             sessionId,
             chunkLength: content ? content.length : 0,
@@ -96,7 +96,7 @@ export function useStreamingState(currentCampaignId) {
           : previousContent.length > 0;
 
         console.debug(
-          `${CAMPAIGN_START_TRACE} updateStreamingResponse`,
+          `${STREAMING_TRACE} updateStreamingResponse`,
           {
             sessionId,
             chunkLength: content ? content.length : 0,

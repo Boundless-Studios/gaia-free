@@ -705,34 +705,8 @@ const PlayerPage = () => {
       }
 
       case 'audio_stream_started': {
-        // Synchronized audio stream started
-        console.log('🎵 [PLAYER] Received audio_stream_started:', update);
-
-        // Guard: Only start stream if nothing is currently playing
-        // This prevents duplicate playback when both App.jsx and PlayerPage.jsx
-        // receive the same audio_stream_started WebSocket message
-        if (audioStream.isStreaming) {
-          console.log('🎵 [PLAYER] ⏭️  Audio already playing, ignoring duplicate stream start');
-          break;
-        }
-
-        const targetSessionId = update.campaign_id || sessionId;
-        if (targetSessionId && update.stream_url) {
-          const positionSec = update.position_sec || 0;
-          const isLateJoin = update.is_late_join || false;
-          console.log(`🎵 [PLAYER] Starting synchronized stream for ${targetSessionId}`, {
-            position: positionSec,
-            isLateJoin,
-            stream_url: update.stream_url,
-          });
-          audioStream.startStream(
-            targetSessionId,
-            positionSec,
-            isLateJoin,
-            update.chunk_ids || [],
-            update.stream_url, // Pass the stream URL from WebSocket (includes request_id)
-          );
-        }
+        // No-op - audio_available already handles queue playback
+        console.log('🎵 [PLAYER] Received audio_stream_started (no-op, audio_available handles queue)');
         break;
       }
 
@@ -924,12 +898,24 @@ const PlayerPage = () => {
     // Collaborative editing events (replacing old collab WebSocket)
     player_list: (data) => {
       if (Array.isArray(data.players)) {
-        setCollabPlayers(data.players);
+        // Transform backend format (playerId, playerName) to component format (id, name)
+        const transformed = data.players.map(p => ({
+          id: p.playerId || p.id,
+          name: p.playerName || p.name,
+          isConnected: p.isConnected,
+        }));
+        setCollabPlayers(transformed);
       }
     },
     initial_state: (data) => {
       if (Array.isArray(data.allPlayers)) {
-        setCollabPlayers(data.allPlayers);
+        // Transform backend format (playerId, playerName) to component format (id, name)
+        const transformed = data.allPlayers.map(p => ({
+          id: p.playerId || p.id,
+          name: p.playerName || p.name,
+          isConnected: p.isConnected,
+        }));
+        setCollabPlayers(transformed);
       }
     },
     registered: (data) => {
@@ -1268,6 +1254,24 @@ const PlayerRoomShell = ({
     assignCharacter,
     isDMSeated,
   } = useRoom();
+
+  // Update assignedPlayerName from seat's character_name and re-register with backend
+  useEffect(() => {
+    const characterName = currentUserPlayerSeat?.character_name;
+    if (characterName && characterName !== assignedPlayerName) {
+      console.log('[PlayerRoomShell] Updating player name from seat character:', characterName);
+      setAssignedPlayerName(characterName);
+
+      // Re-register with backend so other players see the character name
+      if (sioIsConnected && sioSocket && collabPlayerId) {
+        sioSocket.emit('register', {
+          playerId: collabPlayerId,
+          playerName: characterName,
+        });
+        console.log('[PlayerRoomShell] Re-registered with character name:', characterName);
+      }
+    }
+  }, [currentUserPlayerSeat?.character_name, assignedPlayerName, setAssignedPlayerName, sioIsConnected, sioSocket, collabPlayerId]);
 
   // Voice transcription state
   const [isTranscribing, setIsTranscribing] = useState(false);

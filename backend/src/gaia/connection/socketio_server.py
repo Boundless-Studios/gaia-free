@@ -87,7 +87,11 @@ def get_room_count(room: str, namespace: str = "/campaign") -> int:
 
 
 async def get_room_users(room: str, namespace: str = "/campaign") -> List[Dict[str, Any]]:
-    """Get unique users in a room (deduplicated by user_id, anonymous users tracked individually by sid)."""
+    """Get unique users in a room (deduplicated by user_id + connection_type).
+
+    Same user can appear multiple times if they have different connection types
+    (e.g., connected as both DM and player).
+    """
     sids = get_room_sids(room, namespace)
     users = {}
     anonymous_users = []
@@ -95,12 +99,16 @@ async def get_room_users(room: str, namespace: str = "/campaign") -> List[Dict[s
     for sid in sids:
         session = await get_session_data(sid, namespace)
         user_id = session.get("user_id")
+        connection_type = session.get("connection_type", "player")
+
         if user_id:
-            if user_id not in users:
-                users[user_id] = {
+            # Key by user_id + connection_type to allow same user as DM and player
+            user_key = f"{user_id}:{connection_type}"
+            if user_key not in users:
+                users[user_key] = {
                     "user_id": user_id,
                     "user_email": session.get("user_email"),
-                    "connection_type": session.get("connection_type", "player"),
+                    "connection_type": connection_type,
                     "player_id": session.get("player_id"),
                     "player_name": session.get("player_name"),
                     "sid": sid,
@@ -110,7 +118,7 @@ async def get_room_users(room: str, namespace: str = "/campaign") -> List[Dict[s
             anonymous_users.append({
                 "user_id": None,
                 "user_email": session.get("user_email"),
-                "connection_type": session.get("connection_type", "player"),
+                "connection_type": connection_type,
                 "player_id": session.get("player_id"),
                 "player_name": session.get("player_name"),
                 "sid": sid,

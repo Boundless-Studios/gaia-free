@@ -31,6 +31,14 @@ if [ -f "$ENCRYPTED_SECRETS" ]; then
             set -a  # Auto-export all variables
             source "$TEMP_SECRETS"
             set +a
+
+            # Also write to a persistent location for uvicorn workers
+            # (uvicorn --reload spawns workers that don't inherit env vars)
+            PERSISTENT_SECRETS="/tmp/.decrypted_secrets.env"
+            cp "$TEMP_SECRETS" "$PERSISTENT_SECRETS"
+            chmod 600 "$PERSISTENT_SECRETS"
+            export DECRYPTED_SECRETS_FILE="$PERSISTENT_SECRETS"
+
             echo "✓ Secrets decrypted and loaded into environment"
         else
             echo "ERROR: Failed to decrypt secrets. Check SOPS_AGE_KEY_FILE points to a valid key."

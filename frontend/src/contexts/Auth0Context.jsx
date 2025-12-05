@@ -66,7 +66,12 @@ export function Auth0AuthProvider({ children }) {
           // Verify token with backend; enforce authorization
           try {
             const userData = await apiService.verifyAuth0Token(token);
-            setUser(userData);
+            // Merge GAIA user data with Auth0 sub for audio queue matching
+            // The backend uses auth0User.sub for WebSocket user identification
+            setUser({
+              ...userData,
+              auth0_sub: auth0User.sub  // Auth0 subject ID (e.g., "google-oauth2|...")
+            });
           } catch (error) {
             console.error('Failed to verify user with backend:', error);
             // If not authorized, route to auth error and log out

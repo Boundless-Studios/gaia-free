@@ -582,42 +582,16 @@ function App() {
     fetchUserAudioQueue(targetSessionId);
   }, [fetchUserAudioQueue]);
 
-  // Handle synchronized audio stream start
+  // Handle synchronized audio stream start - no-op since audio_available handles queue
   const handleAudioStreamStarted = useCallback((data, sessionId) => {
-    const { campaign_id, stream_url, position_sec, is_late_join } = data;
+    const { campaign_id } = data;
     const targetSessionId = campaign_id || sessionId;
-    const chunkIds = data.chunk_ids || [];
 
-    console.log('[AUDIO_DEBUG] 📥 Frontend received audio_stream_started | session=%s chunk_count=%d url=%s',
-      targetSessionId, chunkIds.length, stream_url);
-
-    if (!targetSessionId || !stream_url) {
-      console.warn('[AUDIO_DEBUG] ❌ Missing required data for stream start');
-      return;
-    }
-
-    // Only start stream if nothing is currently playing
-    // Backend manages queue ordering, frontend auto-advances on completion
-    if (audioStream.isStreaming) {
-      console.log('[AUDIO_DEBUG] ⏭️  Audio already playing, request queued in backend | url=%s', stream_url);
-      return;
-    }
-
-    // Start the synchronized audio stream
-    const positionSec = position_sec || 0;
-    const isLateJoin = is_late_join || false;
-
-    console.log('[AUDIO_DEBUG] 🎬 Starting frontend stream | session=%s position=%s late_join=%s chunks=%s url=%s',
-      targetSessionId, positionSec, isLateJoin, JSON.stringify(chunkIds), stream_url);
-
-    audioStream.startStream(
-      targetSessionId,
-      positionSec,
-      isLateJoin,
-      chunkIds,
-      stream_url, // Pass the stream URL from WebSocket (includes request_id)
-    );
-  }, [audioStream]);
+    // NOTE: Don't call fetchUserAudioQueue here - audio_available already handles it
+    // This event is now just logged for debugging purposes
+    console.log('[AUDIO_DEBUG] 📥 Frontend received audio_stream_started | session=%s (no-op, audio_available handles queue)',
+      targetSessionId);
+  }, []);
 
   // Handle synchronized audio stream stop
   const handleAudioStreamStopped = useCallback((data, sessionId) => {

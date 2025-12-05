@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { API_CONFIG } from '../../config/api.js';
 
 /**
@@ -8,6 +8,7 @@ import { API_CONFIG } from '../../config/api.js';
  * - List recent audio requests in a table
  * - Diagnose specific requests for sequence issues
  * - View chunk details
+ * - Play audio chunks directly for testing
  */
 export const AudioDebugPage = () => {
   // Recent requests state
@@ -20,6 +21,11 @@ export const AudioDebugPage = () => {
   const [diagnosisResult, setDiagnosisResult] = useState(null);
   const [diagnosisLoading, setDiagnosisLoading] = useState(false);
   const [diagnosisError, setDiagnosisError] = useState(null);
+
+  // Audio playback state
+  const [playingChunkId, setPlayingChunkId] = useState(null);
+  const [playbackError, setPlaybackError] = useState(null);
+  const audioRef = useRef(null);
 
   // Load recent requests on mount
   useEffect(() => {
@@ -76,6 +82,88 @@ export const AudioDebugPage = () => {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
+  };
+
+  // Play an audio chunk directly
+  const playChunk = async (chunk, campaignId) => {
+    // Stop any currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setPlaybackError(null);
+
+    if (!chunk.artifact_id || !campaignId) {
+      setPlaybackError('Missing artifact ID or campaign ID');
+      return;
+    }
+
+    setPlayingChunkId(chunk.chunk_id);
+
+    try {
+      const backendUrl = API_CONFIG.BACKEND_URL || '';
+      const audioUrl = `${backendUrl}/api/media/audio/${campaignId}/${chunk.artifact_id}.mp3`;
+
+      console.log('[DEBUG] Playing audio:', audioUrl);
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setPlayingChunkId(null);
+        audioRef.current = null;
+      };
+
+      audio.onerror = (e) => {
+        console.error('[DEBUG] Audio error:', e);
+        setPlaybackError(`Failed to play: ${e.type}`);
+        setPlayingChunkId(null);
+        audioRef.current = null;
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error('[DEBUG] Playback error:', err);
+      setPlaybackError(err.message);
+      setPlayingChunkId(null);
+    }
+  };
+
+  // Stop playback
+  const stopPlayback = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setPlayingChunkId(null);
+  };
+
+  // Play all chunks in sequence
+  const playAllChunks = async () => {
+    if (!diagnosisResult?.chunks || !diagnosisResult?.request_info?.campaign_id) return;
+
+    const chunks = [...diagnosisResult.chunks].sort((a, b) => a.sequence_number - b.sequence_number);
+
+    for (const chunk of chunks) {
+      if (!chunk.artifact_id) continue;
+
+      await new Promise((resolve) => {
+        playChunk(chunk, diagnosisResult.request_info.campaign_id);
+
+        const checkInterval = setInterval(() => {
+          if (!audioRef.current || audioRef.current.paused) {
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, 100);
+
+        // Timeout after 30 seconds per chunk
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          resolve();
+        }, 30000);
+      });
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -281,7 +369,32 @@ export const AudioDebugPage = () => {
 
                   {/* Chunks Table */}
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Chunks ({diagnosisResult.chunks?.length || 0})</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-semibold text-gray-900">Chunks ({diagnosisResult.chunks?.length || 0})</h3>
+                      <div className="flex gap-2">
+                        {playingChunkId ? (
+                          <button
+                            onClick={stopPlayback}
+                            className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium"
+                          >
+                            Stop
+                          </button>
+                        ) : (
+                          <button
+                            onClick={playAllChunks}
+                            disabled={!diagnosisResult.chunks?.length}
+                            className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium disabled:opacity-50"
+                          >
+                            Play All
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {playbackError && (
+                      <div className="mb-2 text-xs text-red-600 bg-red-50 p-2 rounded">
+                        {playbackError}
+                      </div>
+                    )}
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200 text-xs">
                         <thead className="bg-gray-50">
@@ -290,11 +403,12 @@ export const AudioDebugPage = () => {
                             <th className="px-2 py-1 text-left font-medium text-gray-500">Status</th>
                             <th className="px-2 py-1 text-left font-medium text-gray-500">Artifact ID</th>
                             <th className="px-2 py-1 text-left font-medium text-gray-500">Created</th>
+                            <th className="px-2 py-1 text-left font-medium text-gray-500">Play</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                           {diagnosisResult.chunks?.map((chunk) => (
-                            <tr key={chunk.chunk_id} className="hover:bg-gray-50">
+                            <tr key={chunk.chunk_id} className={`hover:bg-gray-50 ${playingChunkId === chunk.chunk_id ? 'bg-green-50' : ''}`}>
                               <td className="px-2 py-1 font-mono">{chunk.sequence_number}</td>
                               <td className="px-2 py-1">
                                 <span className={`inline-flex px-1.5 py-0.5 rounded-full text-xs ${getStatusBadge(chunk.status)}`}>
@@ -306,6 +420,27 @@ export const AudioDebugPage = () => {
                               </td>
                               <td className="px-2 py-1 text-gray-500 whitespace-nowrap">
                                 {chunk.created_at ? new Date(chunk.created_at).toLocaleTimeString() : '-'}
+                              </td>
+                              <td className="px-2 py-1">
+                                {chunk.artifact_id ? (
+                                  playingChunkId === chunk.chunk_id ? (
+                                    <button
+                                      onClick={stopPlayback}
+                                      className="px-2 py-0.5 bg-red-500 hover:bg-red-600 text-white rounded text-xs"
+                                    >
+                                      Stop
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => playChunk(chunk, diagnosisResult.request_info?.campaign_id)}
+                                      className="px-2 py-0.5 bg-green-500 hover:bg-green-600 text-white rounded text-xs"
+                                    >
+                                      Play
+                                    </button>
+                                  )
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
                               </td>
                             </tr>
                           ))}
