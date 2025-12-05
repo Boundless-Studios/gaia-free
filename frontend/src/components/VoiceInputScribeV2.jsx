@@ -49,6 +49,7 @@ const VoiceInputScribeV2 = ({
   const partialTextRef = useRef('');  // Track partial for stopRecording commit
   const firstChunkSentRef = useRef(false); // Track when first PCM chunk is emitted
   const streamingStartTimeRef = useRef(null); // Track when we started streaming for timing diagnostics
+  const hasAutoStartedRef = useRef(false); // Guard against React StrictMode double-mount
 
   // Silence timeout configuration
   const SILENCE_TIMEOUT_MS = 15000;  // 15 seconds of silence triggers auto-stop
@@ -68,8 +69,10 @@ const VoiceInputScribeV2 = ({
   }, [partialText]);
 
   // Auto-start recording when component mounts if autoStart is true
+  // Uses ref guard to prevent duplicate connections in React StrictMode
   useEffect(() => {
-    if (autoStart && !isRecording && !isConnecting) {
+    if (autoStart && !hasAutoStartedRef.current && !isRecording && !isConnecting) {
+      hasAutoStartedRef.current = true;
       console.log('🎤 Auto-starting recording on mount');
       startRecording();
     }
@@ -223,6 +226,13 @@ const VoiceInputScribeV2 = ({
         // Backend strips cumulative prefix, we receive only the new refined portion
         const committedText = data.text || '';
         console.log('✅ Committed:', committedText);
+
+        // If recording has stopped, ignore this event - we already committed locally in stopRecording()
+        // This prevents duplicate commits when the backend's timer fires after user stops recording
+        if (!isRecordingRef.current) {
+          console.log('⏭️ Ignoring transcription_segment because recording already stopped');
+          break;
+        }
 
         if (committedText.trim()) {
           // In conversational mode, auto-submit when committed

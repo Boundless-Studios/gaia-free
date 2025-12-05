@@ -288,7 +288,8 @@ jobs:
         env:
           REPO_DEFAULT_SUFFIX: ${{ matrix.repo_suffix }}
         run: |
-          SHA_SHORT="${GITHUB_SHA::7}"
+          # Use actual checked-out commit, not workflow trigger commit
+          SHA_SHORT="$(git rev-parse --short=7 HEAD)"
           # Per-service repo override in config: ARTIFACT_REGISTRY_REPO_<SERVICE>
           SERVICE_UPPER="${{ matrix.service }}"; SERVICE_UPPER=${SERVICE_UPPER^^}
           VAR_REPO="ARTIFACT_REGISTRY_REPO_${SERVICE_UPPER}"
