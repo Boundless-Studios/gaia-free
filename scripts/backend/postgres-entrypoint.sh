@@ -41,30 +41,5 @@ else
     echo "WARNING: No encrypted secrets file found at $ENCRYPTED_SECRETS"
 fi
 
-# If database is already initialized and POSTGRES_PASSWORD is set, update the password
-# This ensures password changes in secrets are applied to existing databases
-PGDATA="${PGDATA:-/var/lib/postgresql/data/pgdata}"
-if [ -d "$PGDATA" ] && [ -n "$POSTGRES_PASSWORD" ]; then
-    echo "Database already initialized, will update password after startup..."
-
-    # Start postgres in background, wait for it to be ready, then update password
-    docker-entrypoint.sh "$@" &
-    PG_PID=$!
-
-    # Wait for postgres to be ready (up to 30 seconds)
-    for i in $(seq 1 30); do
-        if pg_isready -U "${POSTGRES_USER:-gaia}" -d "${POSTGRES_DB:-gaia}" 2>/dev/null; then
-            echo "PostgreSQL is ready, updating password..."
-            psql -U "${POSTGRES_USER:-gaia}" -d "${POSTGRES_DB:-gaia}" -c "ALTER USER ${POSTGRES_USER:-gaia} PASSWORD '${POSTGRES_PASSWORD}';" 2>/dev/null || true
-            echo "✓ Password updated"
-            break
-        fi
-        sleep 1
-    done
-
-    # Wait for postgres process
-    wait $PG_PID
-else
-    # Execute the original postgres entrypoint
-    exec docker-entrypoint.sh "$@"
-fi
+# Execute the original postgres entrypoint
+exec docker-entrypoint.sh "$@"
