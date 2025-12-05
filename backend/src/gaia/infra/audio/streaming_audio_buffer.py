@@ -170,8 +170,19 @@ class StreamingAudioBuffer:
         Args:
             text: Text to convert to speech
             sequence_number: Sequence number for this chunk (captured at task creation)
+
+        Note:
+            If this method returns early (empty text, TTS failure), the sequence number
+            will be "skipped" since it was already assigned before calling this method.
+            This can result in sequence gaps (e.g., chunks 0, 2 instead of 0, 1).
+            The playback system handles gaps gracefully by ordering by sequence number.
         """
         if not text.strip():
+            logger.warning(
+                "[StreamAudio] Session %s: Skipping audio chunk %d - empty/whitespace text (sequence gap created)",
+                self.session_id,
+                sequence_number,
+            )
             return
 
         seq = sequence_number
@@ -194,8 +205,9 @@ class StreamingAudioBuffer:
 
             if not isinstance(artifact, dict):
                 logger.error(
-                    "[StreamAudio] Session %s: TTS generator returned non-dict: %s",
+                    "[StreamAudio] Session %s: TTS generator returned non-dict for chunk %d: %s (sequence gap created)",
                     self.session_id,
+                    seq,
                     type(artifact)
                 )
                 return
@@ -213,7 +225,7 @@ class StreamingAudioBuffer:
 
         except Exception as e:
             logger.error(
-                "[StreamAudio] Session %s: Failed to generate audio chunk %d: %s",
+                "[StreamAudio] Session %s: Failed to generate audio chunk %d: %s (sequence gap created)",
                 self.session_id,
                 seq,
                 e,

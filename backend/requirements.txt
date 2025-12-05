@@ -39,6 +39,9 @@ ffmpeg-python>=0.2.0
 # Collaborative editing with Yjs CRDT
 pycrdt>=0.10.0
 
+# Socket.IO for real-time communication
+python-socketio[asyncio]>=5.10.0
+
 # Image generation dependencies
 # google-generativeai>=0.8.3  # Using google-genai instead
 google-genai>=1.27.0

@@ -29,7 +29,7 @@ services:
     env_file:
       - ../config/cloudrun.dev.env
     entrypoint: ["/home/gaia/scripts/docker-entrypoint-with-secrets.sh"]
-    command: ["python3", "-m", "uvicorn", "gaia.api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: ["python3", "-m", "uvicorn", "gaia.api.app:socket_app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     environment:
       - SOPS_AGE_KEY_FILE=/run/secrets/age-key.txt
     tmpfs:
@@ -86,7 +86,7 @@ services:
     env_file:
       - .settings.docker.env
     entrypoint: ["/home/gaia/scripts/docker-entrypoint-with-secrets.sh"]
-    command: ["python3", "-m", "uvicorn", "gaia.api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: ["python3", "-m", "uvicorn", "gaia.api.app:socket_app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     environment:
       - SOPS_AGE_KEY_FILE=/run/secrets/age-key.txt
     volumes:

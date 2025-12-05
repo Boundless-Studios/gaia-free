@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import apiService from '../services/apiService.js';
 
-const CAMPAIGN_START_TRACE = '[CAMPAIGN_START_FLOW]';
+const CAMPAIGN_STATE_TRACE = '[CAMPAIGN_STATE]';
 
 /**
  * Transform structured data from backend into normalized frontend format
@@ -100,7 +100,7 @@ export function useCampaignState(currentCampaignId) {
           return previous;
         }
         console.debug(
-          `${CAMPAIGN_START_TRACE} setSessionStructuredData`,
+          `${CAMPAIGN_STATE_TRACE} setSessionStructuredData`,
           {
             sessionId,
             hasNarrative: Boolean(next?.narrative || next?.answer),

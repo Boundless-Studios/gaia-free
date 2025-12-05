@@ -244,65 +244,154 @@ const CollaborativeStackedEditor = forwardRef(({
     ytext.observe(updateSections);
     updateSections(); // Initial render
 
-    // WebSocket message handling
-    const handleMessage = (event) => {
+    // Socket.IO message handlers
+    const handleYjsUpdateMessage = (data) => {
       try {
-        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        logDebug('Received WebSocket message', data.type);
+        logDebug('Received yjs_update', { from: data.playerId });
 
-        if (data.type === 'initial_state') {
-          if (Array.isArray(data.update)) {
-            const update = new Uint8Array(data.update);
-            Y.applyUpdate(ydoc, update, REMOTE_ORIGIN);
-            logDebug('Applied initial_state from backend', { size: data.update.length });
-          }
-        } else if (
-          data.type === 'yjs_update' &&
-          data.sessionId === sessionId &&
-          Array.isArray(data.update)
-        ) {
-          // Check if this is a voice update (from backend STT) or from another player
-          const isVoiceUpdate = data.source === 'voice';
-          const isFromOtherPlayer = data.playerId !== playerId;
+        if (data.sessionId !== sessionId || !Array.isArray(data.update)) {
+          return;
+        }
 
-          // Apply updates from other players OR voice updates (even from self)
-          if (isFromOtherPlayer || isVoiceUpdate) {
-            // For voice updates from self, use a grace period after local edits
-            // This prevents voice updates from overwriting user's manual edits/deletions
-            // Uses client-side time only to avoid clock skew issues
-            if (isVoiceUpdate && !isFromOtherPlayer) {
-              const timeSinceEdit = Date.now() - lastLocalEditTimeRef.current;
-              if (timeSinceEdit < 2000) { // 2 second grace period after local edit
-                logDebug('Ignoring voice update within 2s of local edit', { timeSinceEdit });
-                return; // Skip - user edited recently
-              }
+        // Check if this is a voice update (from backend STT) or from another player
+        const isVoiceUpdate = data.source === 'voice';
+        const isFromOtherPlayer = data.playerId !== playerId;
+
+        // Apply updates from other players OR voice updates (even from self)
+        if (isFromOtherPlayer || isVoiceUpdate) {
+          // For voice updates from self, use a grace period after local edits
+          // This prevents voice updates from overwriting user's manual edits/deletions
+          if (isVoiceUpdate && !isFromOtherPlayer) {
+            const timeSinceEdit = Date.now() - lastLocalEditTimeRef.current;
+            if (timeSinceEdit < 2000) { // 2 second grace period after local edit
+              logDebug('Ignoring voice update within 2s of local edit', { timeSinceEdit });
+              return;
             }
-            const update = new Uint8Array(data.update);
-            Y.applyUpdate(ydoc, update, REMOTE_ORIGIN);
-            logDebug('Applied Yjs update', { from: data.playerId, source: data.source || 'peer' });
           }
-        } else if (data.type === 'partial_overlay' && data.sessionId === sessionId) {
-          // Handle partial overlay for voice transcription preview
-          const overlayPlayerId = data.playerId;
-          const overlayText = data.text || '';
-
-          setPartialOverlays(prev => {
-            if (overlayText) {
-              return { ...prev, [overlayPlayerId]: overlayText };
-            } else {
-              // Empty text clears the overlay
-              const { [overlayPlayerId]: _, ...rest } = prev;
-              return rest;
-            }
-          });
-          logDebug('Updated partial overlay', { playerId: overlayPlayerId, hasText: !!overlayText });
+          const update = new Uint8Array(data.update);
+          Y.applyUpdate(ydoc, update, REMOTE_ORIGIN);
+          logDebug('Applied Yjs update', { from: data.playerId, source: data.source || 'peer' });
         }
       } catch (error) {
-        logError('Error handling collaboration message', error);
+        logError('Error handling yjs_update', error);
       }
     };
 
-    // Broadcast local Yjs changes
+    const handlePartialOverlayMessage = (data) => {
+      try {
+        if (data.sessionId !== sessionId) {
+          return;
+        }
+
+        const overlayPlayerId = data.playerId;
+        const overlayText = data.text || '';
+
+        setPartialOverlays(prev => {
+          if (overlayText) {
+            return { ...prev, [overlayPlayerId]: overlayText };
+          } else {
+            const { [overlayPlayerId]: _, ...rest } = prev;
+            return rest;
+          }
+        });
+        logDebug('Updated partial overlay', { playerId: overlayPlayerId, hasText: !!overlayText });
+      } catch (error) {
+        logError('Error handling partial_overlay', error);
+      }
+    };
+
+    const handleInitialState = (data) => {
+      try {
+        if (Array.isArray(data.update)) {
+          const update = new Uint8Array(data.update);
+          Y.applyUpdate(ydoc, update, REMOTE_ORIGIN);
+          logDebug('Applied initial_state from backend', { size: data.update.length });
+        }
+      } catch (error) {
+        logError('Error handling initial_state', error);
+      }
+    };
+
+    const handleVoiceCommitted = (data) => {
+      try {
+        if (data.sessionId !== sessionId) {
+          return;
+        }
+
+        // Only process voice commits for our own player
+        if (data.playerId !== playerId) {
+          logDebug('Ignoring voice_committed for other player', { from: data.playerId });
+          return;
+        }
+
+        const text = data.text || '';
+        if (!text) {
+          return;
+        }
+
+        logDebug('Received voice_committed, inserting text', { length: text.length });
+
+        // Insert the committed text into the Yjs document
+        // Find our section and append the text
+        const fullText = ytext.toString();
+        const playerLabel = `[${characterName}]:`;
+        let labelIndex = fullText.indexOf(playerLabel);
+
+        // Special handling for DM - they don't have a label in the document
+        if (labelIndex === -1 && characterName === 'DM') {
+          // Insert at beginning of document for DM (before first player label)
+          const firstLabelMatch = fullText.match(/\[/);
+          const insertPosition = firstLabelMatch ? firstLabelMatch.index : fullText.length;
+          const spacer = insertPosition > 0 && fullText[insertPosition - 1] !== ' ' && fullText[insertPosition - 1] !== '\n' ? ' ' : '';
+
+          ydoc.transact(() => {
+            ytext.insert(insertPosition, spacer + text);
+          });
+
+          logDebug('Inserted voice text into DM section', { textLength: text.length });
+          return;
+        }
+
+        // If label doesn't exist, create it first
+        if (labelIndex === -1) {
+          ydoc.transact(() => {
+            if (fullText.length === 0) {
+              ytext.insert(0, playerLabel);
+            } else {
+              ytext.insert(fullText.length, `\n\n${playerLabel}`);
+            }
+          });
+
+          // Re-find the label after insertion
+          const updatedText = ytext.toString();
+          labelIndex = updatedText.indexOf(playerLabel);
+        }
+
+        if (labelIndex === -1) {
+          logError('Failed to find/create player label for voice commit');
+          return;
+        }
+
+        const contentStart = labelIndex + playerLabel.length;
+        const afterLabel = ytext.toString().slice(contentStart);
+        const nextLabelMatch = afterLabel.match(/\n\[/);
+        const contentEnd = nextLabelMatch ? contentStart + nextLabelMatch.index : ytext.toString().length;
+
+        // Calculate spacer - add space if there's existing content without trailing space
+        const currentContent = ytext.toString().slice(contentStart, contentEnd);
+        const spacer = currentContent.length > 0 && !currentContent.endsWith(' ') && !currentContent.endsWith('\n') ? ' ' : '';
+
+        ydoc.transact(() => {
+          ytext.insert(contentEnd, spacer + text);
+        });
+
+        logDebug('Inserted voice text into player section', { textLength: text.length });
+      } catch (error) {
+        logError('Error handling voice_committed', error);
+      }
+    };
+
+    // Broadcast local Yjs changes via Socket.IO
     const handleYjsUpdate = (update, origin) => {
       if (origin === REMOTE_ORIGIN) {
         logDebug('Skipping broadcast – applied remote Yjs update');
@@ -312,18 +401,18 @@ const CollaborativeStackedEditor = forwardRef(({
       // User made a local edit - track the time to filter stale voice updates
       lastLocalEditTimeRef.current = Date.now();
 
-      if (!websocket || typeof websocket.send !== 'function') {
-        logWarn('Cannot broadcast Yjs update – WebSocket missing send()');
+      if (!websocket || !websocket.connected) {
+        logWarn('Cannot broadcast Yjs update – socket not connected');
         return;
       }
 
-      websocket.send(JSON.stringify({
-        type: 'yjs_update',
+      websocket.emit('yjs_update', {
         sessionId,
         playerId,
         update: Array.from(update),
         timestamp: new Date().toISOString()
-      }));
+      });
+
       logDebug('Broadcasting Yjs update', { size: update.length });
     };
 
@@ -334,53 +423,65 @@ const CollaborativeStackedEditor = forwardRef(({
         return;
       }
 
-      if (websocket && typeof websocket.send === 'function' && websocket.readyState === 1) {
-        websocket.send(JSON.stringify({
-          type: 'register',
-          playerId,
-          playerName: characterName,
-          timestamp: new Date().toISOString()
-        }));
-        registeredWebSocketRef.current = websocket;
-        logDebug('Sent registration message', { playerId, playerName: characterName });
+      if (!websocket.connected) {
+        logDebug('Skipping registration - socket not connected');
+        return;
       }
+
+      websocket.emit('register', {
+        playerId,
+        playerName: characterName,
+        timestamp: new Date().toISOString()
+      });
+
+      registeredWebSocketRef.current = websocket;
+      logDebug('Sent registration message', { playerId, playerName: characterName });
     };
 
-    const handleOpen = () => {
-      logDebug('WebSocket open event');
+    const handleConnect = () => {
+      logDebug('Socket connected');
       setIsConnected(true);
       sendRegistration();
     };
 
-    const handleClose = () => {
-      logDebug('WebSocket close event');
+    const handleDisconnect = () => {
+      logDebug('Socket disconnected');
       setIsConnected(false);
       registeredWebSocketRef.current = null; // Allow re-registration on reconnect
     };
 
-    setIsConnected(websocket.readyState === 1);
+    // Set initial connection state
+    setIsConnected(websocket.connected === true);
 
-    websocket.addEventListener?.('message', handleMessage);
-    websocket.addEventListener?.('open', handleOpen);
-    websocket.addEventListener?.('close', handleClose);
+    // Set up Socket.IO event listeners
+    websocket.on('yjs_update', handleYjsUpdateMessage);
+    websocket.on('partial_overlay', handlePartialOverlayMessage);
+    websocket.on('initial_state', handleInitialState);
+    websocket.on('voice_committed', handleVoiceCommitted);
+    websocket.on('connect', handleConnect);
+    websocket.on('disconnect', handleDisconnect);
+
     ydoc.on('update', handleYjsUpdate);
 
-    // If WebSocket already open, send registration
-    if (websocket.readyState === 1) {
+    // If socket already connected, send registration
+    if (websocket.connected) {
       sendRegistration();
     }
 
     return () => {
       logDebug('Destroying collaboration resources');
-      websocket.removeEventListener?.('message', handleMessage);
-      websocket.removeEventListener?.('open', handleOpen);
-      websocket.removeEventListener?.('close', handleClose);
+
+      websocket.off('yjs_update', handleYjsUpdateMessage);
+      websocket.off('partial_overlay', handlePartialOverlayMessage);
+      websocket.off('initial_state', handleInitialState);
+      websocket.off('voice_committed', handleVoiceCommitted);
+      websocket.off('connect', handleConnect);
+      websocket.off('disconnect', handleDisconnect);
+
       ydoc.off('update', handleYjsUpdate);
       ytext.unobserve(updateSections);
       ydoc.destroy();
       setIsConnected(false);
-      // Don't reset registeredWebSocketRef here - let it persist across effect re-runs
-      // It will only be reset when websocket actually closes or component unmounts
     };
   }, [websocket, sessionId, playerId, characterName, parseDocumentIntoSections, logDebug, logWarn, logError, onMySectionChange]);
 
@@ -653,8 +754,13 @@ const CollaborativeStackedEditor = forwardRef(({
   }, [handleSubmitMyInput]);
 
   const visibleSections = useMemo(() => {
-    // Extract current user's role from playerId (format: email:role:characterId)
-    const myRole = playerId.split(':')[1]; // 'dm' or 'player'
+    // Extract current user's role from playerId (format: email:role or email:role:characterId)
+    const playerIdParts = playerId?.split(':') || [];
+    const myRole = playerIdParts[1];
+
+    if (!myRole && playerId) {
+      console.error('[CollabEditor] Invalid playerId format - missing role segment:', playerId);
+    }
 
     const dmFirst = [...sections].sort((a, b) => {
       if (a.playerName === 'DM') return -1;
@@ -664,7 +770,13 @@ const CollaborativeStackedEditor = forwardRef(({
 
     const withoutHidden = dmFirst.filter((section) => {
       // Extract section's role from their playerId
-      const sectionRole = section.playerId.split(':')[1];
+      const sectionParts = section.playerId?.split(':') || [];
+      const sectionRole = sectionParts[1];
+
+      if (!sectionRole && section.playerId) {
+        console.error('[CollabEditor] Section has invalid playerId format:', section.playerId);
+        return true; // Show sections with invalid IDs rather than hiding
+      }
 
       // DM sees everything
       if (myRole === 'dm') return true;

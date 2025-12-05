@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { API_CONFIG } from '../config/api.js';
 
 const CAMPAIGN_START_TRACE = '[CAMPAIGN_START_FLOW]';
+const DM_WS_TRACE = '[DM_WS]';
 
 /**
  * Custom hook to manage DM WebSocket connection
@@ -138,7 +139,7 @@ export function useDMWebSocket({
     };
 
     if (!campaignId) {
-      console.warn(`${CAMPAIGN_START_TRACE} DM WebSocket connect skipped - missing campaignId`);
+      console.warn(`${DM_WS_TRACE} DM WebSocket connect skipped - missing campaignId`);
       cleanup();
       return cleanup;
     }
@@ -277,7 +278,7 @@ export function useDMWebSocket({
             handleAudioStreamStopped(data, sessionIdForSocket);
           } else if (data.type === 'narrative_chunk' && handleNarrativeChunk) {
             console.log(
-              `${CAMPAIGN_START_TRACE} WS received narrative_chunk`,
+              `${DM_WS_TRACE} WS received narrative_chunk`,
               {
                 sessionId: sessionIdForSocket,
                 contentLength: data.content ? data.content.length : 0,
@@ -287,7 +288,7 @@ export function useDMWebSocket({
             handleNarrativeChunk(data, sessionIdForSocket);
           } else if (data.type === 'player_response_chunk' && handleResponseChunk) {
             console.log(
-              `${CAMPAIGN_START_TRACE} WS received player_response_chunk`,
+              `${DM_WS_TRACE} WS received player_response_chunk`,
               {
                 sessionId: sessionIdForSocket,
                 contentLength: data.content ? data.content.length : 0,
@@ -297,7 +298,7 @@ export function useDMWebSocket({
             handleResponseChunk(data, sessionIdForSocket);
           } else if (data.type === 'metadata_update' && data.metadata && handleMetadataUpdate) {
             console.log(
-              `${CAMPAIGN_START_TRACE} WS received metadata_update`,
+              `${DM_WS_TRACE} WS received metadata_update`,
               {
                 sessionId: sessionIdForSocket,
                 metadataKeys: Object.keys(data.metadata || {}),
@@ -306,7 +307,7 @@ export function useDMWebSocket({
             handleMetadataUpdate(data.metadata, sessionIdForSocket, data.campaign_id);
           } else if (data.type === 'initialization_error' && handleInitializationError) {
             console.log(
-              `${CAMPAIGN_START_TRACE} WS received initialization_error`,
+              `${DM_WS_TRACE} WS received initialization_error`,
               {
                 sessionId: sessionIdForSocket,
                 error: data.error,
@@ -320,7 +321,7 @@ export function useDMWebSocket({
             handleCampaignUpdate
           ) {
             console.log(
-              `${CAMPAIGN_START_TRACE} WS received campaign update`,
+              `${DM_WS_TRACE} WS received campaign update`,
               {
                 eventType: data.type,
                 sessionId: data.campaign_id || data.session_id || sessionIdForSocket,
@@ -352,7 +353,7 @@ export function useDMWebSocket({
           } else {
             // Log unhandled event types for debugging
             console.log(
-              `${CAMPAIGN_START_TRACE} WS received unhandled event`,
+              `${DM_WS_TRACE} WS received unhandled event`,
               {
                 eventType: data.type,
                 sessionId: sessionIdForSocket,

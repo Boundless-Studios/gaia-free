@@ -17,6 +17,44 @@ from sqlalchemy.pool import NullPool
 
 logger = logging.getLogger(__name__)
 
+# Cache for secrets loaded from file (for uvicorn worker processes)
+_secrets_cache: Optional[dict] = None
+
+
+def _load_secrets_from_file() -> dict:
+    """Load secrets from decrypted file if available.
+
+    This handles the case where uvicorn --reload spawns workers that
+    don't inherit environment variables from the parent process.
+    """
+    global _secrets_cache
+    if _secrets_cache is not None:
+        return _secrets_cache
+
+    _secrets_cache = {}
+    secrets_file = os.getenv('DECRYPTED_SECRETS_FILE', '/tmp/.decrypted_secrets.env')
+    if os.path.exists(secrets_file):
+        try:
+            with open(secrets_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, _, value = line.partition('=')
+                        _secrets_cache[key.strip()] = value.strip()
+            logger.debug(f"Loaded {len(_secrets_cache)} secrets from {secrets_file}")
+        except Exception as e:
+            logger.warning(f"Could not read secrets from {secrets_file}: {e}")
+    return _secrets_cache
+
+
+def _get_secret(key: str, default: Optional[str] = None) -> Optional[str]:
+    """Get a secret from environment or decrypted secrets file."""
+    value = os.getenv(key)
+    if value:
+        return value
+    secrets = _load_secrets_from_file()
+    return secrets.get(key, default)
+
 
 class DatabaseManager:
     """Manages database connections and sessions"""
@@ -50,7 +88,7 @@ class DatabaseManager:
         pg_port = os.getenv('POSTGRES_PORT') or '5432'
         pg_db = os.getenv('POSTGRES_DB')
         pg_user = os.getenv('POSTGRES_USER')
-        pg_password = os.getenv('DB_PASSWORD') or os.getenv('POSTGRES_PASSWORD')
+        pg_password = _get_secret('DB_PASSWORD') or _get_secret('POSTGRES_PASSWORD')
         if pg_host and pg_db and pg_user and pg_password:
             built_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}"
             logger.info(f"Built DATABASE_URL from POSTGRES_* variables for host {pg_host}")
@@ -62,7 +100,7 @@ class DatabaseManager:
         if db_instance:
             # For Cloud Run with Cloud SQL, build connection string for Unix socket
             db_user = os.getenv('POSTGRES_USER', 'gaia')
-            db_password = os.getenv('DB_PASSWORD') or os.getenv('POSTGRES_PASSWORD')
+            db_password = _get_secret('DB_PASSWORD') or _get_secret('POSTGRES_PASSWORD')
             db_name = os.getenv('POSTGRES_DB', 'gaia')
             use_iam_auth = os.getenv('DB_USE_IAM_AUTH', 'false').lower() == 'true'
 
@@ -114,7 +152,7 @@ class DatabaseManager:
                 db_host = os.getenv('POSTGRES_HOST', 'localhost')
                 db_port = os.getenv('POSTGRES_PORT', '5432')
                 db_name = os.getenv('POSTGRES_DB', 'gaia')
-                db_password = os.getenv('POSTGRES_PASSWORD', '')  # Get from env or empty
+                db_password = _get_secret('POSTGRES_PASSWORD', '')  # Get from env/secrets or empty
                 logger.warning(f"No DATABASE_URL found, using development default with host={db_host}")
                 # If password is empty, don't include it in URL (trust authentication)
                 if db_password:

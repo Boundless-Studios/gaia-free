@@ -280,7 +280,7 @@ const AppWithAuth0 = () => {
             <Route path="/admin/scenes" element={<SceneInspector />} />
 
             {/* Debug routes */}
-            <Route path="/debug/audio" element={
+            <Route path="/admin/debug-audio" element={
               <AudioStreamProvider>
                 <AudioDebugPage />
               </AudioStreamProvider>
@@ -310,7 +310,7 @@ const AppWithAuth0 = () => {
 
             {/* Debug routes - NO AUTH REQUIRED for local testing */}
             <Route
-              path="/debug/audio"
+              path="/admin/debug-audio"
               element={
                 <AudioStreamProvider>
                   <AudioDebugPage />
