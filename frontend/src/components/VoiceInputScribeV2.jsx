@@ -97,6 +97,13 @@ const VoiceInputScribeV2 = ({
    * Start recording and connect to ElevenLabs Scribe V2 Realtime API
    */
   const startRecording = useCallback(async () => {
+    // Guard against duplicate calls - check if already connecting or connected
+    if (isRecordingRef.current || websocketRef.current?.readyState === WebSocket.OPEN ||
+        websocketRef.current?.readyState === WebSocket.CONNECTING) {
+      console.log('⚠️ Already recording or connecting, skipping duplicate startRecording call');
+      return;
+    }
+
     try {
       console.log('🎤 Starting Scribe V2 recording...');
       setIsConnecting(true);
