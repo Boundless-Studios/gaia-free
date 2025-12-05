@@ -142,7 +142,7 @@ def launch_uvicorn() -> None:
 
     port = int(os.getenv("PORT", "8080"))
     workers = os.getenv("WORKERS", "1")
-    app_module = os.getenv("APP_MODULE", "gaia.api.app:app")
+    app_module = os.getenv("APP_MODULE", "gaia.api.app:socket_app")
 
     uvicorn_args = [
         sys.executable,

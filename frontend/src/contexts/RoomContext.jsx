@@ -252,8 +252,45 @@ export const RoomProvider = ({
     onRoomEvent?.({ type: 'campaign_started', data });
   }, [onRoomEvent]);
 
-  // Subscribe to WebSocket events
+  // Subscribe to Socket.IO events (preferred)
   useEffect(() => {
+    const socket = socketRef?.current;
+    if (!socket) return;
+
+    // Socket.IO event handlers
+    const onSeatUpdated = (data) => handleSeatUpdate(data.seat || data);
+    const onDMJoined = (data) => handleDMJoined(data);
+    const onDMLeft = (data) => handleDMLeft(data);
+    const onPlayerVacated = (data) => handlePlayerVacated(data);
+    const onCampaignStarted = (data) => handleCampaignStarted(data);
+
+    socket.on('room.seat_updated', onSeatUpdated);
+    socket.on('room.dm_joined', onDMJoined);
+    socket.on('room.dm_left', onDMLeft);
+    socket.on('room.player_vacated', onPlayerVacated);
+    socket.on('room.campaign_started', onCampaignStarted);
+
+    return () => {
+      socket.off('room.seat_updated', onSeatUpdated);
+      socket.off('room.dm_joined', onDMJoined);
+      socket.off('room.dm_left', onDMLeft);
+      socket.off('room.player_vacated', onPlayerVacated);
+      socket.off('room.campaign_started', onCampaignStarted);
+    };
+  }, [
+    socketRef,
+    handleSeatUpdate,
+    handleDMJoined,
+    handleDMLeft,
+    handlePlayerVacated,
+    handleCampaignStarted
+  ]);
+
+  // Subscribe to WebSocket events (legacy fallback)
+  useEffect(() => {
+    // Skip if using Socket.IO
+    if (socketRef?.current) return;
+
     const ws = webSocketRef?.current;
     if (!ws) return;
 
@@ -294,6 +331,7 @@ export const RoomProvider = ({
       ws.removeEventListener('message', handleMessage);
     };
   }, [
+    socketRef,
     webSocketRef,
     webSocketVersion,
     handleSeatUpdate,

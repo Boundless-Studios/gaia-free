@@ -34,7 +34,7 @@ import { Alert } from './components/base-ui/Alert.jsx';
 // Import custom hooks
 import { useCampaignMessages } from './hooks/useCampaignMessages.js';
 import { useStreamingState } from './hooks/useStreamingState.js';
-import { useDMWebSocket } from './hooks/useDMWebSocket.js';
+import { useGameSocket } from './hooks/useGameSocket.js';
 import { useCampaignState } from './hooks/useCampaignState.js';
 import { useImageManagement } from './hooks/useImageManagement.js';
 import { useCampaignOperations } from './hooks/useCampaignOperations.js';
@@ -145,12 +145,11 @@ function App() {
   const [isClearingAudioQueue, setIsClearingAudioQueue] = useState(false);
   const [playbackQueueInfo, setPlaybackQueueInfo] = useState(null);
 
-  // Collaborative editing state
+  // Collaborative editing state (now managed via Socket.IO)
   const [collabIsConnected, setCollabIsConnected] = useState(false);
   const [collabPlayers, setCollabPlayers] = useState([]);
   const [collabPlayerName, setCollabPlayerName] = useState('DM');
   const [collabPlayerId, setCollabPlayerId] = useState('');
-  const collabWsRef = useRef(null);
 
   // Refs (must be before hooks that use them)
   const controlPanelRef = useRef(null);
@@ -439,147 +438,9 @@ function App() {
     return () => clearTimeout(timer);
   }, [infoBanner]);
 
-  // Collaborative editing WebSocket connection
-  useEffect(() => {
-    if (!currentCampaignId || !user || !user.email) {
-      return;
-    }
-
-    // DM view always connects with role='dm'
-    // Use stable player ID (just email:role)
-    const playerId = `${user.email}:dm`;
-    setCollabPlayerId(playerId);
-
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = window.location.hostname;
-    const wsPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
-    const backendPort = import.meta.env.MODE === 'development' ? '8000' : wsPort;
-    const wsUrl = `${wsProtocol}//${wsHost}:${backendPort}/ws/collab/session/${currentCampaignId}`;
-
-    console.log(`[Collab] DM connecting to: ${wsUrl} with playerId: ${playerId}`);
-
-    const socket = new WebSocket(wsUrl);
-    collabWsRef.current = socket;
-
-    socket.addEventListener('open', () => {
-      console.log('[Collab] DM WebSocket connected');
-      setCollabIsConnected(true);
-
-      // Register as DM
-      socket.send(JSON.stringify({
-        type: 'register',
-        playerId: playerId,
-        playerName: 'DM',
-        timestamp: new Date().toISOString()
-      }));
-    });
-
-    socket.addEventListener('message', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'initial_state' && Array.isArray(data.allPlayers)) {
-          setCollabPlayers(data.allPlayers);
-        } else if (
-          (data.type === 'player_list' || data.type === 'collab_players' || data.type === 'collab_reset') &&
-          Array.isArray(data.players)
-        ) {
-          setCollabPlayers(data.players);
-        }
-      } catch (err) {
-        console.error('[Collab] Error parsing message:', err);
-      }
-    });
-
-    socket.addEventListener('close', () => {
-      console.log('[Collab] DM WebSocket closed');
-      setCollabIsConnected(false);
-    });
-
-    socket.addEventListener('error', (err) => {
-      console.error('[Collab] DM WebSocket error:', err);
-    });
-
-    return () => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.close();
-      }
-      collabWsRef.current = null;
-    };
-  }, [currentCampaignId, user?.email]);
-
-  // Voice transcription handler - writes to collaborative editor via collab WebSocket
-  const handleVoiceTranscription = useCallback((transcribedText, metadata) => {
-    console.log('🎤 [DM] Voice transcription received:', transcribedText, metadata);
-
-    if (!isTranscribingRef.current) {
-      console.warn('🎤 [DM] Ignoring transcription because mic is not active');
-      return;
-    }
-
-    if (!collabWsRef.current || collabWsRef.current.readyState !== WebSocket.OPEN) {
-      console.warn('🎤 [DM] Collab WebSocket not connected, voice text not sent');
-      return;
-    }
-
-    collabWsRef.current.send(JSON.stringify({
-      type: 'voice_transcription',
-      text: transcribedText,
-      is_partial: metadata?.is_partial ?? false
-    }));
-
-    console.log('🎤 [DM] Sent voice_transcription to collab backend, is_partial:', metadata?.is_partial);
-  }, []);
-
-  // Toggle DM voice transcription on/off
-  const toggleVoiceTranscription = useCallback(async () => {
-    if (isTranscribing) {
-      setIsTranscribing(false);
-      setVoiceActivityLevel(0);
-      return;
-    }
-
-    const sendVoiceSessionStart = () => {
-      if (collabWsRef.current?.readyState === WebSocket.OPEN) {
-        collabWsRef.current.send(JSON.stringify({
-          type: 'voice_session_start'
-        }));
-        console.log('🎤 [DM] Sent voice_session_start to reset backend tracking');
-      }
-    };
-
-    if (audioPermissionState !== 'granted') {
-      try {
-        console.log('🎤 [DM] Requesting microphone permission for transcription...');
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            sampleRate: 16000
-          }
-        });
-
-        stream.getTracks().forEach(track => track.stop());
-
-        setAudioPermissionState('granted');
-        localStorage.setItem('audioPermissionState', 'granted');
-        sendVoiceSessionStart();
-        setIsTranscribing(true);
-      } catch (error) {
-        console.error('❌ [DM] Microphone permission denied:', error);
-        setAudioPermissionState('denied');
-        localStorage.setItem('audioPermissionState', 'denied');
-      }
-    } else {
-      sendVoiceSessionStart();
-      setIsTranscribing(true);
-    }
-  }, [isTranscribing, audioPermissionState]);
-
-  useEffect(() => {
-    transcriptionRef.current = {
-      toggleRecording: toggleVoiceTranscription,
-    };
-  }, [toggleVoiceTranscription]);
+  // Collaborative editing is now handled via Socket.IO (useGameSocket hook)
+  // See handlers: player_list, initial_state, registered in useGameSocket config
+  // NOTE: Voice transcription callbacks are defined AFTER useGameSocket hook below
 
   // Auto-enable audio on first user interaction (browser autoplay policy)
   useEffect(() => {
@@ -970,25 +831,77 @@ function App() {
     updateStreamingResponse,
   ]);
 
-  // Connect to DM WebSocket using custom hook - use sessionId from URL
-  const { webSocketRef: dmWebSocketRef, connectionTokenRef, socketVersion: dmSocketVersion } = useDMWebSocket({
+  // Connect to DM Socket.IO using custom hook - use sessionId from URL
+  // Ref to hold the Socket.IO socket for passing to child components
+  const dmSocketRef = useRef(null);
+  const [dmSocketVersion, setDmSocketVersion] = useState(0);
+
+  const {
+    socket: dmSocket,
+    isConnected: dmIsConnected,
+    connectionToken: dmConnectionToken,
+    emit: dmEmit,
+    sendAudioPlayed: dmSendAudioPlayed,
+  } = useGameSocket({
     campaignId: resolvedCampaignIdForSocket,
-    getAccessTokenSilently,
-    refreshAccessToken,
+    getAccessToken: getAccessTokenSilently,
+    role: 'dm',
     handlers: {
-      onAudioAvailable: handleAudioAvailable,
-      onNarrativeChunk: handleNarrativeChunk,
-      onResponseChunk: handleResponseChunk,
-      onMetadataUpdate: handleMetadataUpdate,
-      onInitializationError: handleInitializationError,
-      onCampaignUpdate: handleCampaignUpdate,
-      onAudioStreamStarted: handleAudioStreamStarted,
-      onAudioStreamStopped: handleAudioStreamStopped,
-      onAudioQueueCleared: handleAudioQueueCleared,
-      onPlaybackQueueUpdated: handlePlaybackQueueUpdated,
-      onSfxAvailable: sfx.handleSfxAvailable,
+      audio_available: handleAudioAvailable,
+      narrative_chunk: handleNarrativeChunk,
+      player_response_chunk: handleResponseChunk,
+      metadata_update: handleMetadataUpdate,
+      initialization_error: handleInitializationError,
+      campaign_updated: handleCampaignUpdate,
+      campaign_loaded: handleCampaignUpdate,
+      campaign_active: handleCampaignUpdate,
+      audio_stream_started: handleAudioStreamStarted,
+      audio_stream_stopped: handleAudioStreamStopped,
+      audio_queue_cleared: handleAudioQueueCleared,
+      playback_queue_updated: handlePlaybackQueueUpdated,
+      sfx_available: sfx.handleSfxAvailable,
+      // Collaborative editing events (replacing old collab WebSocket)
+      player_list: (data) => {
+        if (Array.isArray(data.players)) {
+          setCollabPlayers(data.players);
+        }
+      },
+      initial_state: (data) => {
+        if (Array.isArray(data.allPlayers)) {
+          setCollabPlayers(data.allPlayers);
+        }
+      },
+      registered: (data) => {
+        console.log('[Collab] DM registered via Socket.IO:', data);
+        setCollabIsConnected(true);
+      },
     },
   });
+
+  // Keep the socket ref updated for components that need the ref pattern
+  useEffect(() => {
+    dmSocketRef.current = dmSocket;
+    if (dmSocket) {
+      setDmSocketVersion((v) => v + 1);
+    }
+  }, [dmSocket]);
+
+  // Sync collab connection state with Socket.IO connection
+  useEffect(() => {
+    setCollabIsConnected(dmIsConnected);
+  }, [dmIsConnected]);
+
+  // Set collab player ID from user email
+  useEffect(() => {
+    if (user?.email) {
+      const playerId = `${user.email}:dm`;
+      setCollabPlayerId(playerId);
+      // Register with backend when connected
+      if (dmIsConnected && dmSocket) {
+        dmSocket.emit('register', { playerId, playerName: 'DM' });
+      }
+    }
+  }, [user?.email, dmIsConnected, dmSocket]);
 
   const sendAudioPlayedAck = useCallback((campaignId, chunkIds) => {
     if (!chunkIds || chunkIds.length === 0) {
@@ -996,35 +909,16 @@ function App() {
     }
 
     const resolvedCampaignId = campaignId || currentCampaignId;
-    const socket = dmWebSocketRef.current;
-
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      const payload = {
-        type: 'audio_played',
-        campaign_id: resolvedCampaignId,
-        chunk_ids: chunkIds,
-        connection_token: connectionTokenRef?.current || undefined,
-      };
-      socket.send(JSON.stringify(payload));
-      console.log('[AUDIO_DEBUG] 📤 Sent audio_played acknowledgment via WS | campaign=%s chunk_ids=%s token=%s',
-        resolvedCampaignId, JSON.stringify(chunkIds), connectionTokenRef?.current ? 'present' : 'missing');
-      return;
-    }
-
-    const baseUrl = API_CONFIG.BACKEND_URL || '';
-    chunkIds.forEach(async (chunkId) => {
-      const url = `${baseUrl}/api/audio/played/${chunkId}`;
-      try {
-        await fetch(url, {
-          method: 'POST',
-          credentials: 'include',
-        });
-        console.log('[AUDIO_DEBUG] ✅ Fallback POST audio_played | chunk_id=%s', chunkId);
-      } catch (error) {
-        console.warn('[AUDIO_DEBUG] ⚠️ Failed fallback audio_played POST for chunk %s: %s', chunkId, error);
-      }
-    });
-  }, [dmWebSocketRef, currentCampaignId]);
+    const payload = {
+      campaign_id: resolvedCampaignId,
+      chunk_ids: chunkIds,
+      connection_token: dmConnectionToken || undefined,
+    };
+    // Socket.IO handles buffering/reconnection automatically
+    dmEmit('audio_played', payload);
+    console.log('[AUDIO_DEBUG] 📤 Sent audio_played acknowledgment via Socket.IO | campaign=%s chunk_ids=%s token=%s',
+      resolvedCampaignId, JSON.stringify(chunkIds), dmConnectionToken ? 'present' : 'missing');
+  }, [dmEmit, dmConnectionToken, currentCampaignId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -1095,31 +989,101 @@ function App() {
         return;
       }
 
-      const socket = dmWebSocketRef.current;
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
+      if (!dmSocket?.connected) {
         console.warn('[AUDIO_DEBUG] ⚠️ Cannot acknowledge chunk - DM socket unavailable');
         return;
       }
 
       const payload = {
-        type: 'audio_played',
         campaign_id: sessionId,
         chunk_ids: [chunkId],
-        connection_token: connectionTokenRef?.current || undefined,
+        connection_token: dmConnectionToken || undefined,
       };
-      socket.send(JSON.stringify(payload));
+      dmEmit('audio_played', payload);
       console.log('[AUDIO_DEBUG] 📤 Sent queued audio acknowledgment | session=%s chunk_id=%s token=%s',
-        sessionId, chunkId, connectionTokenRef?.current ? 'present' : 'missing');
+        sessionId, chunkId, dmConnectionToken ? 'present' : 'missing');
     };
 
     window.addEventListener('gaia:audio-played', handleQueuedAudioPlayed);
     return () => {
       window.removeEventListener('gaia:audio-played', handleQueuedAudioPlayed);
     };
-  }, [dmWebSocketRef, currentCampaignId, connectionTokenRef]);
+  }, [dmSocket, dmEmit, dmConnectionToken, currentCampaignId]);
 
-  // Old WebSocket code removed - now handled by useDMWebSocket hook
+  // Old WebSocket code removed - now handled by useGameSocket hook
   // Control panel ref and keyboard shortcuts now handled by hooks (see above)
+
+  // Voice transcription handler - writes to collaborative editor via Socket.IO
+  // NOTE: Must be defined AFTER useGameSocket hook since it uses dmIsConnected and dmEmit
+  const handleVoiceTranscription = useCallback((transcribedText, metadata) => {
+    console.log('🎤 [DM] Voice transcription received:', transcribedText, metadata);
+
+    if (!isTranscribingRef.current) {
+      console.warn('🎤 [DM] Ignoring transcription because mic is not active');
+      return;
+    }
+
+    if (!dmIsConnected) {
+      console.warn('🎤 [DM] Socket.IO not connected, voice text not sent');
+      return;
+    }
+
+    dmEmit('voice_transcription', {
+      text: transcribedText,
+      is_partial: metadata?.is_partial ?? false
+    });
+
+    console.log('🎤 [DM] Sent voice_transcription via Socket.IO, is_partial:', metadata?.is_partial);
+  }, [dmIsConnected, dmEmit]);
+
+  // Toggle DM voice transcription on/off
+  const toggleVoiceTranscription = useCallback(async () => {
+    if (isTranscribing) {
+      setIsTranscribing(false);
+      setVoiceActivityLevel(0);
+      return;
+    }
+
+    const sendVoiceSessionStart = () => {
+      if (dmIsConnected) {
+        dmEmit('voice_session_start', {});
+        console.log('🎤 [DM] Sent voice_session_start via Socket.IO');
+      }
+    };
+
+    if (audioPermissionState !== 'granted') {
+      try {
+        console.log('🎤 [DM] Requesting microphone permission for transcription...');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 16000
+          }
+        });
+
+        stream.getTracks().forEach(track => track.stop());
+
+        setAudioPermissionState('granted');
+        localStorage.setItem('audioPermissionState', 'granted');
+        sendVoiceSessionStart();
+        setIsTranscribing(true);
+      } catch (error) {
+        console.error('❌ [DM] Microphone permission denied:', error);
+        setAudioPermissionState('denied');
+        localStorage.setItem('audioPermissionState', 'denied');
+      }
+    } else {
+      sendVoiceSessionStart();
+      setIsTranscribing(true);
+    }
+  }, [isTranscribing, audioPermissionState, dmIsConnected, dmEmit]);
+
+  useEffect(() => {
+    transcriptionRef.current = {
+      toggleRecording: toggleVoiceTranscription,
+    };
+  }, [toggleVoiceTranscription]);
 
   // Debug logging for isLoading changes
   useEffect(() => {
@@ -1454,7 +1418,7 @@ function App() {
               <>
                 <ConnectedPlayers
                   campaignId={currentCampaignId}
-                  dmWebSocket={dmWebSocketRef.current}
+                  dmSocket={dmSocket}
                 />
                 <CampaignNameDisplay name={campaignName || currentCampaignId} />
               </>
@@ -1503,7 +1467,7 @@ function App() {
                 campaignId={resolvedCampaignIdForSocket}
                 currentUserId={user?.user_id || null}
                 currentUserProfile={currentUserProfile}
-                webSocketRef={dmWebSocketRef}
+                socketRef={dmSocketRef}
                 webSocketVersion={dmSocketVersion}
                 onRoomEvent={handleRoomEvent}
               >
@@ -1529,8 +1493,8 @@ function App() {
                 voiceActivityLevel={voiceActivityLevel}
                 audioPermissionState={audioPermissionState}
                 chatInputRef={chatInputRef}
-                // Collaborative editing props
-                collabWebSocket={collabWsRef.current}
+                // Collaborative editing props (now via Socket.IO)
+                collabWebSocket={dmSocket}
                 collabPlayerId={collabPlayerId}
                 collabPlayerName={collabPlayerName}
                 collabAllPlayers={collabPlayers}

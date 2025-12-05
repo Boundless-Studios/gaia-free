@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from auth.src.flexible_auth import optional_auth
-from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
+from gaia.connection.socketio_broadcaster import socketio_broadcaster
 from gaia_private.session.session_manager import SessionNotFoundError, SessionManager
 from gaia.infra.audio.auto_tts_service import auto_tts_service
 from gaia.infra.audio.playback_request_writer import PlaybackRequestWriter
@@ -106,13 +106,13 @@ async def debug_streaming_test(
     midpoint = len(narrative) // 2
     narrative_chunks = [narrative[:midpoint], narrative[midpoint:]]
     for chunk in narrative_chunks:
-        await campaign_broadcaster.broadcast_narrative_chunk(
+        await socketio_broadcaster.broadcast_narrative_chunk(
             payload.session_id,
             chunk,
             is_final=False,
         )
     # Final empty chunk to signal completion.
-    await campaign_broadcaster.broadcast_narrative_chunk(
+    await socketio_broadcaster.broadcast_narrative_chunk(
         payload.session_id,
         "",
         is_final=True,
@@ -130,7 +130,7 @@ async def debug_streaming_test(
 
         writer = PlaybackRequestWriter(
             session_id=payload.session_id,
-            broadcaster=campaign_broadcaster,
+            broadcaster=socketio_broadcaster,
             playback_group="narrative",
         )
 
@@ -153,7 +153,7 @@ async def debug_streaming_test(
                 if provider:
                     first_chunk_payload.setdefault("provider", provider)
 
-                await campaign_broadcaster.broadcast_campaign_update(
+                await socketio_broadcaster.broadcast_campaign_update(
                     payload.session_id,
                     "audio_available",
                     {
@@ -173,15 +173,15 @@ async def debug_streaming_test(
     midpoint_resp = len(response) // 2
     response_chunks = [response[:midpoint_resp], response[midpoint_resp:]]
     for chunk in response_chunks:
-        await campaign_broadcaster.broadcast_player_response_chunk(
+        await socketio_broadcaster.broadcast_campaign_update(
             payload.session_id,
-            chunk,
-            is_final=False,
+            "player_response_chunk",
+            {"content": chunk, "is_final": False},
         )
-    await campaign_broadcaster.broadcast_player_response_chunk(
+    await socketio_broadcaster.broadcast_campaign_update(
         payload.session_id,
-        "",
-        is_final=True,
+        "player_response_chunk",
+        {"content": "", "is_final": True},
     )
 
     return {

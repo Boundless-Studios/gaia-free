@@ -15,7 +15,7 @@ from sqlalchemy import select
 
 from gaia_private.session.room_service import RoomService
 from gaia_private.session.session_models import CampaignSession, CampaignSessionMember, RoomSeat
-from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
+from gaia.connection.socketio_broadcaster import socketio_broadcaster
 
 logger = logging.getLogger(__name__)
 
@@ -228,13 +228,13 @@ async def occupy_seat(
                 new_owner = campaign.owner_user_id
                 owner_was_claimed = bool(not previous_campaign_owner and new_owner)
 
-        from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-
-        await campaign_broadcaster.broadcast_seat_updated(
+        await socketio_broadcaster.broadcast_seat_updated(
             campaign_id,
             seat_info.__dict__,
         )
         _sync_connection_seat(campaign_id, seat_info.owner_user_id, seat_info.seat_id)
+        # Handle seat change via legacy broadcaster (connection registry updates)
+        from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
         await campaign_broadcaster.handle_seat_change(
             campaign_id,
             seat_info.seat_id,
@@ -274,13 +274,13 @@ async def release_seat(
             room_service = RoomService(sync_db)
             seat_info = room_service.release_seat(seat_id, user_id)
 
-        from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-
-        await campaign_broadcaster.broadcast_seat_updated(
+        await socketio_broadcaster.broadcast_seat_updated(
             campaign_id,
             seat_info.__dict__,
         )
         _sync_connection_seat(campaign_id, user_id, None)
+        # Handle seat change via legacy broadcaster (connection registry updates)
+        from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
         await campaign_broadcaster.handle_seat_change(
             campaign_id,
             seat_info.seat_id,
@@ -319,13 +319,13 @@ async def vacate_seat(
             room_service = RoomService(sync_db)
             seat_info, previous_owner = room_service.vacate_seat(str(seat.seat_id), user_id)
 
-        from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-
-        await campaign_broadcaster.broadcast_seat_updated(
+        await socketio_broadcaster.broadcast_seat_updated(
             campaign_id,
             seat_info.__dict__,
         )
         _sync_connection_seat(campaign_id, previous_owner, None)
+        # Handle seat change via legacy broadcaster (connection registry updates)
+        from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
         await campaign_broadcaster.handle_seat_change(
             campaign_id,
             seat_info.seat_id,
@@ -333,7 +333,7 @@ async def vacate_seat(
             None,
         )
         if request.notify_user and previous_owner:
-            await campaign_broadcaster.broadcast_player_vacated(
+            await socketio_broadcaster.broadcast_player_vacated(
                 campaign_id,
                 seat_info.seat_id,
                 previous_owner,
@@ -371,13 +371,11 @@ async def assign_character(
             )
             seat_info = room_service._serialize_single_seat(seat)
 
-        from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-
-        await campaign_broadcaster.broadcast_seat_updated(
+        await socketio_broadcaster.broadcast_seat_updated(
             campaign_id,
             seat_info.__dict__,
         )
-        await campaign_broadcaster.broadcast_seat_character_update(
+        await socketio_broadcaster.broadcast_seat_character_update(
             campaign_id,
             seat_info.seat_id,
             character_id,
@@ -453,7 +451,6 @@ async def start_campaign(
         # Now broadcast campaign_started AFTER method returns but BEFORE async task streams
         # This ensures frontend receives the event before narrative chunks arrive
         from datetime import datetime, timezone as tz
-        from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
 
         with db_manager.get_sync_session() as sync_db:
             campaign = sync_db.get(CampaignSession, campaign_id)
@@ -470,7 +467,7 @@ async def start_campaign(
                     campaign_id,
                     sorted(payload.keys()),
                 )
-                await campaign_broadcaster.broadcast_campaign_started(
+                await socketio_broadcaster.broadcast_campaign_started(
                     campaign_id,
                     payload,
                 )

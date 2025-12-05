@@ -293,15 +293,14 @@ async def lifespan(app: FastAPI):
     # Initialize the unified orchestrator
     orchestrator = Orchestrator()
 
-    # Initialize WebSocket broadcasting system (will be configured with campaign_service later)
-    from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-    orchestrator.campaign_broadcaster = campaign_broadcaster
+    # Set up unified broadcaster for orchestrator (sends to both WebSocket + Socket.IO)
+    orchestrator.campaign_broadcaster = socketio_broadcaster
 
     # Store orchestrator in app state for access in endpoints
     app.state.orchestrator = orchestrator
     session_registry = SessionRegistry()
     app.state.session_registry = session_registry
-    app.state.session_manager = SessionManager(campaign_broadcaster=campaign_broadcaster)
+    app.state.session_manager = SessionManager(campaign_broadcaster=socketio_broadcaster)
 
     # Initialize room seats for campaigns seeded from filesystem
     # This runs after SessionRegistry._seed_db_from_memory() has populated campaign_sessions
@@ -388,7 +387,7 @@ app = FastAPI(title="Gaia Web API", version="1.0.0", lifespan=lifespan)
 
 # Wrap FastAPI app with Socket.IO for real-time communication
 # This creates a combined ASGI app that handles both HTTP/WebSocket (FastAPI)
-# and Socket.IO connections
+# and Socket.IO connections. Use socket_app for uvicorn.
 socket_app = create_socketio_app(app)
 
 # Include Auth0 endpoints
@@ -769,8 +768,7 @@ async def synthesize_tts(
                 response_payload["audio"] = audio_payload
                 if request.session_id:
                     try:
-                        from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-                        await campaign_broadcaster.broadcast_campaign_update(
+                        await socketio_broadcaster.broadcast_campaign_update(
                             request.session_id,
                             "audio_available",
                             {
@@ -793,8 +791,7 @@ async def synthesize_tts(
             }
             if request.session_id:
                 try:
-                    from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-                    await campaign_broadcaster.broadcast_campaign_update(
+                    await socketio_broadcaster.broadcast_campaign_update(
                         request.session_id,
                         "audio_available",
                         {
@@ -1230,8 +1227,7 @@ async def cancel_audio_playback(
 
             if success:
                 # Broadcast cancellation to all connections
-                from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-                await campaign_broadcaster.broadcast_campaign_update(
+                await socketio_broadcaster.broadcast_campaign_update(
                     campaign_id,
                     "audio_playback_cancelled",
                     {
@@ -1265,8 +1261,7 @@ async def cancel_audio_playback(
 
         if cancelled_count > 0:
             # Broadcast cancellation to all connections
-            from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-            await campaign_broadcaster.broadcast_campaign_update(
+            await socketio_broadcaster.broadcast_campaign_update(
                 campaign_id,
                 "audio_playback_cancelled",
                 {
@@ -2544,10 +2539,9 @@ async def generate_image(
                     campaign_id=request.campaign_id or "default"
                 )
 
-                # Broadcast image generation event via WebSocket for instant UI updates
+                # Broadcast image generation event via unified broadcaster for instant UI updates
                 if request.campaign_id:
-                    from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-                    await campaign_broadcaster.broadcast_campaign_update(
+                    await socketio_broadcaster.broadcast_campaign_update(
                         request.campaign_id,
                         "image_generated",
                         {
@@ -2558,7 +2552,7 @@ async def generate_image(
                             "prompt": request.prompt,
                         }
                     )
-                    logger.info(f"📸 Broadcasted image_generated event for {filename} to campaign {request.campaign_id}")
+                    logger.info(f"Broadcasted image_generated event for {filename} to campaign {request.campaign_id}")
 
             return {
                 "status": "success",
@@ -2669,418 +2663,57 @@ async def switch_image_model(
     return result
 
 
-# WebSocket endpoints for real-time campaign synchronization
-@app.websocket("/ws/campaign/player")
-async def campaign_player_websocket(websocket: WebSocket):
-    """WebSocket endpoint for players to receive real-time campaign updates."""
-    from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-
-    connection = None
-    try:
-        logger.debug("[WS][player] Connection attempt from origin=%s ua=%s", websocket.headers.get("origin"), websocket.headers.get("user-agent"))
-
-        # Validate session_id
-        session_id = websocket.query_params.get("session_id")
-        if not session_id:
-            await send_error_and_close(websocket, 4404, "session_id query parameter required")
-            return
-
-        # Check if campaign exists before allowing WebSocket connection
-        # This prevents creating empty campaigns when connecting to non-existent URLs
-        manager = SimpleCampaignManager()
-        campaign_dir = manager.storage.resolve_session_dir(session_id, create=False)
-
-        if campaign_dir is None:
-            logger.warning(f"Campaign not found, rejecting player WebSocket: {session_id}")
-            await send_error_and_close(websocket, 4404, f"Campaign not found: {session_id}")
-            return
-
-        # Enforce Origin allowlist (in prod by default)
-        origin = websocket.headers.get("origin")
-        if WS_ENFORCE_ORIGIN:
-            allowed = _is_origin_allowed(origin)
-            logger.info(
-                "[WS][player] Origin check: origin=%s allowed=%s enforce=%s",
-                origin,
-                allowed,
-                WS_ENFORCE_ORIGIN,
-            )
-        if WS_ENFORCE_ORIGIN and not _is_origin_allowed(origin):
-            await send_error_and_close(websocket, 4403, "Forbidden origin")
-            return
-
-        # Try to authenticate user from initial connection (headers/cookies)
-        # If auth fails but is required, we'll accept the connection and wait for auth message
-        session_registry: Optional[SessionRegistry] = getattr(app.state, "session_registry", None)  # type: ignore[name-defined]
-        user_obj = None
-        auth_required = False
-
-        try:
-            user_obj = await authenticate_ws_user(
-                websocket, session_registry, session_id, WS_ALLOW_QUERY_TOKEN
-            )
-
-            # Check if ACL is required for this session
-            if session_registry:
-                meta = session_registry.get_metadata(session_id)
-                if meta and (
-                    meta.get("owner_user_id")
-                    or meta.get("owner_email")
-                    or (meta.get("member_user_ids") or [])
-                    or (meta.get("member_emails") or [])
-                ):
-                    auth_required = True
-            logger.info(
-                "[WS][player] ACL required=%s token_provided=%s via_header=%s via_query=%s via_cookie=%s",
-                auth_required,
-                bool(websocket.headers.get("authorization")) or bool(websocket.query_params.get("token")) or bool(websocket.cookies),
-                bool(websocket.headers.get("authorization")),
-                bool(websocket.query_params.get("token")),
-                bool(websocket.cookies),
-            )
-
-            # Enforce membership/ownership if authentication was provided
-            if user_obj and auth_required:
-                _enforce_session_access(session_registry, session_id, user_obj)
-                logger.debug("[WS][player] Initial auth OK: user_id=%s email=%s", getattr(user_obj, "user_id", None), getattr(user_obj, "email", None))
-
-        except HTTPException as exc:
-            # If auth failed but is required, accept connection and wait for auth message
-            # The auth message handler will validate the token
-            if exc.status_code == 401:
-                logger.debug("[WS][player] No initial auth; will wait for auth message (session=%s)", session_id)
-                auth_required = True
-            else:
-                # Other errors (403, 404) should close immediately
-                code_map = {403: 4403, 404: 4404}
-                close_code = code_map.get(exc.status_code, 1008)
-                reason = str(exc.detail)
-                await send_error_and_close(websocket, close_code, reason)
-                return
-
-        user_email = getattr(user_obj, 'email', None) if user_obj else None
-        user_display_name = getattr(user_obj, 'display_name', None) if user_obj else None
-        connection = await campaign_broadcaster.connect_player(
-            websocket,
-            session_id,
-            user_id=getattr(user_obj, 'user_id', None) if user_obj else None,
-            user_email=user_email,
-            display_name=user_display_name,
-        )
-        connection.auth_required = auth_required
-        connection.authenticated_user = user_obj
-        logger.debug("[WS][player] Connected: session=%s auth_required=%s", connection.session_id, connection.auth_required)
-
-        # Initialize audio WebSocket handler
-        audio_handler = AudioWebSocketHandler(campaign_broadcaster)
-
-        # Custom message handler for player-specific messages
-        async def handle_player_message(ws, conn, msg_type, data):
-            if msg_type == "yjs_update":
-                # Yjs CRDT update payload from a collaborative editor client
-                campaign_id = data.get("sessionId") or data.get("campaign_id") or conn.session_id
-                update_payload = data.get("update")
-                if campaign_id and update_payload is not None:
-                    await campaign_broadcaster.broadcast_campaign_update(
-                        campaign_id, "yjs_update",
-                        {
-                            "sessionId": campaign_id,
-                            "playerId": data.get("playerId"),
-                            "update": update_payload,
-                            "timestamp": data.get("timestamp", datetime.now().isoformat())
-                        }
-                    )
-
-            elif msg_type == "awareness_update":
-                # Awareness update keeps remote cursors/selections in sync
-                campaign_id = data.get("sessionId") or data.get("campaign_id") or conn.session_id
-                update_payload = data.get("update")
-                if campaign_id and update_payload is not None:
-                    await campaign_broadcaster.broadcast_campaign_update(
-                        campaign_id, "awareness_update",
-                        {
-                            "sessionId": campaign_id,
-                            "playerId": data.get("playerId"),
-                            "update": update_payload,
-                            "timestamp": data.get("timestamp", datetime.now().isoformat())
-                        }
-                    )
-
-            elif msg_type == "audio_played":
-                # Mark audio chunk(s) as played for session persistence
-                await audio_handler.handle_audio_played(data, conn.session_id, "player", conn)
-            else:
-                logger.info(f"Player sent message: {msg_type}")
-
-        # Use generic message loop with custom handler
-        await ws_message_loop(websocket, connection, handle_player_message, session_registry, session_id)
-
-    except WebSocketDisconnect:
-        logger.info("[WS][player] Disconnected normally (session=%s)", getattr(connection, "session_id", None))
-    except Exception as e:
-        logger.error("[WS][player] Error in WebSocket: %s", e)
-    finally:
-        if connection:
-            await campaign_broadcaster.disconnect_player(connection)
+# Legacy WebSocket endpoints removed - all real-time communication via Socket.IO
+# Socket.IO namespace: /campaign (see socketio_server.py)
 
 
-@app.websocket("/ws/campaign/dm")
-async def campaign_dm_websocket(websocket: WebSocket):
-    """WebSocket endpoint for DM bidirectional communication (optional)."""
-    from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-
-    connection = None
-    try:
-        logger.debug("[WS][dm] Connection attempt from origin=%s ua=%s", websocket.headers.get("origin"), websocket.headers.get("user-agent"))
-
-        # Validate session_id
-        session_id = websocket.query_params.get("session_id")
-        if not session_id:
-            await send_error_and_close(websocket, 4404, "session_id query parameter required")
-            return
-
-        # Check if campaign exists before allowing WebSocket connection
-        # This prevents creating empty campaigns when connecting to non-existent URLs
-        manager = SimpleCampaignManager()
-        campaign_dir = manager.storage.resolve_session_dir(session_id, create=False)
-
-        if campaign_dir is None:
-            logger.warning(f"Campaign not found, rejecting DM WebSocket: {session_id}")
-            await send_error_and_close(websocket, 4404, f"Campaign not found: {session_id}")
-            return
-
-        # Enforce Origin allowlist (in prod by default)
-        origin = websocket.headers.get("origin")
-        if WS_ENFORCE_ORIGIN:
-            allowed = _is_origin_allowed(origin)
-            logger.info(
-                "[WS][dm] Origin check: origin=%s allowed=%s enforce=%s",
-                origin,
-                allowed,
-                WS_ENFORCE_ORIGIN,
-            )
-        if WS_ENFORCE_ORIGIN and not _is_origin_allowed(origin):
-            await send_error_and_close(websocket, 4403, "Forbidden origin")
-            return
-
-        # Try to authenticate user from initial connection (headers/cookies)
-        # If auth fails but is required, we'll accept the connection and wait for auth message
-        session_registry: Optional[SessionRegistry] = getattr(app.state, "session_registry", None)  # type: ignore[name-defined]
-        user_obj = None
-        auth_required = False
-
-        try:
-            user_obj = await authenticate_ws_user(
-                websocket, session_registry, session_id, WS_ALLOW_QUERY_TOKEN
-            )
-
-            # Check if ACL is required for this session
-            if session_registry:
-                meta = session_registry.get_metadata(session_id)
-                if meta and (
-                    meta.get("owner_user_id")
-                    or meta.get("owner_email")
-                    or (meta.get("member_user_ids") or [])
-                    or (meta.get("member_emails") or [])
-                ):
-                    auth_required = True
-            logger.info(
-                "[WS][dm] ACL required=%s token_provided=%s via_header=%s via_query=%s via_cookie=%s",
-                auth_required,
-                bool(websocket.headers.get("authorization")) or bool(websocket.query_params.get("token")) or bool(websocket.cookies),
-                bool(websocket.headers.get("authorization")),
-                bool(websocket.query_params.get("token")),
-                bool(websocket.cookies),
-            )
-
-            # Enforce membership/ownership if authentication was provided
-            if user_obj and auth_required:
-                _enforce_session_access(session_registry, session_id, user_obj)
-                logger.info("[WS][dm] Initial auth OK: user_id=%s email=%s", getattr(user_obj, "user_id", None), getattr(user_obj, "email", None))
-
-        except HTTPException as exc:
-            # If auth failed but is required, accept connection and wait for auth message
-            # The auth message handler will validate the token
-            if exc.status_code == 401:
-                logger.debug("[WS][dm] No initial auth; will wait for auth message (session=%s)", session_id)
-                auth_required = True
-            else:
-                # Other errors (403, 404) should close immediately
-                code_map = {403: 4403, 404: 4404}
-                close_code = code_map.get(exc.status_code, 1008)
-                reason = str(exc.detail)
-                await send_error_and_close(websocket, close_code, reason)
-                return
-
-        user_email = getattr(user_obj, 'email', None) if user_obj else None
-        user_display_name = getattr(user_obj, 'display_name', None) if user_obj else None
-        connection = await campaign_broadcaster.connect_dm(
-            websocket,
-            session_id,
-            user_id=getattr(user_obj, 'user_id', None) if user_obj else None,
-            user_email=user_email,
-            display_name=user_display_name,
-        )
-        connection.auth_required = auth_required
-        connection.authenticated_user = user_obj
-        logger.debug("[WS][dm] Connected: session=%s auth_required=%s", connection.session_id, connection.auth_required)
-
-        # Initialize audio WebSocket handler
-        audio_handler = AudioWebSocketHandler(campaign_broadcaster)
-
-        # Custom message handler for DM-specific messages
-        async def handle_dm_message(ws, conn, msg_type, data):
-            if msg_type == "broadcast_test":
-                # Allow DM to trigger test broadcasts
-                await campaign_broadcaster.broadcast_campaign_update(
-                    conn.session_id,
-                    "test_message",
-                    {
-                        "campaign_id": conn.session_id,
-                        "message": data.get("message", "Test broadcast from DM")
-                    }
-                )
-            elif msg_type == "audio_played":
-                # Mark audio chunk(s) as played for session persistence
-                await audio_handler.handle_audio_played(data, conn.session_id, "dm", conn)
-            elif msg_type == "start_audio_stream":
-                # Start synchronized audio streaming
-                await audio_handler.handle_start_audio_stream(data, conn.session_id)
-            elif msg_type == "stop_audio_stream":
-                # Stop synchronized audio streaming
-                await audio_handler.handle_stop_audio_stream(data, conn.session_id)
-            elif msg_type == "clear_audio_queue":
-                await audio_handler.handle_clear_audio_queue(data, conn.session_id, ws)
-            elif msg_type == "get_stream_position":
-                # Get current playback position
-                await audio_handler.handle_get_stream_position(data, conn.session_id, ws)
-            else:
-                logger.info(f"DM sent message: {msg_type}")
-
-        # Use generic message loop with custom handler
-        await ws_message_loop(websocket, connection, handle_dm_message, session_registry, session_id)
-
-    except WebSocketDisconnect:
-        logger.info("[WS][dm] Disconnected normally (session=%s)", getattr(connection, "session_id", None))
-    except Exception as e:
-        logger.error("[WS][dm] Error in WebSocket: %s", e)
-    finally:
-        if connection:
-            await campaign_broadcaster.disconnect_dm(connection)
-
-
-@app.websocket("/ws/collab/session/{session_id}")
-async def collaborative_session_websocket(websocket: WebSocket, session_id: str):
-    """WebSocket endpoint for collaborative text editing sessions.
-
-    This endpoint provides real-time text synchronization using Yjs CRDT
-    for any session, independent of campaigns. Perfect for testing and
-    general-purpose collaborative editing.
-    """
-    from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster, ConnectionInfo
-    from gaia.connection.websocket.collaborative import CollaborativeSession
-    from gaia.connection.websocket.collaborative.handlers import CollaborativeMessageHandler
-
-    connection = None
-    handler = None
-
-    try:
-        logger.debug("[WS][collab] Connection attempt for session=%s origin=%s",
-                    session_id, websocket.headers.get("origin"))
-
-        # Accept the connection
-        await websocket.accept()
-
-        # Create connection info
-        connection = ConnectionInfo(
-            websocket=websocket,
-            session_id=session_id,
-            connection_type="collab"
-        )
-
-        # Register in session state for broadcasting
-        state = campaign_broadcaster._get_state(session_id)
-        state.player_connections.append(connection)
-
-        # Get or create collaborative session
-        if not hasattr(state, 'collab_session'):
-            state.collab_session = CollaborativeSession(session_id)
-
-        # Create message handler
-        handler = CollaborativeMessageHandler(
-            session=state.collab_session,
-            websocket=websocket,
-            broadcaster=campaign_broadcaster
-        )
-
-        logger.info("[WS][collab] Connected to session=%s (total connections: %d)",
-                   session_id, len(state.player_connections))
-
-        # Message handling loop
-        while True:
-            raw_message = await websocket.receive_text()
-            await handler.handle_message(raw_message)
-
-    except WebSocketDisconnect:
-        logger.info("[WS][collab] Client disconnected from session=%s", session_id)
-    except Exception as e:
-        logger.error("[WS][collab] Connection error: %s", e, exc_info=True)
-    finally:
-        # Clean up connection
-        if connection:
-            state = campaign_broadcaster.sessions.get(session_id)
-            if state and connection in state.player_connections:
-                state.player_connections.remove(connection)
-                logger.info("[WS][collab] Removed connection from session=%s (remaining: %d)",
-                          session_id, len(state.player_connections))
-
-                # Mark player as disconnected (don't unregister - they might reconnect)
-                if handler and handler.player_id and hasattr(state, 'collab_session'):
-                    player_info = state.collab_session.players.get(handler.player_id)
-                    if player_info:
-                        from datetime import datetime
-                        player_info.disconnected_at = datetime.now()
-                        logger.info("[WS][collab] Marked player %s (%s) as disconnected",
-                                   player_info.name, handler.player_id)
-
-                        # Broadcast updated roster so clients hide offline players immediately
-                        players_payload = state.collab_session.get_all_players()
-                        await campaign_broadcaster.broadcast_campaign_update(
-                            session_id,
-                            "player_list",
-                            {
-                                "sessionId": session_id,
-                                "players": players_payload,
-                            },
-                        )
-
-
-@app.get("/api/websocket/stats")
-async def get_websocket_stats(
+@app.get("/api/socketio/stats")
+async def get_socketio_stats(
     current_user = optional_auth()
 ):
-    """Get WebSocket connection statistics."""
-    from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
-    return campaign_broadcaster.get_connection_stats()
+    """Get Socket.IO connection statistics."""
+    from gaia.connection.socketio_server import get_room_count, sio
 
-@app.post("/api/websocket/refresh-campaign")
+    # Get all rooms in the /campaign namespace
+    rooms = {}
+    try:
+        manager = sio.manager
+        if hasattr(manager, 'rooms') and '/campaign' in manager.rooms:
+            for room_name in manager.rooms['/campaign']:
+                if room_name:  # Skip default room (empty string)
+                    rooms[room_name] = get_room_count(room_name)
+    except Exception as e:
+        logger.warning("Failed to get room stats: %s", e)
+
+    return {
+        "transport": "socket.io",
+        "namespace": "/campaign",
+        "rooms": rooms,
+        "total_connections": sum(rooms.values()),
+    }
+
+@app.post("/api/socketio/refresh-campaign")
 async def refresh_campaign_state(
     session_id: Optional[str] = Query(default=None),
     current_user = optional_auth()
 ):
     """Force refresh the current campaign state and broadcast to all players."""
-    from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
     global orchestrator
-    
+
     if not session_id:
         if not orchestrator or not orchestrator.active_campaign_id:
             raise HTTPException(status_code=400, detail="No active campaign to refresh")
         session_id = orchestrator.active_campaign_id
-    
+
     if not session_id:
         raise HTTPException(status_code=400, detail="No active campaign to refresh")
-    
-    await campaign_broadcaster.force_refresh_campaign_state(session_id)
+
+    # Broadcast campaign update via Socket.IO
+    await socketio_broadcaster.broadcast_campaign_update(
+        session_id,
+        "campaign_updated",
+        {"campaign_id": session_id, "refresh": True}
+    )
     return {"success": True, "message": f"Campaign state for {session_id} refreshed and broadcasted"}
 
 

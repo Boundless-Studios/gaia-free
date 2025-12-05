@@ -152,20 +152,114 @@ async def authenticate_socket(auth: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             return {"user_id": None, "user_email": None, "session_id": session_id}
         return None
 
-    # Validate JWT token
+    # Validate JWT token using Auth0 verifier
     try:
-        from auth.src.flexible_auth import validate_token
-        user_info = await validate_token(token)
-        if user_info:
-            return {
-                "user_id": user_info.get("sub") or user_info.get("user_id"),
-                "user_email": user_info.get("email"),
-                "session_id": session_id,
-            }
+        from auth.src.auth0_jwt_verifier import get_auth0_verifier
+        verifier = get_auth0_verifier()
+        if verifier:
+            # verify_access_token is synchronous
+            user_info = verifier.verify_access_token(token)
+            if user_info:
+                return {
+                    "user_id": user_info.get("sub") or user_info.get("user_id"),
+                    "user_email": user_info.get("email"),
+                    "session_id": session_id,
+                }
+        else:
+            logger.warning("Auth0 verifier not configured")
     except Exception as e:
         logger.warning("Socket auth token validation failed: %s", e)
 
     return None
+
+
+# =============================================================================
+# Session Access Helpers
+# =============================================================================
+
+def _check_session_access(session_id: str, user_id: Optional[str], user_email: Optional[str]) -> bool:
+    """Check if user has access to the session.
+
+    Args:
+        session_id: Campaign/session ID to check access for
+        user_id: User's ID (from Auth0, e.g., 'google-oauth2|123...')
+        user_email: User's email (optional)
+
+    Returns:
+        True if user has access, False otherwise
+    """
+    # In development mode without auth, allow all
+    if os.environ.get("DISABLE_AUTH", "").lower() == "true":
+        return True
+
+    # Anonymous users have no access to protected sessions
+    if not user_id and not user_email:
+        return False
+
+    try:
+        # Check session registry for access
+        from gaia_private.session.session_registry import SessionRegistry
+        # Use a temporary instance - this is synchronous
+        # The session registry checks DB for campaign membership
+        from db.src.connection import db_manager
+        from gaia_private.session.session_models import CampaignSession, CampaignSessionMember
+        from sqlalchemy import select
+
+        with db_manager.get_sync_session() as db_session:
+            # Get the campaign
+            campaign = db_session.get(CampaignSession, session_id)
+            if not campaign:
+                # Campaign doesn't exist in DB - allow for legacy/file-based campaigns
+                logger.debug("[SocketIO] Campaign %s not in DB, allowing access", session_id)
+                return True
+
+            # Check if user is owner by user_id
+            if campaign.owner_user_id and str(campaign.owner_user_id) == str(user_id):
+                return True
+
+            # Check if user is owner by email (Auth0 user_id may differ from stored owner_user_id)
+            if user_email and campaign.owner_email and campaign.owner_email.lower() == user_email.lower():
+                logger.debug(
+                    "[SocketIO] User %s matched by email %s as owner of session %s",
+                    user_id, user_email, session_id
+                )
+                return True
+
+            # Check if user is a member by user_id
+            if user_id:
+                stmt = select(CampaignSessionMember).where(
+                    CampaignSessionMember.session_id == session_id,
+                    CampaignSessionMember.user_id == str(user_id),
+                )
+                member = db_session.execute(stmt).scalars().first()
+                if member:
+                    return True
+
+            # Check if user is a member by email
+            if user_email:
+                stmt = select(CampaignSessionMember).where(
+                    CampaignSessionMember.session_id == session_id,
+                    CampaignSessionMember.user_email == user_email,
+                )
+                member = db_session.execute(stmt).scalars().first()
+                if member:
+                    logger.debug(
+                        "[SocketIO] User %s matched by email %s as member of session %s",
+                        user_id, user_email, session_id
+                    )
+                    return True
+
+            # No access found
+            logger.warning(
+                "[SocketIO] User %s (%s) denied access to session %s",
+                user_id, user_email, session_id
+            )
+            return False
+
+    except Exception as e:
+        # If we can't check access, log and allow (fail open for now)
+        logger.warning("[SocketIO] Failed to check session access: %s", e)
+        return True
 
 
 # =============================================================================
@@ -191,6 +285,13 @@ async def connect(sid: str, environ: Dict, auth: Optional[Dict] = None):
     if not session_id:
         logger.warning("[SocketIO] Missing session_id | sid=%s", sid)
         raise socketio.exceptions.ConnectionRefusedError("session_id required")
+
+    # Check session access
+    user_id = user_info.get("user_id") if user_info else None
+    user_email = user_info.get("user_email") if user_info else None
+    if not _check_session_access(session_id, user_id, user_email):
+        logger.warning("[SocketIO] Session access denied | sid=%s session=%s user=%s", sid, session_id, user_id)
+        raise socketio.exceptions.ConnectionRefusedError("Session access denied")
 
     # Determine connection type (default to player)
     connection_type = (auth or {}).get("role", "player")
@@ -302,20 +403,38 @@ async def disconnect(sid: str):
 
     # Notify others (if we have session_id)
     if session_id:
-        user_count = await get_unique_user_count(session_id)
-        # Subtract 1 since we're still technically in the room
-        user_count = max(0, user_count - 1)
+        # Check if user still has other sockets in the room
+        # (excluding the one that's disconnecting)
+        user_still_connected = False
+        if user_id:
+            other_sids = get_room_sids(session_id) - {sid}
+            for other_sid in other_sids:
+                other_session = await get_session_data(other_sid)
+                if other_session.get("user_id") == user_id:
+                    user_still_connected = True
+                    break
 
-        await sio.emit(
-            "player_disconnected",
-            {
-                "user_id": user_id,
-                "connected_count": user_count,
-            },
-            room=session_id,
-            skip_sid=sid,
-            namespace="/campaign",
-        )
+        # Only broadcast disconnect if user has no remaining sockets
+        if not user_still_connected:
+            user_count = await get_unique_user_count(session_id)
+            # Subtract 1 since we're still technically in the room at this point
+            user_count = max(0, user_count - 1)
+
+            await sio.emit(
+                "player_disconnected",
+                {
+                    "user_id": user_id,
+                    "connected_count": user_count,
+                },
+                room=session_id,
+                skip_sid=sid,
+                namespace="/campaign",
+            )
+        else:
+            logger.debug(
+                "[SocketIO] User %s still has other connections in session %s, skipping disconnect broadcast",
+                user_id, session_id
+            )
 
     logger.info("[SocketIO] Disconnected | sid=%s", sid)
 
