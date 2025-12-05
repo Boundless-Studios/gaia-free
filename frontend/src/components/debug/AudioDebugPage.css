@@ -300,6 +300,190 @@
   word-break: break-word;
 }
 
+/* Diagnosis Panel */
+.diagnosis-panel .section-description {
+  color: #a0a0a0;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.diagnosis-result {
+  margin-top: 1rem;
+}
+
+.diagnosis-result h3 {
+  color: #00d4ff;
+  font-size: 1.1rem;
+  margin: 1.5rem 0 0.75rem;
+  border-bottom: 1px solid #0f3460;
+  padding-bottom: 0.5rem;
+}
+
+.diagnosis-result h3:first-child {
+  margin-top: 0;
+}
+
+.recommendations-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.recommendations-list li {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  border-left: 3px solid #00d4ff;
+}
+
+.diagnosis-result details {
+  margin-top: 1rem;
+}
+
+.diagnosis-result summary {
+  cursor: pointer;
+  color: #00d4ff;
+  font-weight: 600;
+  padding: 0.5rem;
+}
+
+.diagnosis-result pre {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-top: 0.5rem;
+}
+
+/* Recent Requests Panel */
+.recent-requests-panel .requests-list {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.request-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.request-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(0, 212, 255, 0.3);
+}
+
+.request-item.has-issues {
+  border-left: 3px solid #ff6b6b;
+}
+
+.request-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.request-status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.request-status.status-completed {
+  background: rgba(76, 209, 55, 0.2);
+  color: #4cd137;
+}
+
+.request-status.status-generated {
+  background: rgba(0, 212, 255, 0.2);
+  color: #00d4ff;
+}
+
+.request-status.status-generating {
+  background: rgba(255, 165, 0, 0.2);
+  color: #ffa500;
+}
+
+.request-status.status-pending {
+  background: rgba(160, 160, 160, 0.2);
+  color: #a0a0a0;
+}
+
+.request-status.status-failed {
+  background: rgba(255, 68, 68, 0.2);
+  color: #ff4444;
+}
+
+.request-time {
+  font-size: 0.8rem;
+  color: #a0a0a0;
+}
+
+.request-text {
+  font-size: 0.9rem;
+  color: #e0e0e0;
+  margin-bottom: 0.5rem;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.request-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: #a0a0a0;
+  margin-bottom: 0.75rem;
+}
+
+.issue-badge {
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+.request-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.action-button {
+  padding: 0.4rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: #00d4ff;
+}
+
+.action-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.action-button.replay-button {
+  background: rgba(76, 209, 55, 0.2);
+  border-color: rgba(76, 209, 55, 0.4);
+}
+
+.action-button.replay-button:hover:not(:disabled) {
+  background: rgba(76, 209, 55, 0.3);
+  border-color: #4cd137;
+}
+
 /* Responsive */
 @media (min-width: 768px) {
   .debug-content {
@@ -307,6 +491,14 @@
   }
 
   .control-panel {
+    grid-column: 1 / -1;
+  }
+
+  .recent-requests-panel {
+    grid-column: 1 / -1;
+  }
+
+  .diagnosis-panel {
     grid-column: 1 / -1;
   }
 

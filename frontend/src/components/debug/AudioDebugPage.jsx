@@ -1,356 +1,330 @@
 import React, { useState, useEffect } from 'react';
-import { useAudioStream } from '../../context/audioStreamContext.jsx';
 import { API_CONFIG } from '../../config/api.js';
-import './AudioDebugPage.css';
 
 /**
- * Debug page for testing audio playback system
+ * Audio Debug Page - Admin tool for diagnosing audio playback issues
  *
  * Features:
- * - Queue multiple audio items using existing mp3s
- * - Monitor WebSocket messages in real-time
- * - View audio playback status
- * - Test frontend playback logic without TTS generation
- *
- * This page is development-only and should not be accessible in production.
+ * - List recent audio requests in a table
+ * - Diagnose specific requests for sequence issues
+ * - View chunk details
  */
 export const AudioDebugPage = () => {
-  const [sessionId, setSessionId] = useState('debug-session');
-  const [numItems, setNumItems] = useState(3);
-  const [isLoading, setIsLoading] = useState(false);
-  const [lastResult, setLastResult] = useState(null);
-  const [wsMessages, setWsMessages] = useState([]);
-  const [error, setError] = useState(null);
+  // Recent requests state
+  const [recentRequests, setRecentRequests] = useState([]);
+  const [recentRequestsLoading, setRecentRequestsLoading] = useState(false);
+  const [campaignFilter, setCampaignFilter] = useState('');
 
-  const audioStream = useAudioStream();
+  // Diagnosis state
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
+  const [diagnosisResult, setDiagnosisResult] = useState(null);
+  const [diagnosisLoading, setDiagnosisLoading] = useState(false);
+  const [diagnosisError, setDiagnosisError] = useState(null);
 
-  // Monitor WebSocket messages
+  // Load recent requests on mount
   useEffect(() => {
-    const originalConsoleLog = console.log;
-
-    // Intercept console.log to capture WebSocket messages
-    console.log = (...args) => {
-      const message = args.join(' ');
-
-      // Capture audio-related WebSocket messages
-      if (message.includes('[AUDIO_DEBUG]') ||
-          message.includes('audio_stream_started') ||
-          message.includes('audio_stream_stopped') ||
-          message.includes('DM WebSocket received')) {
-        setWsMessages(prev => {
-          const newMessage = {
-            timestamp: new Date().toISOString(),
-            message: message,
-          };
-          return [newMessage, ...prev].slice(0, 50); // Keep last 50 messages
-        });
-      }
-
-      // Call original console.log
-      originalConsoleLog(...args);
-    };
-
-    // Cleanup
-    return () => {
-      console.log = originalConsoleLog;
-    };
+    fetchRecentRequests();
   }, []);
 
-  const handleQueueAudio = async () => {
-    setIsLoading(true);
-    setError(null);
-    setLastResult(null);
+  const fetchRecentRequests = async () => {
+    setRecentRequestsLoading(true);
 
     try {
       const backendUrl = API_CONFIG.BACKEND_URL || '';
-      const url = `${backendUrl}/api/debug/queue-audio-test`;
+      let url = `${backendUrl}/api/debug/recent-audio-requests?limit=50`;
+      if (campaignFilter.trim()) {
+        url += `&campaign_id=${encodeURIComponent(campaignFilter.trim())}`;
+      }
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          num_items: numItems,
-          use_sample_mp3s: true,
-        }),
-      });
+      const response = await fetch(url);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP ${response.status}`);
+        throw new Error(`HTTP ${response.status}`);
       }
 
       const result = await response.json();
-      setLastResult(result);
-
-      console.log('[DEBUG_PAGE] ✅ Audio queued successfully:', result);
-
-      // Only start stream if nothing is currently playing AND no pending requests
-      // Backend manages queue ordering, frontend auto-advances on completion
-      if (result.stream_url && audioStream && !audioStream.isStreaming) {
-        // Check if there are OTHER pending requests in the backend queue
-        const backendUrl = API_CONFIG.BACKEND_URL || '';
-        const checkResponse = await fetch(`${backendUrl}/api/campaigns/${sessionId}/audio/queue`);
-        const checkResult = await checkResponse.json();
-
-        // If there are pending requests OTHER than the one we just queued, don't start
-        // Let auto-advancement handle it when the current one completes
-        if (checkResult.total_pending_requests <= 1) {
-          console.log('[DEBUG_PAGE] 🎬 Starting first request:', result.stream_url);
-          await audioStream.startStream(
-            sessionId,
-            0, // position_sec
-            false, // isLateJoin
-            result.chunk_ids || [], // chunkIds
-            result.stream_url // providedStreamUrl
-          );
-        } else {
-          console.log('[DEBUG_PAGE] ⏭️  Queue has %d pending requests, will auto-play:', checkResult.total_pending_requests);
-        }
-      } else if (audioStream?.isStreaming) {
-        console.log('[DEBUG_PAGE] ⏭️  Request queued (will auto-play when current completes):', result.request_id);
-      }
+      setRecentRequests(result.requests || []);
     } catch (err) {
-      console.error('[DEBUG_PAGE] ❌ Failed to queue audio:', err);
-      setError(err.message);
+      console.error('Failed to fetch recent requests:', err);
     } finally {
-      setIsLoading(false);
+      setRecentRequestsLoading(false);
     }
   };
 
-  const handleClearMessages = () => {
-    setWsMessages([]);
-  };
-
-  // Test rapid TTS submissions (simulates user selecting and submitting 4 times)
-  const handleRapidTTSTest = async () => {
-    setIsLoading(true);
-    setError(null);
-    setLastResult(null);
+  const handleDiagnose = async (requestId) => {
+    setSelectedRequestId(requestId);
+    setDiagnosisLoading(true);
+    setDiagnosisError(null);
+    setDiagnosisResult(null);
 
     try {
       const backendUrl = API_CONFIG.BACKEND_URL || '';
-      const url = `${backendUrl}/api/tts/synthesize`;
+      const response = await fetch(`${backendUrl}/api/debug/diagnose-audio/${requestId}`);
+      const result = await response.json();
 
-      const testWords = ['First', 'Second', 'Third', 'Fourth'];
-
-      console.log('[DEBUG_PAGE] 🔥 Starting rapid TTS test: queuing 4 requests in parallel...');
-
-      // Queue 4 TTS requests in parallel (rapid succession)
-      const promises = testWords.map(async (word, index) => {
-        console.log(`[DEBUG_PAGE] 📤 Submitting playback for "${word}"`);
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            text: word,
-            voice: 'nathaniel',
-            speed: 1.0,
-            session_id: sessionId,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Request ${index + 1} failed: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log(`[DEBUG_PAGE] ✅ Queued playback for "${word}"`);
-        return result;
-      });
-
-      const results = await Promise.all(promises);
-
-      setLastResult({
-        message: `Queued ${results.length} separate TTS requests`,
-        requests: results,
-      });
-
-      console.log('[DEBUG_PAGE] 🎯 All 4 requests queued successfully');
-
-      // Start playback on the FIRST request (others will auto-play in sequence)
-      if (results.length > 0 && results[0].stream_url && audioStream && !audioStream.isStreaming) {
-        const firstRequest = results[0];
-        console.log('[DEBUG_PAGE] 🎬 Starting first TTS request:', firstRequest.stream_url);
-
-        await audioStream.startStream(
-          sessionId,
-          0, // position_sec
-          false, // isLateJoin
-          [], // chunkIds - not needed for TTS
-          firstRequest.stream_url // providedStreamUrl
-        );
-      } else if (audioStream?.isStreaming) {
-        console.log('[DEBUG_PAGE] ⏭️  Requests queued (will auto-play when current completes)');
+      if (result.error) {
+        setDiagnosisError(result.error);
+      } else {
+        setDiagnosisResult(result);
       }
-
     } catch (err) {
-      console.error('[DEBUG_PAGE] ❌ Rapid TTS test failed:', err);
-      setError(err.message);
+      setDiagnosisError(err.message);
     } finally {
-      setIsLoading(false);
+      setDiagnosisLoading(false);
     }
   };
 
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const getStatusBadge = (status) => {
+    const styles = {
+      completed: 'bg-green-100 text-green-800',
+      generated: 'bg-blue-100 text-blue-800',
+      generating: 'bg-yellow-100 text-yellow-800',
+      pending: 'bg-gray-100 text-gray-800',
+      failed: 'bg-red-100 text-red-800',
+    };
+    return styles[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const formatDate = (isoString) => {
+    if (!isoString) return '-';
+    const date = new Date(isoString);
+    return date.toLocaleString();
+  };
+
   return (
-    <div className="audio-debug-page">
-      <header className="debug-header">
-        <h1>🎵 Audio Playback Debug</h1>
-        <p className="debug-subtitle">Test audio queue and playback system</p>
-      </header>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <h1 className="text-2xl font-bold text-gray-900">Audio Debug</h1>
+        <p className="text-sm text-gray-500 mt-1">Diagnose audio playback issues and view request history</p>
+      </div>
 
-      <div className="debug-content">
-        {/* Control Panel */}
-        <section className="debug-section control-panel">
-          <h2>Queue Audio Items</h2>
-
-          <div className="control-form">
-            <div className="form-group">
-              <label htmlFor="session-id">
-                Session ID:
-                <input
-                  id="session-id"
-                  type="text"
-                  value={sessionId}
-                  onChange={(e) => setSessionId(e.target.value)}
-                  placeholder="debug-session"
-                  data-testid="session-id-input"
-                />
+      <div className="p-6">
+        {/* Filter and Refresh */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+          <div className="flex items-end gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Filter by Campaign ID
               </label>
+              <input
+                type="text"
+                value={campaignFilter}
+                onChange={(e) => setCampaignFilter(e.target.value)}
+                placeholder="Leave empty for all campaigns"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
-
-            <div className="form-group">
-              <label htmlFor="num-items">
-                Number of Items (1-10):
-                <input
-                  id="num-items"
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={numItems}
-                  onChange={(e) => setNumItems(parseInt(e.target.value, 10))}
-                  data-testid="num-items-input"
-                />
-              </label>
-            </div>
-
             <button
-              onClick={handleQueueAudio}
-              disabled={isLoading}
-              className="queue-button"
-              data-testid="queue-audio-button"
+              onClick={fetchRecentRequests}
+              disabled={recentRequestsLoading}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50"
             >
-              {isLoading ? 'Queueing...' : `Queue ${numItems} Audio Item${numItems > 1 ? 's' : ''}`}
-            </button>
-
-            <button
-              onClick={handleRapidTTSTest}
-              disabled={isLoading}
-              className="queue-button rapid-test-button"
-              data-testid="rapid-tts-test-button"
-              style={{ marginTop: '10px', backgroundColor: '#ff6b35' }}
-            >
-              {isLoading ? 'Testing...' : '🔥 Test Rapid TTS (4 Separate Requests)'}
+              {recentRequestsLoading ? 'Loading...' : 'Refresh'}
             </button>
           </div>
+        </div>
 
-          {error && (
-            <div className="error-message" data-testid="error-message">
-              ❌ Error: {error}
-            </div>
-          )}
-
-          {lastResult && (
-            <div className="success-message" data-testid="success-message">
-              ✅ {lastResult.message}
-              <details>
-                <summary>View Details</summary>
-                <pre>{JSON.stringify(lastResult, null, 2)}</pre>
-              </details>
-            </div>
-          )}
-        </section>
-
-        {/* Playback Status */}
-        <section className="debug-section playback-status">
-          <h2>Playback Status</h2>
-
-          <div className="status-grid">
-            <div className="status-item">
-              <span className="status-label">Session:</span>
-              <span className="status-value" data-testid="current-session">
-                {audioStream.currentSessionId || 'None'}
-              </span>
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Requests Table */}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Recent Requests</h2>
+              <p className="text-sm text-gray-500">{recentRequests.length} requests</p>
             </div>
 
-            <div className="status-item">
-              <span className="status-label">Streaming:</span>
-              <span className={`status-value ${audioStream.isStreaming ? 'active' : ''}`} data-testid="is-streaming">
-                {audioStream.isStreaming ? '🔴 Playing' : '⚪ Idle'}
-              </span>
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Chunks</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Text</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {recentRequests.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-3 py-8 text-center text-gray-500">
+                        {recentRequestsLoading ? 'Loading...' : 'No requests found'}
+                      </td>
+                    </tr>
+                  ) : (
+                    recentRequests.map((req) => (
+                      <tr
+                        key={req.request_id}
+                        className={`hover:bg-gray-50 ${selectedRequestId === req.request_id ? 'bg-blue-50' : ''} ${req.has_sequence_issues ? 'border-l-4 border-l-red-400' : ''}`}
+                      >
+                        <td className="px-3 py-2">
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadge(req.status)}`}>
+                            {req.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-sm">
+                          <span className={req.has_sequence_issues ? 'text-red-600 font-medium' : 'text-gray-900'}>
+                            {req.actual_chunks}/{req.total_chunks || '?'}
+                          </span>
+                          {req.has_sequence_issues && (
+                            <span className="ml-1 text-red-500" title="Sequence issues detected">⚠️</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-600 max-w-[200px] truncate" title={req.text}>
+                          {req.text || '(no text)'}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">
+                          {formatDate(req.requested_at)}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleDiagnose(req.request_id)}
+                              className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium"
+                              title="Diagnose this request"
+                            >
+                              Diagnose
+                            </button>
+                            <button
+                              onClick={() => copyToClipboard(req.request_id)}
+                              className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs"
+                              title="Copy request ID"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-
-            <div className="status-item">
-              <span className="status-label">Muted:</span>
-              <span className="status-value" data-testid="is-muted">
-                {audioStream.isMuted ? '🔇 Yes' : '🔊 No'}
-              </span>
-            </div>
-
-            <div className="status-item">
-              <span className="status-label">Pending Chunks:</span>
-              <span className="status-value" data-testid="pending-chunks">
-                {audioStream.pendingChunkCount || 0}
-              </span>
-            </div>
-
-            {audioStream.needsUserGesture && (
-              <div className="status-item full-width">
-                <button
-                  onClick={audioStream.resumePlayback}
-                  className="resume-button"
-                  data-testid="resume-playback-button"
-                >
-                  ▶️ Resume Playback (User Gesture Required)
-                </button>
-              </div>
-            )}
           </div>
-        </section>
 
-        {/* WebSocket Messages */}
-        <section className="debug-section ws-messages">
-          <div className="section-header">
-            <h2>WebSocket Messages</h2>
-            <button
-              onClick={handleClearMessages}
-              className="clear-button"
-              data-testid="clear-messages-button"
-            >
-              Clear
-            </button>
-          </div>
+          {/* Diagnosis Panel */}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Diagnosis</h2>
+              <p className="text-sm text-gray-500">
+                {selectedRequestId ? `Request: ${selectedRequestId.slice(0, 8)}...` : 'Select a request to diagnose'}
+              </p>
+            </div>
 
-          <div className="messages-container" data-testid="ws-messages-container">
-            {wsMessages.length === 0 ? (
-              <p className="no-messages">No messages yet. Queue some audio to see WebSocket traffic.</p>
-            ) : (
-              wsMessages.map((msg, index) => (
-                <div key={index} className="message-item">
-                  <span className="message-timestamp">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </span>
-                  <span className="message-content">{msg.message}</span>
+            <div className="p-4 max-h-[600px] overflow-y-auto">
+              {diagnosisLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-gray-500">Loading diagnosis...</div>
                 </div>
-              ))
-            )}
+              ) : diagnosisError ? (
+                <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                  <p className="text-red-800">{diagnosisError}</p>
+                </div>
+              ) : diagnosisResult ? (
+                <div className="space-y-6">
+                  {/* Request Info */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Request Info</h3>
+                    <div className="bg-gray-50 rounded-md p-3 text-sm">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><span className="text-gray-500">Status:</span> <span className={`font-medium ${diagnosisResult.request_info?.status === 'failed' ? 'text-red-600' : 'text-gray-900'}`}>{diagnosisResult.request_info?.status}</span></div>
+                        <div><span className="text-gray-500">Campaign:</span> <span className="font-mono text-xs">{diagnosisResult.request_info?.campaign_id}</span></div>
+                        <div><span className="text-gray-500">Total Chunks:</span> {diagnosisResult.request_info?.total_chunks}</div>
+                        <div><span className="text-gray-500">Group:</span> {diagnosisResult.request_info?.playback_group}</div>
+                      </div>
+                      {diagnosisResult.request_info?.text && (
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <span className="text-gray-500">Text:</span>
+                          <p className="mt-1 text-gray-900">{diagnosisResult.request_info.text}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Sequence Analysis */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Sequence Analysis</h3>
+                    <div className={`rounded-md p-3 text-sm ${diagnosisResult.sequence_analysis?.missing_sequences?.length > 0 || diagnosisResult.sequence_analysis?.extra_sequences?.length > 0 ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div><span className="text-gray-500">Expected:</span> {diagnosisResult.sequence_analysis?.expected_count} chunks</div>
+                        <div><span className="text-gray-500">Actual:</span> {diagnosisResult.sequence_analysis?.actual_count} chunks</div>
+                      </div>
+                      <div className="space-y-1 font-mono text-xs">
+                        <div><span className="text-gray-500">Expected:</span> [{diagnosisResult.sequence_analysis?.expected_sequences?.join(', ')}]</div>
+                        <div><span className="text-gray-500">Actual:</span> [{diagnosisResult.sequence_analysis?.actual_sequences?.join(', ')}]</div>
+                        {diagnosisResult.sequence_analysis?.missing_sequences?.length > 0 && (
+                          <div className="text-red-600 font-medium">Missing: [{diagnosisResult.sequence_analysis.missing_sequences.join(', ')}]</div>
+                        )}
+                        {diagnosisResult.sequence_analysis?.extra_sequences?.length > 0 && (
+                          <div className="text-orange-600 font-medium">Extra: [{diagnosisResult.sequence_analysis.extra_sequences.join(', ')}]</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recommendations */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Recommendations</h3>
+                    <ul className="space-y-2">
+                      {diagnosisResult.recommendations?.map((rec, idx) => (
+                        <li key={idx} className="bg-blue-50 border-l-4 border-blue-400 p-3 text-sm text-blue-900">
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Chunks Table */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Chunks ({diagnosisResult.chunks?.length || 0})</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 text-xs">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-2 py-1 text-left font-medium text-gray-500">Seq</th>
+                            <th className="px-2 py-1 text-left font-medium text-gray-500">Status</th>
+                            <th className="px-2 py-1 text-left font-medium text-gray-500">Artifact ID</th>
+                            <th className="px-2 py-1 text-left font-medium text-gray-500">Created</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {diagnosisResult.chunks?.map((chunk) => (
+                            <tr key={chunk.chunk_id} className="hover:bg-gray-50">
+                              <td className="px-2 py-1 font-mono">{chunk.sequence_number}</td>
+                              <td className="px-2 py-1">
+                                <span className={`inline-flex px-1.5 py-0.5 rounded-full text-xs ${getStatusBadge(chunk.status)}`}>
+                                  {chunk.status}
+                                </span>
+                              </td>
+                              <td className="px-2 py-1 font-mono text-gray-600 truncate max-w-[150px]" title={chunk.artifact_id}>
+                                {chunk.artifact_id?.slice(0, 12)}...
+                              </td>
+                              <td className="px-2 py-1 text-gray-500 whitespace-nowrap">
+                                {chunk.created_at ? new Date(chunk.created_at).toLocaleTimeString() : '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-12 text-gray-500">
+                  <div className="text-center">
+                    <p className="text-lg mb-2">👆</p>
+                    <p>Click "Diagnose" on a request to view details</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );

@@ -24,7 +24,8 @@ const RoomContext = createContext(null);
  * @param {string} props.campaignId - Campaign/session ID
  * @param {string} [props.currentUserId] - Authenticated user ID (used for auto DM claim)
  * @param {{name?: string|null, email?: string|null}} [props.currentUserProfile] - Current user profile for display fallbacks
- * @param {Object} props.webSocketRef - WebSocket reference from useDMWebSocket
+ * @param {Object} [props.webSocketRef] - WebSocket reference (legacy, optional if using Socket.IO)
+ * @param {Object} [props.socketRef] - Socket.IO socket reference (optional, preferred over webSocketRef)
  * @param {Function} props.onRoomEvent - Optional callback for room events
  * @param {React.ReactNode} props.children
  */
@@ -33,6 +34,7 @@ export const RoomProvider = ({
   currentUserId,
   currentUserProfile = null,
   webSocketRef,
+  socketRef,
   webSocketVersion = 0,
   onRoomEvent,
   children,

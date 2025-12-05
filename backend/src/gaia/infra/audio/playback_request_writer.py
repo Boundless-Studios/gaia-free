@@ -197,7 +197,17 @@ class PlaybackRequestWriter:
                     self.session_id,
                 )
 
-        self.chunk_count += 1
+        # Only increment chunk_count if the chunk was actually persisted
+        # This prevents sequence gaps when TTS fails for some chunks
+        if chunk_id:
+            self.chunk_count += 1
+        else:
+            logger.warning(
+                "[AUDIO_DEBUG] ⚠️ Chunk not persisted (not counting toward total) | session=%s seq=%d",
+                self.session_id,
+                sequence_number,
+            )
+
         return str(chunk_id) if chunk_id else None
 
     async def finalize(self, text: Optional[str] = None) -> None:

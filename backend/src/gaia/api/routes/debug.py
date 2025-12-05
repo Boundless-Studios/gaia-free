@@ -452,3 +452,57 @@ async def debug_run_streaming_direct(
         "message": "Streaming DM executed directly.",
         "result": result,
     }
+
+
+@router.get("/diagnose-audio/{request_id}")
+async def diagnose_audio_playback(request_id: str):
+    """Diagnose issues with a specific audio playback request.
+
+    Analyzes the request and its chunks for sequence gaps, missing chunks,
+    and other issues that could cause playback problems.
+
+    Args:
+        request_id: UUID of the playback request to diagnose
+
+    Returns:
+        Diagnostic information including sequence analysis and recommendations
+    """
+    from gaia.infra.audio.audio_playback_service import audio_playback_service
+
+    result = audio_playback_service.diagnose_playback_request(request_id)
+
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+
+    return result
+
+
+@router.get("/recent-audio-requests")
+async def get_recent_audio_requests(
+    campaign_id: Optional[str] = None,
+    limit: int = 20,
+):
+    """Get recent audio playback requests for debugging.
+
+    Args:
+        campaign_id: Optional campaign ID to filter by
+        limit: Maximum number of requests to return (default 20, max 100)
+
+    Returns:
+        List of recent audio requests with metadata
+    """
+    from gaia.infra.audio.audio_playback_service import audio_playback_service
+
+    # Cap limit at 100
+    limit = min(limit, 100)
+
+    requests = audio_playback_service.get_recent_requests(
+        campaign_id=campaign_id,
+        limit=limit,
+    )
+
+    return {
+        "requests": requests,
+        "count": len(requests),
+        "campaign_id": campaign_id,
+    }

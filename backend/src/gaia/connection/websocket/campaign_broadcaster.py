@@ -1223,10 +1223,21 @@ class CampaignBroadcaster:
             self.sessions.pop(session_id, None)
 
     def get_connected_players(self, session_id: str) -> List[Dict]:
-        """Get list of connected players for a session."""
+        """Get list of connected players for a session.
+
+        Deduplicates by user_id to handle multiple browser tabs/windows.
+        Shows the earliest connection time for each unique user.
+        """
         state = self.sessions.get(session_id)
         if not state:
             return []
+
+        # Deduplicate by user_id, keeping the earliest connection
+        users: Dict[str, ConnectionInfo] = {}
+        for conn in state.player_connections:
+            key = conn.user_id or f"anon_{id(conn)}"  # Unique key for anonymous users
+            if key not in users or conn.connected_at < users[key].connected_at:
+                users[key] = conn
 
         return [
             {
@@ -1236,7 +1247,7 @@ class CampaignBroadcaster:
                 "connected_at": conn.connected_at.isoformat(),
                 "last_heartbeat": conn.last_heartbeat.isoformat(),
             }
-            for conn in state.player_connections
+            for conn in users.values()
         ]
 
     def _start_cleanup_task(self) -> None:
