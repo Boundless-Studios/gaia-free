@@ -32,6 +32,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Track access to optional repos
+HAS_CAMPAIGNS_ACCESS=false
+
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
@@ -40,7 +43,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 check_access() {
     log_info "Checking access to private repositories..."
 
-    # Check gaia-private access
+    # Check gaia-private access (required)
     if ! git ls-remote "$PRIVATE_REPO" &>/dev/null; then
         log_error "Cannot access $PRIVATE_REPO"
         log_error "Make sure you have SSH access to Boundless-Studios/gaia-private"
@@ -48,13 +51,13 @@ check_access() {
     fi
     log_info "  ✓ gaia-private access confirmed"
 
-    # Check gaia-campaigns access
-    if ! git ls-remote "$CAMPAIGNS_REPO" &>/dev/null; then
-        log_error "Cannot access $CAMPAIGNS_REPO"
-        log_error "Make sure you have SSH access to Boundless-Studios/gaia-campaigns"
-        exit 1
+    # Check gaia-campaigns access (optional)
+    if git ls-remote "$CAMPAIGNS_REPO" &>/dev/null; then
+        HAS_CAMPAIGNS_ACCESS=true
+        log_info "  ✓ gaia-campaigns access confirmed"
+    else
+        log_warn "  ✗ gaia-campaigns not accessible - will create blank campaign_storage folder"
     fi
-    log_info "  ✓ gaia-campaigns access confirmed"
 }
 
 # Clone or update private repository
@@ -80,8 +83,13 @@ setup_private_clone() {
     fi
 }
 
-# Clone or update campaigns repository
+# Clone or update campaigns repository (only if access is available)
 setup_campaigns_clone() {
+    if [ "$HAS_CAMPAIGNS_ACCESS" != "true" ]; then
+        log_info "Skipping gaia-campaigns clone (no access)"
+        return
+    fi
+
     log_info "Setting up gaia-campaigns..."
 
     if [ -d "$CAMPAIGNS_CLONE_DIR" ]; then
@@ -253,26 +261,53 @@ copy_settings_files() {
     fi
 }
 
-# Create symlink for campaign_storage directory
+# Create symlink for campaign_storage directory or blank folder
 create_campaign_storage_symlink() {
-    log_info "Creating campaign_storage symlink..."
-
     local campaigns_target="$ROOT_DIR/campaign_storage"
 
-    if [ ! -d "$CAMPAIGNS_CLONE_DIR" ]; then
-        log_warn "  gaia-campaigns not cloned - skipping campaign_storage symlink"
-        return
-    fi
+    if [ "$HAS_CAMPAIGNS_ACCESS" = "true" ] && [ -d "$CAMPAIGNS_CLONE_DIR" ]; then
+        log_info "Creating campaign_storage symlink..."
 
-    if [ -L "$campaigns_target" ]; then
-        rm "$campaigns_target"
-    elif [ -d "$campaigns_target" ]; then
-        log_warn "  campaign_storage/ exists as directory, backing up to campaign_storage.bak/"
-        mv "$campaigns_target" "${campaigns_target}.bak"
-    fi
+        if [ -L "$campaigns_target" ]; then
+            rm "$campaigns_target"
+        elif [ -d "$campaigns_target" ]; then
+            log_warn "  campaign_storage/ exists as directory, backing up to campaign_storage.bak/"
+            mv "$campaigns_target" "${campaigns_target}.bak"
+        fi
 
-    ln -sf "$CAMPAIGNS_CLONE_DIR" "$campaigns_target"
-    log_info "  Linked: campaign_storage/ -> gaia-campaigns/"
+        ln -sf "$CAMPAIGNS_CLONE_DIR" "$campaigns_target"
+        log_info "  Linked: campaign_storage/ -> gaia-campaigns/"
+    else
+        log_info "Creating blank campaign_storage folder..."
+
+        # If symlink exists, remove it
+        if [ -L "$campaigns_target" ]; then
+            rm "$campaigns_target"
+        fi
+
+        # Create directory if it doesn't exist
+        if [ ! -d "$campaigns_target" ]; then
+            mkdir -p "$campaigns_target"
+            log_info "  Created: campaign_storage/ (blank folder)"
+        else
+            log_info "  campaign_storage/ already exists as directory"
+        fi
+
+        # Create a README to explain the folder
+        if [ ! -f "$campaigns_target/README.md" ]; then
+            cat > "$campaigns_target/README.md" << 'EOF'
+# Campaign Storage
+
+This is a blank campaign storage folder.
+
+To get access to pre-built campaigns, request access to the gaia-campaigns repository
+and re-run `make setup-private`.
+
+You can also create your own campaigns in this folder.
+EOF
+            log_info "  Created: campaign_storage/README.md"
+        fi
+    fi
 }
 
 # Verify setup
@@ -280,7 +315,7 @@ verify_setup() {
     log_info "Verifying setup..."
     local errors=0
 
-    # Check private clone
+    # Check private clone (required)
     if [ -d "$PRIVATE_CLONE_DIR" ]; then
         log_info "  ✓ gaia-private cloned"
     else
@@ -288,12 +323,16 @@ verify_setup() {
         errors=$((errors + 1))
     fi
 
-    # Check campaigns clone
-    if [ -d "$CAMPAIGNS_CLONE_DIR" ]; then
-        log_info "  ✓ gaia-campaigns cloned"
+    # Check campaigns clone (optional)
+    if [ "$HAS_CAMPAIGNS_ACCESS" = "true" ]; then
+        if [ -d "$CAMPAIGNS_CLONE_DIR" ]; then
+            log_info "  ✓ gaia-campaigns cloned"
+        else
+            log_error "  ✗ gaia-campaigns not found (but access was confirmed)"
+            errors=$((errors + 1))
+        fi
     else
-        log_error "  ✗ gaia-campaigns not found"
-        errors=$((errors + 1))
+        log_info "  - gaia-campaigns skipped (no access)"
     fi
 
     # Check symlinks
@@ -315,10 +354,19 @@ verify_setup() {
         log_warn "  ✗ infra/ symlink missing"
     fi
 
-    if [ -L "$ROOT_DIR/campaign_storage" ]; then
-        log_info "  ✓ campaign_storage/ symlink"
+    # Check campaign_storage (symlink if access, directory if not)
+    if [ "$HAS_CAMPAIGNS_ACCESS" = "true" ]; then
+        if [ -L "$ROOT_DIR/campaign_storage" ]; then
+            log_info "  ✓ campaign_storage/ symlink"
+        else
+            log_warn "  ✗ campaign_storage/ symlink missing"
+        fi
     else
-        log_warn "  ✗ campaign_storage/ symlink missing"
+        if [ -d "$ROOT_DIR/campaign_storage" ]; then
+            log_info "  ✓ campaign_storage/ directory (blank)"
+        else
+            log_warn "  ✗ campaign_storage/ directory missing"
+        fi
     fi
 
     if [ $errors -gt 0 ]; then
@@ -338,8 +386,10 @@ main() {
     echo "========================================"
     echo ""
     echo "This will clone private repos as siblings and create symlinks:"
-    echo "  - gaia-private -> $PRIVATE_CLONE_DIR"
-    echo "  - gaia-campaigns -> $CAMPAIGNS_CLONE_DIR"
+    echo "  - gaia-private -> $PRIVATE_CLONE_DIR (required)"
+    echo "  - gaia-campaigns -> $CAMPAIGNS_CLONE_DIR (optional)"
+    echo ""
+    echo "If gaia-campaigns is not accessible, a blank campaign_storage folder will be created."
     echo ""
 
     check_access
@@ -355,16 +405,32 @@ main() {
     verify_setup
 
     echo ""
-    log_info "You can now use the private code and campaigns!"
-    log_info ""
-    log_info "Workflow:"
-    log_info "  - Edit private code in ../gaia-private/ and commit there"
-    log_info "  - Edit campaigns in ../gaia-campaigns/ and commit there"
-    log_info "  - gaia-free stays clean - no private content in its git"
-    log_info ""
-    log_info "Update commands:"
-    log_info "  cd ../gaia-private && git pull    # Update private code"
-    log_info "  cd ../gaia-campaigns && git pull  # Update campaigns"
+    if [ "$HAS_CAMPAIGNS_ACCESS" = "true" ]; then
+        log_info "You can now use the private code and campaigns!"
+        log_info ""
+        log_info "Workflow:"
+        log_info "  - Edit private code in ../gaia-private/ and commit there"
+        log_info "  - Edit campaigns in ../gaia-campaigns/ and commit there"
+        log_info "  - gaia-free stays clean - no private content in its git"
+        log_info ""
+        log_info "Update commands:"
+        log_info "  cd ../gaia-private && git pull    # Update private code"
+        log_info "  cd ../gaia-campaigns && git pull  # Update campaigns"
+    else
+        log_info "You can now use the private code!"
+        log_info ""
+        log_info "Workflow:"
+        log_info "  - Edit private code in ../gaia-private/ and commit there"
+        log_info "  - Create campaigns in ./campaign_storage/"
+        log_info "  - gaia-free stays clean - no private content in its git"
+        log_info ""
+        log_info "Update commands:"
+        log_info "  cd ../gaia-private && git pull    # Update private code"
+        log_info ""
+        log_warn "Note: You don't have access to gaia-campaigns."
+        log_warn "A blank campaign_storage folder has been created for your use."
+        log_warn "Request access to gaia-campaigns and re-run 'make setup-private' to get pre-built campaigns."
+    fi
 }
 
 main "$@"
