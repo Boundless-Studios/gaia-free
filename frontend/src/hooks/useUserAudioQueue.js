@@ -45,6 +45,7 @@ export function unlockAudio() {
  * This replaces connection-scoped playback with stable user-scoped queues.
  *
  * Features:
+ * - SINGLETON: Global queue shared across all hook instances
  * - In-memory FIFO queue to prevent overlapping playback
  * - Sequential playback guaranteed per user
  * - Rapid triggers are queued, not dropped
@@ -57,37 +58,30 @@ export function unlockAudio() {
  * @returns {Object} Audio queue management interface
  */
 export function useUserAudioQueue({ user, audioStream, apiService }) {
-  // In-memory playback queue (FIFO)
-  const playbackQueueRef = useRef([]);
-  // Processing lock to prevent concurrent playback
-  const isProcessingRef = useRef(false);
-  // Fetch lock to prevent concurrent API requests
+  // Use global singletons instead of instance-specific refs
+  // This ensures all audio from any component goes through the same queue
+
+  // Fetch lock to prevent concurrent API requests (can remain instance-specific)
   const isFetchingRef = useRef(false);
-  // Tracks queue_ids that are already enqueued/playing to prevent duplicates
-  const queuedChunkIdsRef = useRef(new Set());
-  // Track the current request_id being played (to detect new requests)
-  const currentRequestIdRef = useRef(null);
   // Track if audio is blocked
   const [audioBlocked, setAudioBlocked] = useState(false);
-  // Persistent audio element for reuse
-  const audioElementRef = useRef(null);
-  // Track if queue is currently playing
-  const [isPlaying, setIsPlaying] = useState(false);
+  // Track if queue is currently playing (synced from global state)
+  const [isPlaying, setIsPlaying] = useState(globalIsProcessing);
 
   // Stop queue playback and clear queue (called when synchronized stream starts or new request)
   const stopQueuePlayback = useCallback(() => {
     console.log('🎵 [USER_QUEUE] Stopping queue playback');
-    // Clear the queue
-    playbackQueueRef.current = [];
-    queuedChunkIdsRef.current.clear();
-    currentRequestIdRef.current = null;
+    // Clear the global queue
+    globalPlaybackQueue = [];
+    globalQueuedChunkIds.clear();
+    globalCurrentRequestId = null;
     // Stop current audio
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      audioElementRef.current.src = '';
+    if (globalAudioElement) {
+      globalAudioElement.pause();
+      globalAudioElement.src = '';
     }
     // Reset processing lock (will cause current loop to exit on next iteration)
-    isProcessingRef.current = false;
+    globalIsProcessing = false;
     setIsPlaying(false);
   }, []);
 
@@ -114,11 +108,10 @@ export function useUserAudioQueue({ user, audioStream, apiService }) {
       return true;
     }
     const normalizedId = String(queueId);
-    const knownIds = queuedChunkIdsRef.current;
-    if (knownIds.has(normalizedId)) {
+    if (globalQueuedChunkIds.has(normalizedId)) {
       return false;
     }
-    knownIds.add(normalizedId);
+    globalQueuedChunkIds.add(normalizedId);
     return true;
   }, []);
 
@@ -126,7 +119,7 @@ export function useUserAudioQueue({ user, audioStream, apiService }) {
     if (!queueId) {
       return;
     }
-    queuedChunkIdsRef.current.delete(String(queueId));
+    globalQueuedChunkIds.delete(String(queueId));
   }, []);
 
   // Play audio chunks sequentially from user queue
@@ -152,11 +145,11 @@ export function useUserAudioQueue({ user, audioStream, apiService }) {
 
     console.log(`🎵 [USER_QUEUE] Starting sequential playback of ${chunks.length} chunks`);
 
-    // Reuse or create audio element
-    if (!audioElementRef.current) {
-      audioElementRef.current = new Audio();
+    // Reuse or create global audio element
+    if (!globalAudioElement) {
+      globalAudioElement = new Audio();
     }
-    const audio = audioElementRef.current;
+    const audio = globalAudioElement;
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
@@ -234,27 +227,27 @@ export function useUserAudioQueue({ user, audioStream, apiService }) {
 
   // Process queued playback requests sequentially
   const processQueue = useCallback(async () => {
-    // Prevent concurrent processing
-    if (isProcessingRef.current) {
+    // Prevent concurrent processing using global lock
+    if (globalIsProcessing) {
       console.log('🎵 [USER_QUEUE] Queue processor already running, skipping');
       return;
     }
 
-    isProcessingRef.current = true;
+    globalIsProcessing = true;
     setIsPlaying(true);
     console.log('🎵 [USER_QUEUE] Starting queue processor');
 
     try {
-      while (playbackQueueRef.current.length > 0) {
-        const chunks = playbackQueueRef.current.shift();
-        console.log(`🎵 [USER_QUEUE] Processing queued playback (${playbackQueueRef.current.length} remaining in queue)`);
+      while (globalPlaybackQueue.length > 0) {
+        const chunks = globalPlaybackQueue.shift();
+        console.log(`🎵 [USER_QUEUE] Processing queued playback (${globalPlaybackQueue.length} remaining in queue)`);
         await playQueueChunks(chunks);
       }
       console.log('🎵 [USER_QUEUE] Queue processor finished - queue empty');
     } catch (error) {
       console.error('🎵 [USER_QUEUE] Queue processor error:', error);
     } finally {
-      isProcessingRef.current = false;
+      globalIsProcessing = false;
       setIsPlaying(false);
     }
   }, [playQueueChunks]);
@@ -290,17 +283,11 @@ export function useUserAudioQueue({ user, audioStream, apiService }) {
       if (response.success && response.chunks && response.chunks.length > 0) {
         console.log(`🎵 [USER_QUEUE] Received ${response.chunks.length} pending chunks`);
 
-        // Check if this is a new request (different request_id)
-        // If so, stop current playback and clear the queue
+        // Track request_id for logging but DON'T interrupt - just queue behind
         const incomingRequestId = response.chunks[0]?.request_id;
-        if (incomingRequestId && currentRequestIdRef.current && incomingRequestId !== currentRequestIdRef.current) {
-          console.log(`🎵 [USER_QUEUE] New request detected (${incomingRequestId}), stopping current playback (${currentRequestIdRef.current})`);
-          stopQueuePlayback();
-        }
-
-        // Update current request ID
         if (incomingRequestId) {
-          currentRequestIdRef.current = incomingRequestId;
+          console.log(`🎵 [USER_QUEUE] Request ID: ${incomingRequestId} (current: ${globalCurrentRequestId || 'none'})`);
+          globalCurrentRequestId = incomingRequestId;
         }
 
         const newChunks = response.chunks.filter((chunk) => {
@@ -317,9 +304,9 @@ export function useUserAudioQueue({ user, audioStream, apiService }) {
           return;
         }
 
-        // Add to queue instead of immediate playback
-        playbackQueueRef.current.push(newChunks);
-        console.log(`🎵 [USER_QUEUE] Queue depth: ${playbackQueueRef.current.length}`);
+        // Add to global queue instead of immediate playback
+        globalPlaybackQueue.push(newChunks);
+        console.log(`🎵 [USER_QUEUE] Queue depth: ${globalPlaybackQueue.length}`);
         // Trigger queue processing (will skip if already processing)
         processQueue();
       } else {
@@ -330,7 +317,7 @@ export function useUserAudioQueue({ user, audioStream, apiService }) {
     } finally {
       isFetchingRef.current = false;
     }
-  }, [user, processQueue, apiService, registerQueueId, stopQueuePlayback]);
+  }, [user, processQueue, apiService, registerQueueId]);
 
   return {
     fetchUserAudioQueue,

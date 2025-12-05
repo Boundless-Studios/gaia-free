@@ -456,6 +456,40 @@ async def disconnect(sid: str):
                 skip_sid=sid,
                 namespace="/campaign",
             )
+
+            # Emit room.dm_left if disconnecting user was a DM
+            connection_type = session.get("connection_type")
+            player_id = session.get("player_id", "")
+            if connection_type == "dm" or (player_id and player_id.endswith(":dm")):
+                logger.info(
+                    "[SocketIO] DM left room | session=%s user=%s",
+                    session_id, user_id
+                )
+
+                # Update database room_status to 'waiting_for_dm'
+                try:
+                    from db.src.connection import db_manager
+                    from gaia_private.session.session_models import CampaignSession
+                    with db_manager.get_sync_session() as db_session:
+                        campaign = db_session.get(CampaignSession, session_id)
+                        if campaign:
+                            campaign.room_status = "waiting_for_dm"
+                            db_session.commit()
+                            logger.info("[SocketIO] Updated room_status to waiting_for_dm | session=%s", session_id)
+                except Exception as e:
+                    logger.warning("[SocketIO] Failed to update room_status on DM leave: %s", e)
+
+                await sio.emit(
+                    "room.dm_left",
+                    {
+                        "dm_user_id": user_id,
+                        "user_id": user_id,
+                        "room_status": "waiting_for_dm",
+                    },
+                    room=session_id,
+                    skip_sid=sid,
+                    namespace="/campaign",
+                )
         else:
             logger.debug(
                 "[SocketIO] User %s still has other connections in session %s, skipping disconnect broadcast",
@@ -594,6 +628,39 @@ async def register(sid: str, data: Dict[str, Any]):
         room=session_id,
         namespace="/campaign",
     )
+
+    # Emit room.dm_joined when a DM registers (player_id ends with :dm)
+    if player_id and player_id.endswith(":dm"):
+        logger.info(
+            "[SocketIO] DM joined room | session=%s user=%s",
+            session_id, session.get("user_id")
+        )
+
+        # Update database room_status to 'active'
+        try:
+            from db.src.connection import db_manager
+            from gaia_private.session.session_models import CampaignSession
+            with db_manager.get_sync_session() as db_session:
+                campaign = db_session.get(CampaignSession, session_id)
+                if campaign:
+                    campaign.room_status = "active"
+                    campaign.dm_joined_at = datetime.now(timezone.utc)
+                    db_session.commit()
+                    logger.info("[SocketIO] Updated room_status to active | session=%s", session_id)
+        except Exception as e:
+            logger.warning("[SocketIO] Failed to update room_status: %s", e)
+
+        await sio.emit(
+            "room.dm_joined",
+            {
+                "dm_user_id": session.get("user_id"),
+                "user_id": session.get("user_id"),
+                "room_status": "active",
+                "dm_joined_at": datetime.now(timezone.utc).isoformat(),
+            },
+            room=session_id,
+            namespace="/campaign",
+        )
 
 
 @sio.event(namespace="/campaign")
