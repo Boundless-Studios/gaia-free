@@ -196,3 +196,82 @@
   gap: 0.5rem;
 }
 
+/* ============================================
+   Personalized Player Options Styles
+   Active = Turn-taker (action-oriented)
+   Passive = Observer (discovery-focused)
+   ============================================ */
+
+/* Active player header - green/gold accent */
+.turn-header--active {
+  background: rgba(34, 197, 94, 0.2);
+  border-bottom: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.turn-header--active .turn-title {
+  color: #22c55e;
+}
+
+/* Passive player header - blue/purple accent */
+.turn-header--passive {
+  background: rgba(139, 92, 246, 0.2);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.turn-header--passive .turn-title {
+  color: #a78bfa;
+}
+
+/* Role badge (sword/eye icon) */
+.turn-role-badge {
+  margin-left: auto;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.turn-role-badge--active {
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.6));
+}
+
+.turn-role-badge--passive {
+  filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.6));
+}
+
+/* Active player options - green accent */
+.turn-view--active .chat-message-container.option--active {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.turn-view--active .chat-message-container.option--active:hover {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.5);
+}
+
+.turn-view--active .chat-message-container.option--active:active {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+/* Passive player options - purple accent */
+.turn-view--passive .chat-message-container.option--passive {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.turn-view--passive .chat-message-container.option--passive:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.turn-view--passive .chat-message-container.option--passive:active {
+  background: rgba(139, 92, 246, 0.3);
+}
+
+/* Hover shadow colors for personalized views */
+.turn-view--active:hover {
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.3);
+}
+
+.turn-view--passive:hover {
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);
+}

@@ -344,6 +344,16 @@
   opacity: 0.5;
 }
 
+/* Observation button variant for secondary players */
+.dashboard-submit-button--observation {
+  background: #8b5cf6;
+  color: white;
+}
+
+.dashboard-submit-button--observation:hover:not(:disabled) {
+  background: #a78bfa;
+}
+
 .dashboard-send-button {
   flex: 1;
   padding: 8px 16px;
