@@ -91,8 +91,8 @@ const ConnectedPlayers = ({ campaignId, dmWebSocket }) => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-green-500 text-xs">●</span>
-                    <span className="text-xs text-gaia-text font-mono">
-                      {player.user_id || 'Anonymous'}
+                    <span className="text-xs text-gaia-text">
+                      {player.display_name || player.user_id || 'Anonymous'}
                     </span>
                   </div>
                   <span className="text-xs text-gray-500">

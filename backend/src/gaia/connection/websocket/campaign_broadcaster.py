@@ -29,6 +29,7 @@ class ConnectionInfo:
     connection_type: str  # "player" or "dm"
     user_id: Optional[str] = None
     user_email: Optional[str] = None
+    display_name: Optional[str] = None
     seat_id: Optional[uuid.UUID] = None
     connected_at: datetime = field(default_factory=datetime.now)
     last_heartbeat: datetime = field(default_factory=datetime.now)
@@ -199,6 +200,7 @@ class CampaignBroadcaster:
         session_id: str,
         user_id: Optional[str] = None,
         user_email: Optional[str] = None,
+        display_name: Optional[str] = None,
     ) -> ConnectionInfo:
         """Connect a player to receive updates for a specific session."""
         # Accept WebSocket connection (JWT token extraction happens before this in main.py)
@@ -212,6 +214,7 @@ class CampaignBroadcaster:
             connection_type="player",
             user_id=user_id,
             user_email=user_email,
+            display_name=display_name,
         )
         connection.identity_update_callback = lambda: self._log_connected_players(session_id)
 
@@ -314,6 +317,7 @@ class CampaignBroadcaster:
         session_id: str,
         user_id: Optional[str] = None,
         user_email: Optional[str] = None,
+        display_name: Optional[str] = None,
     ) -> ConnectionInfo:
         """Connect a DM for a specific session.
 
@@ -412,6 +416,7 @@ class CampaignBroadcaster:
             connection_type="dm",
             user_id=user_id,
             user_email=user_email,
+            display_name=display_name,
         )
 
         # Register connection in connection registry for connection-scoped tracking
@@ -1226,6 +1231,7 @@ class CampaignBroadcaster:
         return [
             {
                 "user_id": conn.user_id,
+                "display_name": conn.display_name or conn.user_email or conn.user_id,
                 "connection_type": conn.connection_type,
                 "connected_at": conn.connected_at.isoformat(),
                 "last_heartbeat": conn.last_heartbeat.isoformat(),

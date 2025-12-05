@@ -2759,11 +2759,13 @@ async def campaign_player_websocket(websocket: WebSocket):
                 return
 
         user_email = getattr(user_obj, 'email', None) if user_obj else None
+        user_display_name = getattr(user_obj, 'display_name', None) if user_obj else None
         connection = await campaign_broadcaster.connect_player(
             websocket,
             session_id,
             user_id=getattr(user_obj, 'user_id', None) if user_obj else None,
-            user_email=user_email
+            user_email=user_email,
+            display_name=user_display_name,
         )
         connection.auth_required = auth_required
         connection.authenticated_user = user_obj
@@ -2911,11 +2913,13 @@ async def campaign_dm_websocket(websocket: WebSocket):
                 return
 
         user_email = getattr(user_obj, 'email', None) if user_obj else None
+        user_display_name = getattr(user_obj, 'display_name', None) if user_obj else None
         connection = await campaign_broadcaster.connect_dm(
             websocket,
             session_id,
             user_id=getattr(user_obj, 'user_id', None) if user_obj else None,
-            user_email=user_email
+            user_email=user_email,
+            display_name=user_display_name,
         )
         connection.auth_required = auth_required
         connection.authenticated_user = user_obj
