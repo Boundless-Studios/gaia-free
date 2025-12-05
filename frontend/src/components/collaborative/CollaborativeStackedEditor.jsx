@@ -653,8 +653,13 @@ const CollaborativeStackedEditor = forwardRef(({
   }, [handleSubmitMyInput]);
 
   const visibleSections = useMemo(() => {
-    // Extract current user's role from playerId (format: email:role:characterId)
-    const myRole = playerId.split(':')[1]; // 'dm' or 'player'
+    // Extract current user's role from playerId (format: email:role or email:role:characterId)
+    const playerIdParts = playerId?.split(':') || [];
+    const myRole = playerIdParts[1];
+
+    if (!myRole && playerId) {
+      console.error('[CollabEditor] Invalid playerId format - missing role segment:', playerId);
+    }
 
     const dmFirst = [...sections].sort((a, b) => {
       if (a.playerName === 'DM') return -1;
@@ -664,7 +669,13 @@ const CollaborativeStackedEditor = forwardRef(({
 
     const withoutHidden = dmFirst.filter((section) => {
       // Extract section's role from their playerId
-      const sectionRole = section.playerId.split(':')[1];
+      const sectionParts = section.playerId?.split(':') || [];
+      const sectionRole = sectionParts[1];
+
+      if (!sectionRole && section.playerId) {
+        console.error('[CollabEditor] Section has invalid playerId format:', section.playerId);
+        return true; // Show sections with invalid IDs rather than hiding
+      }
 
       // DM sees everything
       if (myRole === 'dm') return true;

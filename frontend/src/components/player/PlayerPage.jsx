@@ -105,6 +105,12 @@ const PlayerPage = () => {
   // Extract user email from Auth0 (for voice transcription)
   const userEmail = user?.email || null;
 
+  // Collaborative editing state (managed here because Socket.IO handlers need to update it)
+  const [collabIsConnected, setCollabIsConnected] = useState(false);
+  const [collabPlayers, setCollabPlayers] = useState([]);
+  const [collabPlayerId, setCollabPlayerId] = useState('');
+  const [assignedPlayerName, setAssignedPlayerName] = useState('');
+
   // Synchronized audio streaming (only playback mechanism)
   const audioStream = useAudioStream();
 
@@ -966,8 +972,8 @@ const PlayerPage = () => {
     if (user?.email) {
       const role = 'player';
       const playerId = `${user.email}:${role}`;
-      const characterName = currentUserSeat?.character_name;
-      const playerName = characterName || user.name || user.email.split('@')[0];
+      // Note: Character name from seat is handled in PlayerRoomShell which has access to useRoom()
+      const playerName = user.name || user.email.split('@')[0];
 
       setCollabPlayerId(playerId);
       setAssignedPlayerName(playerName);
@@ -977,7 +983,7 @@ const PlayerPage = () => {
         sioSocket.emit('register', { playerId, playerName });
       }
     }
-  }, [user?.email, user?.name, currentUserSeat?.character_name, sioIsConnected, sioSocket]);
+  }, [user?.email, user?.name, sioIsConnected, sioSocket]);
 
   // Create a ref that holds the socket for backward compatibility
   const socketRef = useRef(null);
@@ -1192,7 +1198,19 @@ const PlayerPage = () => {
         campaignId={currentCampaignId}
         user={user}
         audioPermissionState={audioPermissionState}
+        setAudioPermissionState={setAudioPermissionState}
         userEmail={userEmail}
+        sioIsConnected={sioIsConnected}
+        sioEmit={sioEmit}
+        sioSocket={sioSocket}
+        collabIsConnected={collabIsConnected}
+        setCollabIsConnected={setCollabIsConnected}
+        collabPlayers={collabPlayers}
+        setCollabPlayers={setCollabPlayers}
+        collabPlayerId={collabPlayerId}
+        setCollabPlayerId={setCollabPlayerId}
+        assignedPlayerName={assignedPlayerName}
+        setAssignedPlayerName={setAssignedPlayerName}
       />
     </RoomProvider>
   );
@@ -1221,7 +1239,20 @@ const PlayerRoomShell = ({
   campaignId,
   user,
   audioPermissionState,
+  setAudioPermissionState,
   userEmail,
+  sioIsConnected,
+  sioEmit,
+  sioSocket,
+  // Collaborative editing state (managed in parent PlayerPage)
+  collabIsConnected,
+  setCollabIsConnected,
+  collabPlayers,
+  setCollabPlayers,
+  collabPlayerId,
+  setCollabPlayerId,
+  assignedPlayerName,
+  setAssignedPlayerName,
 }) => {
   const {
     playerSeats,
@@ -1237,12 +1268,6 @@ const PlayerRoomShell = ({
     assignCharacter,
     isDMSeated,
   } = useRoom();
-
-  // Collaborative editing state (now managed via Socket.IO)
-  const [collabIsConnected, setCollabIsConnected] = useState(false);
-  const [collabPlayers, setCollabPlayers] = useState([]);
-  const [collabPlayerId, setCollabPlayerId] = useState('');
-  const [assignedPlayerName, setAssignedPlayerName] = useState('');
 
   // Voice transcription state
   const [isTranscribing, setIsTranscribing] = useState(false);

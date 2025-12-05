@@ -862,13 +862,43 @@ function App() {
       sfx_available: sfx.handleSfxAvailable,
       // Collaborative editing events (replacing old collab WebSocket)
       player_list: (data) => {
+        console.log('[Collab] player_list RAW data:', JSON.stringify(data, null, 2));
         if (Array.isArray(data.players)) {
-          setCollabPlayers(data.players);
+          // Transform from backend format {playerId, playerName} to {id, name}
+          const normalized = data.players.map(p => {
+            const id = p.playerId || p.id;
+            const name = p.playerName || p.name;
+            if (!id) {
+              console.error('[Collab] player_list: Player missing playerId:', p);
+            }
+            return {
+              id,
+              name,
+              isConnected: p.isConnected ?? true,
+            };
+          });
+          console.log('[Collab] player_list normalized:', normalized);
+          setCollabPlayers(normalized);
         }
       },
       initial_state: (data) => {
+        console.log('[Collab] initial_state RAW data:', JSON.stringify(data, null, 2));
         if (Array.isArray(data.allPlayers)) {
-          setCollabPlayers(data.allPlayers);
+          // Transform from backend format to {id, name}
+          const normalized = data.allPlayers.map(p => {
+            const id = p.playerId || p.id;
+            const name = p.playerName || p.name;
+            if (!id) {
+              console.error('[Collab] initial_state: Player missing playerId:', p);
+            }
+            return {
+              id,
+              name,
+              isConnected: p.isConnected ?? true,
+            };
+          });
+          console.log('[Collab] initial_state normalized:', normalized);
+          setCollabPlayers(normalized);
         }
       },
       registered: (data) => {
@@ -1475,7 +1505,7 @@ function App() {
                 ref={gameDashboardRef}
                 latestStructuredData={latestStructuredData}
                 onImageGenerated={handleImageClick}
-                campaignId={currentCampaignId}
+                campaignId={resolvedCampaignIdForSocket}
                 selectedVoice={selectedVoice}
                 streamingNarrative={dmStreamingNarrative}
                 streamingResponse={dmStreamingResponse}

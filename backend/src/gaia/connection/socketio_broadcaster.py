@@ -48,6 +48,11 @@ class SocketIOBroadcaster:
         """Get list of connected users in a session."""
         return await get_room_users(session_id)
 
+    async def get_connected_user_ids(self, session_id: str) -> List[str]:
+        """Return unique user IDs for a session (used by audio queueing)."""
+        users = await get_room_users(session_id)
+        return list({u["user_id"] for u in users if u.get("user_id")})
+
     # =========================================================================
     # Campaign State
     # =========================================================================

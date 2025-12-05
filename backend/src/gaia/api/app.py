@@ -639,14 +639,15 @@ async def synthesize_tts(
 
     try:
         from gaia.infra.audio.tts_service import tts_service
-        from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
+        # Use Socket.IO broadcaster so audio events reach Socket.IO clients
+        from gaia.connection.socketio_broadcaster import socketio_broadcaster
 
         # Use progressive delivery if session_id provided
         if request.session_id:
             # Use PlaybackRequestWriter for chunk persistence and broadcasting
             writer = PlaybackRequestWriter(
                 session_id=request.session_id,
-                broadcaster=campaign_broadcaster,
+                broadcaster=socketio_broadcaster,
                 playback_group="narrative",
             )
 

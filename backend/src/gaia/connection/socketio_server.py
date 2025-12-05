@@ -68,7 +68,15 @@ async def set_session_data(sid: str, data: Dict[str, Any], namespace: str = "/ca
 def get_room_sids(room: str, namespace: str = "/campaign") -> Set[str]:
     """Get all socket IDs in a room."""
     try:
-        return set(sio.manager.get_participants(namespace, room))
+        participants = sio.manager.get_participants(namespace, room)
+        # get_participants may return tuples of (sid, eio_sid) or just sids
+        sids = set()
+        for p in participants:
+            if isinstance(p, tuple):
+                sids.add(p[0])  # Extract the socket ID from tuple
+            else:
+                sids.add(p)
+        return sids
     except Exception:
         return set()
 
@@ -79,10 +87,10 @@ def get_room_count(room: str, namespace: str = "/campaign") -> int:
 
 
 async def get_room_users(room: str, namespace: str = "/campaign") -> List[Dict[str, Any]]:
-    """Get unique users in a room (deduplicated by user_id)."""
+    """Get unique users in a room (deduplicated by user_id, anonymous users tracked individually by sid)."""
     sids = get_room_sids(room, namespace)
     users = {}
-    anonymous_count = 0
+    anonymous_users = []
 
     for sid in sids:
         session = await get_session_data(sid, namespace)
@@ -93,13 +101,23 @@ async def get_room_users(room: str, namespace: str = "/campaign") -> List[Dict[s
                     "user_id": user_id,
                     "user_email": session.get("user_email"),
                     "connection_type": session.get("connection_type", "player"),
+                    "player_id": session.get("player_id"),
+                    "player_name": session.get("player_name"),
+                    "sid": sid,
                 }
         else:
-            anonymous_count += 1
+            # Track anonymous users individually to preserve their session data
+            anonymous_users.append({
+                "user_id": None,
+                "user_email": session.get("user_email"),
+                "connection_type": session.get("connection_type", "player"),
+                "player_id": session.get("player_id"),
+                "player_name": session.get("player_name"),
+                "sid": sid,
+            })
 
     result = list(users.values())
-    if anonymous_count > 0:
-        result.append({"user_id": None, "anonymous_count": anonymous_count})
+    result.extend(anonymous_users)
     return result
 
 
@@ -239,7 +257,7 @@ def _check_session_access(session_id: str, user_id: Optional[str], user_email: O
             if user_email:
                 stmt = select(CampaignSessionMember).where(
                     CampaignSessionMember.session_id == session_id,
-                    CampaignSessionMember.user_email == user_email,
+                    CampaignSessionMember.email == user_email,
                 )
                 member = db_session.execute(stmt).scalars().first()
                 if member:
@@ -520,12 +538,52 @@ async def register(sid: str, data: Dict[str, Any]):
     session["player_name"] = player_name
     await set_session_data(sid, session)
 
-    # This will be handled by the collaborative session manager
-    # For now, emit acknowledgment
+    logger.info(
+        "[SocketIO] Player registered | sid=%s session=%s player=%s name=%s",
+        sid, session_id, player_id, player_name
+    )
+
+    # Emit acknowledgment to the registering player
     await sio.emit(
         "registered",
         {"playerId": player_id, "playerName": player_name},
         to=sid,
+        namespace="/campaign",
+    )
+
+    # Broadcast updated player list to all users in the room
+    users = await get_room_users(session_id)
+    # Convert to player list format with names
+    # get_room_users now returns full session data for each user
+    player_list = []
+    for user in users:
+        # Get data directly from user dict (which now includes session data)
+        registered_player_id = user.get("player_id")
+        user_email = user.get("user_email")
+        conn_type = user.get("connection_type", "player")
+
+        # Ensure we always have a valid playerId
+        if registered_player_id:
+            effective_player_id = registered_player_id
+        elif user_email:
+            effective_player_id = f"{user_email}:{conn_type}"
+        else:
+            effective_player_id = f"anonymous:{user.get('sid', 'unknown')}:{conn_type}"
+
+        player_list.append({
+            "playerId": effective_player_id,
+            "playerName": user.get("player_name") or ("DM" if conn_type == "dm" else "Player"),
+            "isConnected": True,
+        })
+
+    logger.info(
+        "[SocketIO] Broadcasting player_list | session=%s players=%s",
+        session_id, player_list
+    )
+    await sio.emit(
+        "player_list",
+        {"sessionId": session_id, "players": player_list},
+        room=session_id,
         namespace="/campaign",
     )
 
@@ -540,8 +598,15 @@ async def start_audio_stream(sid: str, data: Dict[str, Any]):
     if not session_id:
         return
 
-    # Forward to audio handler (will be integrated with AudioWebSocketHandler)
     logger.info("[SocketIO] start_audio_stream | session=%s user=%s", session_id, user_id)
+
+    payload = dict(data or {})
+    payload.setdefault("campaign_id", session_id)
+    await broadcast_to_room(
+        session_id,
+        "audio_stream_started",
+        payload,
+    )
 
 
 @sio.event(namespace="/campaign")
@@ -555,6 +620,12 @@ async def stop_audio_stream(sid: str, data: Dict[str, Any]):
 
     logger.info("[SocketIO] stop_audio_stream | session=%s", session_id)
 
+    await broadcast_to_room(
+        session_id,
+        "audio_stream_stopped",
+        {"campaign_id": session_id},
+    )
+
 
 @sio.event(namespace="/campaign")
 async def clear_audio_queue(sid: str, data: Dict[str, Any]):
@@ -567,12 +638,17 @@ async def clear_audio_queue(sid: str, data: Dict[str, Any]):
 
     logger.info("[SocketIO] clear_audio_queue | session=%s", session_id)
 
-    # Acknowledge
-    await sio.emit(
+    try:
+        from gaia.infra.audio.audio_queue_manager import audio_queue_manager
+        result = await audio_queue_manager.clear_queue(session_id=session_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[SocketIO] Failed to clear audio queue for %s: %s", session_id, exc)
+        result = {"status": "error", "message": str(exc)}
+
+    await broadcast_to_room(
+        session_id,
         "audio_queue_cleared",
-        {"session_id": session_id},
-        to=sid,
-        namespace="/campaign",
+        {"session_id": session_id, **result},
     )
 
 
