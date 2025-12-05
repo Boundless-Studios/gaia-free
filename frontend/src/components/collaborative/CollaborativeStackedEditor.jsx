@@ -312,6 +312,85 @@ const CollaborativeStackedEditor = forwardRef(({
       }
     };
 
+    const handleVoiceCommitted = (data) => {
+      try {
+        if (data.sessionId !== sessionId) {
+          return;
+        }
+
+        // Only process voice commits for our own player
+        if (data.playerId !== playerId) {
+          logDebug('Ignoring voice_committed for other player', { from: data.playerId });
+          return;
+        }
+
+        const text = data.text || '';
+        if (!text) {
+          return;
+        }
+
+        logDebug('Received voice_committed, inserting text', { length: text.length });
+
+        // Insert the committed text into the Yjs document
+        // Find our section and append the text
+        const fullText = ytext.toString();
+        const playerLabel = `[${characterName}]:`;
+        let labelIndex = fullText.indexOf(playerLabel);
+
+        // Special handling for DM - they don't have a label in the document
+        if (labelIndex === -1 && characterName === 'DM') {
+          // Insert at beginning of document for DM (before first player label)
+          const firstLabelMatch = fullText.match(/\[/);
+          const insertPosition = firstLabelMatch ? firstLabelMatch.index : fullText.length;
+          const spacer = insertPosition > 0 && fullText[insertPosition - 1] !== ' ' && fullText[insertPosition - 1] !== '\n' ? ' ' : '';
+
+          ydoc.transact(() => {
+            ytext.insert(insertPosition, spacer + text);
+          });
+
+          logDebug('Inserted voice text into DM section', { textLength: text.length });
+          return;
+        }
+
+        // If label doesn't exist, create it first
+        if (labelIndex === -1) {
+          ydoc.transact(() => {
+            if (fullText.length === 0) {
+              ytext.insert(0, playerLabel);
+            } else {
+              ytext.insert(fullText.length, `\n\n${playerLabel}`);
+            }
+          });
+
+          // Re-find the label after insertion
+          const updatedText = ytext.toString();
+          labelIndex = updatedText.indexOf(playerLabel);
+        }
+
+        if (labelIndex === -1) {
+          logError('Failed to find/create player label for voice commit');
+          return;
+        }
+
+        const contentStart = labelIndex + playerLabel.length;
+        const afterLabel = ytext.toString().slice(contentStart);
+        const nextLabelMatch = afterLabel.match(/\n\[/);
+        const contentEnd = nextLabelMatch ? contentStart + nextLabelMatch.index : ytext.toString().length;
+
+        // Calculate spacer - add space if there's existing content without trailing space
+        const currentContent = ytext.toString().slice(contentStart, contentEnd);
+        const spacer = currentContent.length > 0 && !currentContent.endsWith(' ') && !currentContent.endsWith('\n') ? ' ' : '';
+
+        ydoc.transact(() => {
+          ytext.insert(contentEnd, spacer + text);
+        });
+
+        logDebug('Inserted voice text into player section', { textLength: text.length });
+      } catch (error) {
+        logError('Error handling voice_committed', error);
+      }
+    };
+
     // Broadcast local Yjs changes via Socket.IO
     const handleYjsUpdate = (update, origin) => {
       if (origin === REMOTE_ORIGIN) {
@@ -378,6 +457,7 @@ const CollaborativeStackedEditor = forwardRef(({
     websocket.on('yjs_update', handleYjsUpdateMessage);
     websocket.on('partial_overlay', handlePartialOverlayMessage);
     websocket.on('initial_state', handleInitialState);
+    websocket.on('voice_committed', handleVoiceCommitted);
     websocket.on('connect', handleConnect);
     websocket.on('disconnect', handleDisconnect);
 
@@ -394,6 +474,7 @@ const CollaborativeStackedEditor = forwardRef(({
       websocket.off('yjs_update', handleYjsUpdateMessage);
       websocket.off('partial_overlay', handlePartialOverlayMessage);
       websocket.off('initial_state', handleInitialState);
+      websocket.off('voice_committed', handleVoiceCommitted);
       websocket.off('connect', handleConnect);
       websocket.off('disconnect', handleDisconnect);
 

@@ -727,6 +727,83 @@ async def clear_audio_queue(sid: str, data: Dict[str, Any]):
     )
 
 
+@sio.event(namespace="/campaign")
+async def voice_transcription(sid: str, data: Dict[str, Any]):
+    """Handle voice transcription from frontend.
+
+    For partials: Emit partial_overlay to show as visual overlay
+    For finals: Emit voice_committed for frontend to insert into Yjs doc
+    """
+    session = await get_session_data(sid)
+    session_id = session.get("session_id")
+    player_id = session.get("player_id")
+
+    if not session_id:
+        logger.warning("[SocketIO] voice_transcription without session_id | sid=%s", sid)
+        return
+
+    if not player_id:
+        logger.warning("[SocketIO] voice_transcription but player not registered | sid=%s", sid)
+        return
+
+    text = (data.get("text") or "").strip()
+    is_partial = data.get("is_partial", False)
+
+    if not text:
+        return
+
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    if is_partial:
+        # Send partial overlay to the sender only
+        await sio.emit(
+            "partial_overlay",
+            {
+                "sessionId": session_id,
+                "playerId": player_id,
+                "text": text,
+                "timestamp": timestamp,
+            },
+            to=sid,
+            namespace="/campaign",
+        )
+        logger.debug(
+            "[SocketIO] Sent partial_overlay | session=%s player=%s len=%d",
+            session_id, player_id, len(text)
+        )
+    else:
+        # Final transcription - tell frontend to insert into Yjs doc
+        # First clear the partial overlay
+        await sio.emit(
+            "partial_overlay",
+            {
+                "sessionId": session_id,
+                "playerId": player_id,
+                "text": "",  # Empty text clears overlay
+                "timestamp": timestamp,
+            },
+            to=sid,
+            namespace="/campaign",
+        )
+
+        # Then emit voice_committed for the frontend to insert
+        await sio.emit(
+            "voice_committed",
+            {
+                "sessionId": session_id,
+                "playerId": player_id,
+                "text": text,
+                "timestamp": timestamp,
+            },
+            to=sid,
+            namespace="/campaign",
+        )
+        logger.info(
+            "[SocketIO] Sent voice_committed | session=%s player=%s len=%d",
+            session_id, player_id, len(text)
+        )
+
+
 # =============================================================================
 # Broadcast Helpers (for use by other modules)
 # =============================================================================
