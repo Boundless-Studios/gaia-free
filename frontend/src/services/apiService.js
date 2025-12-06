@@ -352,7 +352,6 @@ class ApiService {
     }
     
     console.log(`📡 API Request to ${endpoint}:`, data);
-    console.log('🔐 Request headers:', headers);
     
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, options);

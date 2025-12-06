@@ -157,13 +157,15 @@ class CollaborativeSession:
     def build_template(self) -> str:
         """Create the default collaborative document layout from connected players.
 
+        All players (including DM) use [Name]: label format for consistency.
+
         Returns:
             Template string with player labels
         """
         labels = [
             f"[{pinfo.name}]:"
             for pinfo in self.players.values()
-            if pinfo.name and pinfo.name.upper() != 'DM'  # Exclude DM from player labels
+            if pinfo.name  # All players including DM get labels
         ]
         return "\n\n".join(labels)
 

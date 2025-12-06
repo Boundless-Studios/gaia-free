@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from auth.src.flexible_auth import optional_auth
-from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
+from gaia.connection.socketio_broadcaster import socketio_broadcaster
 from gaia_private.session.session_manager import SessionNotFoundError, SessionManager
 from gaia.infra.audio.auto_tts_service import auto_tts_service
 from gaia.infra.audio.playback_request_writer import PlaybackRequestWriter
@@ -106,13 +106,13 @@ async def debug_streaming_test(
     midpoint = len(narrative) // 2
     narrative_chunks = [narrative[:midpoint], narrative[midpoint:]]
     for chunk in narrative_chunks:
-        await campaign_broadcaster.broadcast_narrative_chunk(
+        await socketio_broadcaster.broadcast_narrative_chunk(
             payload.session_id,
             chunk,
             is_final=False,
         )
     # Final empty chunk to signal completion.
-    await campaign_broadcaster.broadcast_narrative_chunk(
+    await socketio_broadcaster.broadcast_narrative_chunk(
         payload.session_id,
         "",
         is_final=True,
@@ -130,7 +130,7 @@ async def debug_streaming_test(
 
         writer = PlaybackRequestWriter(
             session_id=payload.session_id,
-            broadcaster=campaign_broadcaster,
+            broadcaster=socketio_broadcaster,
             playback_group="narrative",
         )
 
@@ -153,7 +153,7 @@ async def debug_streaming_test(
                 if provider:
                     first_chunk_payload.setdefault("provider", provider)
 
-                await campaign_broadcaster.broadcast_campaign_update(
+                await socketio_broadcaster.broadcast_campaign_update(
                     payload.session_id,
                     "audio_available",
                     {
@@ -173,15 +173,15 @@ async def debug_streaming_test(
     midpoint_resp = len(response) // 2
     response_chunks = [response[:midpoint_resp], response[midpoint_resp:]]
     for chunk in response_chunks:
-        await campaign_broadcaster.broadcast_player_response_chunk(
+        await socketio_broadcaster.broadcast_campaign_update(
             payload.session_id,
-            chunk,
-            is_final=False,
+            "player_response_chunk",
+            {"content": chunk, "is_final": False},
         )
-    await campaign_broadcaster.broadcast_player_response_chunk(
+    await socketio_broadcaster.broadcast_campaign_update(
         payload.session_id,
-        "",
-        is_final=True,
+        "player_response_chunk",
+        {"content": "", "is_final": True},
     )
 
     return {
@@ -451,4 +451,58 @@ async def debug_run_streaming_direct(
         "success": True,
         "message": "Streaming DM executed directly.",
         "result": result,
+    }
+
+
+@router.get("/diagnose-audio/{request_id}")
+async def diagnose_audio_playback(request_id: str):
+    """Diagnose issues with a specific audio playback request.
+
+    Analyzes the request and its chunks for sequence gaps, missing chunks,
+    and other issues that could cause playback problems.
+
+    Args:
+        request_id: UUID of the playback request to diagnose
+
+    Returns:
+        Diagnostic information including sequence analysis and recommendations
+    """
+    from gaia.infra.audio.audio_playback_service import audio_playback_service
+
+    result = audio_playback_service.diagnose_playback_request(request_id)
+
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+
+    return result
+
+
+@router.get("/recent-audio-requests")
+async def get_recent_audio_requests(
+    campaign_id: Optional[str] = None,
+    limit: int = 20,
+):
+    """Get recent audio playback requests for debugging.
+
+    Args:
+        campaign_id: Optional campaign ID to filter by
+        limit: Maximum number of requests to return (default 20, max 100)
+
+    Returns:
+        List of recent audio requests with metadata
+    """
+    from gaia.infra.audio.audio_playback_service import audio_playback_service
+
+    # Cap limit at 100
+    limit = min(limit, 100)
+
+    requests = audio_playback_service.get_recent_requests(
+        campaign_id=campaign_id,
+        limit=limit,
+    )
+
+    return {
+        "requests": requests,
+        "count": len(requests),
+        "campaign_id": campaign_id,
     }

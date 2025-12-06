@@ -49,6 +49,7 @@ const VoiceInputScribeV2 = ({
   const partialTextRef = useRef('');  // Track partial for stopRecording commit
   const firstChunkSentRef = useRef(false); // Track when first PCM chunk is emitted
   const streamingStartTimeRef = useRef(null); // Track when we started streaming for timing diagnostics
+  const hasAutoStartedRef = useRef(false); // Guard against React StrictMode double-mount
 
   // Silence timeout configuration
   const SILENCE_TIMEOUT_MS = 15000;  // 15 seconds of silence triggers auto-stop
@@ -68,8 +69,10 @@ const VoiceInputScribeV2 = ({
   }, [partialText]);
 
   // Auto-start recording when component mounts if autoStart is true
+  // Uses ref guard to prevent duplicate connections in React StrictMode
   useEffect(() => {
-    if (autoStart && !isRecording && !isConnecting) {
+    if (autoStart && !hasAutoStartedRef.current && !isRecording && !isConnecting) {
+      hasAutoStartedRef.current = true;
       console.log('🎤 Auto-starting recording on mount');
       startRecording();
     }
@@ -94,6 +97,13 @@ const VoiceInputScribeV2 = ({
    * Start recording and connect to ElevenLabs Scribe V2 Realtime API
    */
   const startRecording = useCallback(async () => {
+    // Guard against duplicate calls - check if already connecting or connected
+    if (isRecordingRef.current || websocketRef.current?.readyState === WebSocket.OPEN ||
+        websocketRef.current?.readyState === WebSocket.CONNECTING) {
+      console.log('⚠️ Already recording or connecting, skipping duplicate startRecording call');
+      return;
+    }
+
     try {
       console.log('🎤 Starting Scribe V2 recording...');
       setIsConnecting(true);
@@ -125,8 +135,20 @@ const VoiceInputScribeV2 = ({
       analyserRef.current.fftSize = 2048;
 
       // Connect to backend STT service (which proxies to ElevenLabs Scribe V2)
-      const sttBaseUrl = API_CONFIG.STT_BASE_URL || 'http://localhost:8001';
-      const wsUrl = sttBaseUrl.replace(/^http/, 'ws') + '/stt/transcribe/realtime';
+      // In production, use relative URL to current host; in dev, use localhost:8001
+      let wsUrl;
+      if (API_CONFIG.STT_BASE_URL) {
+        // If STT_BASE_URL is set (e.g., 'https://play.partyup.ai/stt'), use it
+        // Note: STT_BASE_URL already includes /stt suffix
+        wsUrl = API_CONFIG.STT_BASE_URL.replace(/^http/, 'ws') + '/transcribe/realtime';
+      } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        // Production fallback: use current host with wss
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${wsProtocol}//${window.location.host}/stt/transcribe/realtime`;
+      } else {
+        // Development: connect directly to STT service
+        wsUrl = 'ws://localhost:8001/stt/transcribe/realtime';
+      }
 
       // Get auth token and pass via WebSocket subprotocol (more secure than URL query param)
       let wsProtocols = [];
@@ -223,6 +245,13 @@ const VoiceInputScribeV2 = ({
         // Backend strips cumulative prefix, we receive only the new refined portion
         const committedText = data.text || '';
         console.log('✅ Committed:', committedText);
+
+        // If recording has stopped, ignore this event - we already committed locally in stopRecording()
+        // This prevents duplicate commits when the backend's timer fires after user stops recording
+        if (!isRecordingRef.current) {
+          console.log('⏭️ Ignoring transcription_segment because recording already stopped');
+          break;
+        }
 
         if (committedText.trim()) {
           // In conversational mode, auto-submit when committed

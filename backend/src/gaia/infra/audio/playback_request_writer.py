@@ -24,6 +24,7 @@ for both streaming DM responses and chunked scene agent audio.
 """
 
 import asyncio
+import inspect
 import logging
 import uuid
 from typing import Dict, Any, Optional
@@ -136,7 +137,21 @@ class PlaybackRequestWriter:
             )
 
             # Add chunk to all connected users' queues
-            user_ids = self.broadcaster.get_connected_user_ids(self.session_id)
+            user_ids = []
+            try:
+                getter = getattr(self.broadcaster, "get_connected_user_ids", None)
+                if getter:
+                    if inspect.iscoroutinefunction(getter):
+                        user_ids = await getter(self.session_id)
+                    else:
+                        maybe_ids = getter(self.session_id)
+                        user_ids = await maybe_ids if inspect.isawaitable(maybe_ids) else maybe_ids
+            except Exception as exc:  # noqa: BLE001
+                logger.debug(
+                    "[AUDIO_DEBUG] Failed to get connected user ids for %s: %s",
+                    self.session_id,
+                    exc,
+                )
             logger.info(
                 "[AUDIO_DEBUG] 🔍 get_connected_user_ids returned %d users for campaign %s: %s",
                 len(user_ids) if user_ids else 0,
@@ -197,7 +212,17 @@ class PlaybackRequestWriter:
                     self.session_id,
                 )
 
-        self.chunk_count += 1
+        # Only increment chunk_count if the chunk was actually persisted
+        # This prevents sequence gaps when TTS fails for some chunks
+        if chunk_id:
+            self.chunk_count += 1
+        else:
+            logger.warning(
+                "[AUDIO_DEBUG] ⚠️ Chunk not persisted (not counting toward total) | session=%s seq=%d",
+                self.session_id,
+                sequence_number,
+            )
+
         return str(chunk_id) if chunk_id else None
 
     async def finalize(self, text: Optional[str] = None) -> None:

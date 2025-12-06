@@ -287,9 +287,6 @@ backend/docker_mount/ollama_models/
 !.claude/skills/**
 
 # Secrets and credentials (entire directory for public repo safety)
-secrets/
-!secrets/README.md
-!secrets/secrets.env.example
 *.age
 *.key
 

@@ -3,6 +3,8 @@ import { Button } from './base-ui/Button';
 import './CharacterPortraitPreview.css';
 import useAuthorizedMediaUrl from '../hooks/useAuthorizedMediaUrl.js';
 
+const PORTRAIT_TIMEOUT_MS = 60000; // 60 second timeout
+
 const CharacterPortraitPreview = ({
   character,
   campaignId,
@@ -11,6 +13,7 @@ const CharacterPortraitPreview = ({
 }) => {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [abortController, setAbortController] = useState(null);
   const authorizedPortraitUrl = useAuthorizedMediaUrl(character?.portrait_url);
   const portraitSrc = authorizedPortraitUrl || character?.portrait_path || '';
   const hasPortrait = Boolean(character?.portrait_url || character?.portrait_path);
@@ -19,6 +22,15 @@ const CharacterPortraitPreview = ({
     : hasPortrait
       ? 'Loading portrait...'
       : 'No portrait yet';
+
+  const handleCancelGeneration = () => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+    }
+    setGenerating(false);
+    setError('Portrait generation cancelled');
+  };
 
   const handleGeneratePortrait = async () => {
     // Use character_id if available, otherwise use slot_id (during character creation)
@@ -34,8 +46,19 @@ const CharacterPortraitPreview = ({
       return;
     }
 
+    // Create abort controller for cancellation
+    const controller = new AbortController();
+    setAbortController(controller);
     setGenerating(true);
     setError('');
+
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      setError('Portrait generation timed out. You can try again or continue without a portrait.');
+      setGenerating(false);
+      setAbortController(null);
+    }, PORTRAIT_TIMEOUT_MS);
 
     try {
       const apiService = (await import('../services/apiService')).default;
@@ -73,19 +96,33 @@ const CharacterPortraitPreview = ({
         }
       );
 
+      clearTimeout(timeoutId);
+
+      if (controller.signal.aborted) {
+        return; // Already cancelled
+      }
+
       if (result.success) {
         // Notify parent component
         if (onPortraitGenerated) {
           onPortraitGenerated(result);
         }
       } else {
-        setError(result.error || 'Failed to generate portrait');
+        setError(result.error || 'Failed to generate portrait. You can try again or continue without a portrait.');
       }
     } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError' || controller.signal.aborted) {
+        return; // Cancelled by user or timeout
+      }
       console.error('Error generating portrait:', err);
-      setError(err.message || 'Failed to generate portrait');
+      setError(err.message || 'Failed to generate portrait. You can try again or continue without a portrait.');
     } finally {
-      setGenerating(false);
+      clearTimeout(timeoutId);
+      if (!controller.signal.aborted) {
+        setGenerating(false);
+        setAbortController(null);
+      }
     }
   };
 
@@ -116,14 +153,24 @@ const CharacterPortraitPreview = ({
       </div>
 
       <div className="portrait-actions">
-        <Button
-          onClick={handleGeneratePortrait}
-          disabled={generating || !character?.name}
-          className="generate-portrait-button"
-          title={!character?.name ? 'Add character name first' : ''}
-        >
-          {generating ? '⏳ Generating...' : hasPortrait ? '🔄 Regenerate' : '🎨 Generate Portrait'}
-        </Button>
+        {generating ? (
+          <Button
+            onClick={handleCancelGeneration}
+            className="cancel-portrait-button"
+            variant="secondary"
+          >
+            ✕ Cancel
+          </Button>
+        ) : (
+          <Button
+            onClick={handleGeneratePortrait}
+            disabled={!character?.name}
+            className="generate-portrait-button"
+            title={!character?.name ? 'Add character name first' : ''}
+          >
+            {hasPortrait ? '🔄 Regenerate' : '🎨 Generate Portrait'}
+          </Button>
+        )}
       </div>
 
       {error && (

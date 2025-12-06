@@ -43,7 +43,7 @@ from gaia_private.session.session_manager import SessionNotFoundError
 from gaia_private.session.session_models import RoomSeat
 from auth.src.models import AccessControl, PermissionLevel
 from db.src import get_async_db
-from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
+from gaia.connection.socketio_broadcaster import socketio_broadcaster
 from gaia.api.middleware.room_access import RoomAccessGuard
 
 logger = logging.getLogger(__name__)
@@ -433,7 +433,7 @@ async def chat(
                     user_input=chat_request.message,
                     campaign_id=session_context.campaign_id,
                     player_character=player_character_payload,
-                    broadcaster=campaign_broadcaster,
+                    broadcaster=socketio_broadcaster,
                 )
                 session_context.touch()
 
@@ -453,7 +453,7 @@ async def chat(
                 user_input=chat_request.message,
                 campaign_id=session_id,
                 player_character=player_character_payload,
-                broadcaster=campaign_broadcaster,
+                broadcaster=socketio_broadcaster,
             )
 
         structured_data_raw = dict(result.get("structured_data", {}) or {})
@@ -1183,7 +1183,6 @@ async def stream_synchronized_audio(
     Pass ?start_offset=<seconds> to begin playback near the live position.
     """
     from gaia.infra.audio.audio_artifact_store import audio_artifact_store
-    from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
 
     try:
         # Check session access

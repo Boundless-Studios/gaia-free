@@ -17,41 +17,19 @@ import { AudioStreamProvider } from './context/audioStreamContext.jsx';
 import CollaborativeEditorTest from './pages/CollaborativeEditorTest.jsx';
 
 // Auth0 Callback Component
+// Note: The actual redirect after login is handled by onRedirectCallback in Auth0Provider
+// This component just shows a loading state while Auth0 processes the callback
 const Auth0Callback = () => {
-  const { isAuthenticated, isLoading, error, user, getAccessTokenSilently } = useAuth0();
-  const navigate = useNavigate();
-  
-  React.useEffect(() => {
-    const handleCallback = async () => {
-      if (!isLoading && isAuthenticated) {
-        console.log('[AUTH0_DEBUG] Callback: User authenticated');
-        console.log('[AUTH0_DEBUG] User info:', user);
-        
-        try {
-          const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
-          const scope = 'openid profile email offline_access';
-          const tokenOptions = {
-            authorizationParams: {
-              scope,
-              ...(audience ? { audience } : {})
-            }
-          };
+  const { isAuthenticated, isLoading, error, user } = useAuth0();
 
-          // Get the access token to verify it's working
-          const token = await getAccessTokenSilently(tokenOptions);
-          console.log('[AUTH0_DEBUG] Got access token, length:', token?.length);
-          
-          // Redirect to home after successful authentication
-          console.log('[AUTH0_DEBUG] Redirecting to home page');
-          navigate('/');
-        } catch (err) {
-          console.error('[AUTH0_DEBUG] Error getting access token:', err);
-        }
-      }
-    };
-    
-    handleCallback();
-  }, [isAuthenticated, isLoading, user, getAccessTokenSilently, navigate]);
+  React.useEffect(() => {
+    if (!isLoading) {
+      console.log('[AUTH0_DEBUG] Callback processed, isAuthenticated:', isAuthenticated);
+      console.log('[AUTH0_DEBUG] User info:', user);
+      // Note: Navigation is handled by onRedirectCallback in Auth0Provider
+      // which receives appState.returnTo and navigates there
+    }
+  }, [isAuthenticated, isLoading, user]);
   
   if (error) {
     console.error('[AUTH0_DEBUG] Callback error:', error);
@@ -280,7 +258,7 @@ const AppWithAuth0 = () => {
             <Route path="/admin/scenes" element={<SceneInspector />} />
 
             {/* Debug routes */}
-            <Route path="/debug/audio" element={
+            <Route path="/admin/debug-audio" element={
               <AudioStreamProvider>
                 <AudioDebugPage />
               </AudioStreamProvider>
@@ -310,7 +288,7 @@ const AppWithAuth0 = () => {
 
             {/* Debug routes - NO AUTH REQUIRED for local testing */}
             <Route
-              path="/debug/audio"
+              path="/admin/debug-audio"
               element={
                 <AudioStreamProvider>
                   <AudioDebugPage />

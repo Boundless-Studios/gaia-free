@@ -1662,5 +1662,202 @@ class AudioPlaybackService:
             session.close()
 
 
+    def diagnose_playback_request(
+        self,
+        request_id: str,
+    ) -> Dict[str, Any]:
+        """Diagnose issues with a specific audio playback request.
+
+        Analyzes the request and its chunks for sequence gaps, missing chunks,
+        and other issues that could cause playback problems.
+
+        Args:
+            request_id: UUID of the playback request to diagnose
+
+        Returns:
+            Dictionary with diagnostic information including:
+            - request_info: Basic request metadata
+            - chunks: List of chunks with their sequence numbers
+            - sequence_analysis: Analysis of sequence number issues
+            - recommendations: Suggested actions to fix issues
+        """
+        if not self._db_enabled:
+            return {"error": "Database not enabled"}
+
+        session = self._get_session()
+        if session is None:
+            return {"error": "Could not get database session"}
+
+        try:
+            request_uuid = uuid.UUID(request_id)
+            stmt = (
+                select(AudioPlaybackRequest)
+                .where(AudioPlaybackRequest.request_id == request_uuid)
+                .options(selectinload(AudioPlaybackRequest.chunks))
+            )
+            request = session.execute(stmt).scalar_one_or_none()
+
+            if not request:
+                return {"error": f"Request {request_id} not found"}
+
+            # Collect chunk info
+            chunks = sorted(request.chunks, key=lambda c: c.sequence_number)
+            chunk_info = [
+                {
+                    "chunk_id": str(c.chunk_id),
+                    "sequence_number": c.sequence_number,
+                    "status": c.status.value if c.status else "unknown",
+                    "artifact_id": c.artifact_id,
+                    "created_at": c.created_at.isoformat() if c.created_at else None,
+                }
+                for c in chunks
+            ]
+
+            # Analyze sequences
+            actual_sequences = {c.sequence_number for c in chunks}
+            total_chunks = request.total_chunks
+            expected_sequences = set(range(total_chunks)) if total_chunks else set()
+
+            missing_sequences = sorted(expected_sequences - actual_sequences)
+            extra_sequences = sorted(actual_sequences - expected_sequences)
+
+            # Check for duplicates
+            sequence_counts = {}
+            for c in chunks:
+                sequence_counts[c.sequence_number] = sequence_counts.get(c.sequence_number, 0) + 1
+            duplicate_sequences = {seq: count for seq, count in sequence_counts.items() if count > 1}
+
+            # Build recommendations
+            recommendations = []
+            if missing_sequences:
+                recommendations.append(
+                    f"Missing chunks at sequence(s): {missing_sequences}. "
+                    "This usually means TTS failed for those chunks but sequence was still incremented."
+                )
+            if extra_sequences:
+                recommendations.append(
+                    f"Unexpected chunks at sequence(s): {extra_sequences}. "
+                    "This may indicate total_chunks was set incorrectly."
+                )
+            if duplicate_sequences:
+                recommendations.append(
+                    f"Duplicate chunks at sequence(s): {list(duplicate_sequences.keys())}. "
+                    "This indicates a bug in chunk creation."
+                )
+            if not recommendations:
+                recommendations.append("No issues detected - sequence numbers are correct.")
+
+            result = {
+                "request_info": {
+                    "request_id": str(request.request_id),
+                    "campaign_id": request.campaign_id,
+                    "playback_group": request.playback_group,
+                    "status": request.status.value if request.status else "unknown",
+                    "total_chunks": request.total_chunks,
+                    "text": request.text[:200] + "..." if request.text and len(request.text) > 200 else request.text,
+                    "requested_at": request.requested_at.isoformat() if request.requested_at else None,
+                    "completed_at": request.completed_at.isoformat() if request.completed_at else None,
+                },
+                "chunks": chunk_info,
+                "sequence_analysis": {
+                    "expected_count": total_chunks,
+                    "actual_count": len(chunks),
+                    "expected_sequences": sorted(expected_sequences),
+                    "actual_sequences": sorted(actual_sequences),
+                    "missing_sequences": missing_sequences,
+                    "extra_sequences": extra_sequences,
+                    "duplicate_sequences": duplicate_sequences,
+                },
+                "recommendations": recommendations,
+            }
+
+            # Log the diagnosis
+            logger.info(
+                "[AUDIO_DIAGNOSE] Request %s: status=%s, expected=%d chunks, actual=%d chunks, "
+                "missing=%s, extra=%s",
+                request_id,
+                request.status.value if request.status else "unknown",
+                total_chunks or 0,
+                len(chunks),
+                missing_sequences or "none",
+                extra_sequences or "none",
+            )
+
+            return result
+
+        except Exception as exc:
+            logger.error("Failed to diagnose playback request %s: %s", request_id, exc)
+            return {"error": str(exc)}
+        finally:
+            session.close()
+
+    def get_recent_requests(
+        self,
+        campaign_id: Optional[str] = None,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """Get recent audio playback requests for debugging.
+
+        Args:
+            campaign_id: Optional campaign ID to filter by
+            limit: Maximum number of requests to return (default 20)
+
+        Returns:
+            List of request dictionaries with metadata
+        """
+        if not self._db_enabled:
+            return []
+
+        session = self._get_session()
+        if session is None:
+            return []
+
+        try:
+            # Build query
+            stmt = (
+                select(AudioPlaybackRequest)
+                .options(selectinload(AudioPlaybackRequest.chunks))
+                .order_by(AudioPlaybackRequest.requested_at.desc())
+                .limit(limit)
+            )
+
+            if campaign_id:
+                stmt = stmt.where(AudioPlaybackRequest.campaign_id == campaign_id)
+
+            requests = session.execute(stmt).scalars().all()
+
+            result = []
+            for req in requests:
+                chunk_count = len(req.chunks) if req.chunks else 0
+                chunk_sequences = sorted([c.sequence_number for c in req.chunks]) if req.chunks else []
+
+                # Check for sequence issues
+                expected = set(range(req.total_chunks)) if req.total_chunks else set()
+                actual = set(chunk_sequences)
+                has_sequence_issues = expected != actual
+
+                result.append({
+                    "request_id": str(req.request_id),
+                    "campaign_id": req.campaign_id,
+                    "playback_group": req.playback_group,
+                    "status": req.status.value if req.status else "unknown",
+                    "total_chunks": req.total_chunks,
+                    "actual_chunks": chunk_count,
+                    "chunk_sequences": chunk_sequences,
+                    "has_sequence_issues": has_sequence_issues,
+                    "text": req.text[:100] + "..." if req.text and len(req.text) > 100 else req.text,
+                    "requested_at": req.requested_at.isoformat() if req.requested_at else None,
+                    "completed_at": req.completed_at.isoformat() if req.completed_at else None,
+                })
+
+            return result
+
+        except Exception as exc:
+            logger.error("Failed to get recent requests: %s", exc)
+            return []
+        finally:
+            session.close()
+
+
 # Global instance
 audio_playback_service = AudioPlaybackService()

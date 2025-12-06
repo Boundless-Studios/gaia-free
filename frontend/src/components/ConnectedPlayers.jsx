@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/apiService';
 
-const ConnectedPlayers = ({ campaignId, dmWebSocket }) => {
+const ConnectedPlayers = ({ campaignId, dmSocket }) => {
   const [connectedPlayers, setConnectedPlayers] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -26,33 +26,26 @@ const ConnectedPlayers = ({ campaignId, dmWebSocket }) => {
     // Initial fetch
     fetchConnectedPlayers();
 
-    // Listen for WebSocket events
-    const handleWebSocketMessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'player_connected' || data.type === 'player_disconnected') {
-          // Refresh the list when players connect/disconnect
-          fetchConnectedPlayers();
-        }
-      } catch (error) {
-        // Ignore parsing errors
-      }
-    };
+    // Listen for Socket.IO events
+    const handlePlayerConnected = () => fetchConnectedPlayers();
+    const handlePlayerDisconnected = () => fetchConnectedPlayers();
 
-    if (dmWebSocket) {
-      dmWebSocket.addEventListener('message', handleWebSocketMessage);
+    if (dmSocket) {
+      dmSocket.on('player_connected', handlePlayerConnected);
+      dmSocket.on('player_disconnected', handlePlayerDisconnected);
     }
 
-    // Poll every 30 seconds as backup (increased from 5s since we have WebSocket updates)
+    // Poll every 30 seconds as backup
     const interval = setInterval(fetchConnectedPlayers, 30000);
 
     return () => {
       clearInterval(interval);
-      if (dmWebSocket) {
-        dmWebSocket.removeEventListener('message', handleWebSocketMessage);
+      if (dmSocket) {
+        dmSocket.off('player_connected', handlePlayerConnected);
+        dmSocket.off('player_disconnected', handlePlayerDisconnected);
       }
     };
-  }, [campaignId, dmWebSocket]);
+  }, [campaignId, dmSocket]);
 
   if (!campaignId || connectedPlayers.length === 0) {
     return null;
@@ -91,8 +84,8 @@ const ConnectedPlayers = ({ campaignId, dmWebSocket }) => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-green-500 text-xs">●</span>
-                    <span className="text-xs text-gaia-text font-mono">
-                      {player.user_id || 'Anonymous'}
+                    <span className="text-xs text-gaia-text">
+                      {player.display_name || player.user_id || 'Anonymous'}
                     </span>
                   </div>
                   <span className="text-xs text-gray-500">

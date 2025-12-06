@@ -15,19 +15,25 @@ RUN npm ci --legacy-peer-deps
 # Copy source code from frontend directory
 COPY frontend/ .
 
-# Accept Auth0 build arguments and set as environment variables for Vite build
+# Accept build arguments and set as environment variables for Vite build
 # Default values are provided so build works without docker-compose passing them
 ARG VITE_AUTH0_DOMAIN=your-tenant.us.auth0.com
 ARG VITE_AUTH0_CLIENT_ID=your-auth0-client-id
 ARG VITE_AUTH0_AUDIENCE=https://api.your-domain.com
 ARG VITE_AUTH0_REDIRECT_URI
 ARG VITE_AUTH0_LOGOUT_URL
+ARG VITE_API_BASE_URL
+ARG VITE_WS_BASE_URL
+ARG VITE_STT_BASE_URL
 
 ENV VITE_AUTH0_DOMAIN=$VITE_AUTH0_DOMAIN
 ENV VITE_AUTH0_CLIENT_ID=$VITE_AUTH0_CLIENT_ID
 ENV VITE_AUTH0_AUDIENCE=$VITE_AUTH0_AUDIENCE
 ENV VITE_AUTH0_REDIRECT_URI=$VITE_AUTH0_REDIRECT_URI
 ENV VITE_AUTH0_LOGOUT_URL=$VITE_AUTH0_LOGOUT_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_WS_BASE_URL=$VITE_WS_BASE_URL
+ENV VITE_STT_BASE_URL=$VITE_STT_BASE_URL
 
 # Build the application
 ENV NODE_ENV=production

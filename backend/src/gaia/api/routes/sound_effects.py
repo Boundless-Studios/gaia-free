@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from auth.src.flexible_auth import optional_auth
-from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
+from gaia.connection.socketio_broadcaster import socketio_broadcaster
 from gaia.infra.audio.audio_artifact_store import audio_artifact_store
 from gaia.infra.audio.sfx_service import sfx_service
 
@@ -91,7 +91,7 @@ async def generate_sound_effect(
         # Broadcast to all clients in the session
         if request.session_id:
             try:
-                await campaign_broadcaster.broadcast_campaign_update(
+                await socketio_broadcaster.broadcast_campaign_update(
                     request.session_id,
                     "sfx_available",
                     {
@@ -99,7 +99,7 @@ async def generate_sound_effect(
                         "audio": audio_payload,
                     },
                 )
-                logger.info("🔊 SFX broadcast to session %s", request.session_id)
+                logger.info("SFX broadcast to session %s", request.session_id)
             except Exception as exc:
                 logger.warning(
                     "Failed to broadcast SFX for %s: %s",

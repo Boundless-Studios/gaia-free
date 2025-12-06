@@ -16,6 +16,7 @@ import SeatSelectionModal from './SeatSelectionModal.jsx';
 import CharacterAssignmentModal from './CharacterAssignmentModal.jsx';
 import PlayerVacatedModal from './PlayerVacatedModal.jsx';
 import VoiceInputScribeV2 from '../VoiceInputScribeV2.jsx';
+import { useGameSocket } from '../../hooks/useGameSocket.js';
 
 const PLAYER_SOCKET_GLOBAL_KEY = '__gaia_player_active_socket';
 const CHARACTER_DRAFT_STORAGE_PREFIX = 'player-seat-draft';
@@ -103,6 +104,12 @@ const PlayerPage = () => {
 
   // Extract user email from Auth0 (for voice transcription)
   const userEmail = user?.email || null;
+
+  // Collaborative editing state (managed here because Socket.IO handlers need to update it)
+  const [collabIsConnected, setCollabIsConnected] = useState(false);
+  const [collabPlayers, setCollabPlayers] = useState([]);
+  const [collabPlayerId, setCollabPlayerId] = useState('');
+  const [assignedPlayerName, setAssignedPlayerName] = useState('');
 
   // Synchronized audio streaming (only playback mechanism)
   const audioStream = useAudioStream();
@@ -701,34 +708,8 @@ const PlayerPage = () => {
       }
 
       case 'audio_stream_started': {
-        // Synchronized audio stream started
-        console.log('🎵 [PLAYER] Received audio_stream_started:', update);
-
-        // Guard: Only start stream if nothing is currently playing
-        // This prevents duplicate playback when both App.jsx and PlayerPage.jsx
-        // receive the same audio_stream_started WebSocket message
-        if (audioStream.isStreaming) {
-          console.log('🎵 [PLAYER] ⏭️  Audio already playing, ignoring duplicate stream start');
-          break;
-        }
-
-        const targetSessionId = update.campaign_id || sessionId;
-        if (targetSessionId && update.stream_url) {
-          const positionSec = update.position_sec || 0;
-          const isLateJoin = update.is_late_join || false;
-          console.log(`🎵 [PLAYER] Starting synchronized stream for ${targetSessionId}`, {
-            position: positionSec,
-            isLateJoin,
-            stream_url: update.stream_url,
-          });
-          audioStream.startStream(
-            targetSessionId,
-            positionSec,
-            isLateJoin,
-            update.chunk_ids || [],
-            update.stream_url, // Pass the stream URL from WebSocket (includes request_id)
-          );
-        }
+        // No-op - audio_available already handles queue playback
+        console.log('🎵 [PLAYER] Received audio_stream_started (no-op, audio_available handles queue)');
         break;
       }
 
@@ -763,12 +744,8 @@ const PlayerPage = () => {
         break;
 
       case 'heartbeat':
-        // Respond to server heartbeat
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({
-            type: 'heartbeat',
-          }));
-        }
+        // Socket.IO handles heartbeats automatically
+        // This case is kept for compatibility but is typically not needed
         break;
 
       case 'narrative_chunk': {
@@ -916,7 +893,151 @@ const PlayerPage = () => {
     setIsResponseStreamingBySession
   ]);
 
+  // Socket.IO connection using useGameSocket hook
+  // Create handlers that wrap data with type field for handleCampaignUpdate
+  const socketHandlers = useMemo(() => ({
+    // Core game events
+    narrative_chunk: (data) => handleCampaignUpdate({ ...data, type: 'narrative_chunk' }),
+    player_response_chunk: (data) => handleCampaignUpdate({ ...data, type: 'player_response_chunk' }),
+    player_options: (data) => handleCampaignUpdate({ ...data, type: 'player_options' }),
+    metadata_update: (data) => handleCampaignUpdate({ ...data, type: 'metadata_update' }),
+    campaign_updated: (data) => handleCampaignUpdate({ ...data, type: 'campaign_updated' }),
+    campaign_loaded: (data) => handleCampaignUpdate({ ...data, type: 'campaign_loaded' }),
+    campaign_active: (data) => handleCampaignUpdate({ ...data, type: 'campaign_active' }),
+    campaign_deactivated: (data) => handleCampaignUpdate({ ...data, type: 'campaign_deactivated' }),
+    initialization_error: (data) => handleCampaignUpdate({ ...data, type: 'initialization_error' }),
+    // Audio events
+    audio_available: (data) => handleCampaignUpdate({ ...data, type: 'audio_available' }),
+    audio_chunk_ready: (data) => handleCampaignUpdate({ ...data, type: 'audio_chunk_ready' }),
+    audio_stream_started: (data) => handleCampaignUpdate({ ...data, type: 'audio_stream_started' }),
+    audio_stream_stopped: (data) => handleCampaignUpdate({ ...data, type: 'audio_stream_stopped' }),
+    playback_queue_updated: (data) => handleCampaignUpdate({ ...data, type: 'playback_queue_updated' }),
+    // Room events - handle both dot notation and direct names
+    'room.seat_updated': (data) => handleCampaignUpdate({ ...data, type: 'room.seat_updated' }),
+    'room.seat_character_updated': (data) => handleCampaignUpdate({ ...data, type: 'room.seat_character_updated' }),
+    'room.campaign_started': (data) => handleCampaignUpdate({ ...data, type: 'room.campaign_started' }),
+    'room.player_vacated': (data) => handleCampaignUpdate({ ...data, type: 'room.player_vacated' }),
+    'room.dm_joined': (data) => handleCampaignUpdate({ ...data, type: 'room.dm_joined' }),
+    'room.dm_left': (data) => handleCampaignUpdate({ ...data, type: 'room.dm_left' }),
+    // Connection events
+    onPlayerConnected: (data) => console.log('🎮 Player connected:', data),
+    onPlayerDisconnected: (data) => console.log('🎮 Player disconnected:', data),
+    // Collaborative editing events (replacing old collab WebSocket)
+    player_list: (data) => {
+      if (Array.isArray(data.players)) {
+        // Transform backend format (playerId, playerName) to component format (id, name)
+        const transformed = data.players.map(p => ({
+          id: p.playerId || p.id,
+          name: p.playerName || p.name,
+          isConnected: p.isConnected,
+        }));
+        setCollabPlayers(transformed);
+      }
+    },
+    initial_state: (data) => {
+      if (Array.isArray(data.allPlayers)) {
+        // Transform backend format (playerId, playerName) to component format (id, name)
+        const transformed = data.allPlayers.map(p => ({
+          id: p.playerId || p.id,
+          name: p.playerName || p.name,
+          isConnected: p.isConnected,
+        }));
+        setCollabPlayers(transformed);
+      }
+    },
+    registered: (data) => {
+      console.log('[Collab] Player registered via Socket.IO:', data);
+      setCollabIsConnected(true);
+    },
+  }), [handleCampaignUpdate]);
+
+  // Use Socket.IO connection
+  const {
+    socket: sioSocket,
+    isConnected: sioIsConnected,
+    connectionError: sioConnectionError,
+    emit: sioEmit,
+    sendAudioPlayed,
+  } = useGameSocket({
+    campaignId: sessionId,
+    getAccessToken: getAccessTokenSilently,
+    role: 'player',
+    handlers: socketHandlers,
+  });
+
+  // Sync Socket.IO connection state to component state
+  useEffect(() => {
+    setIsConnected(sioIsConnected);
+    if (sioConnectionError) {
+      setError(sioConnectionError);
+    } else if (sioIsConnected) {
+      setError(null);
+    }
+  }, [sioIsConnected, sioConnectionError]);
+
+  // Sync collab connection state with Socket.IO connection
+  useEffect(() => {
+    setCollabIsConnected(sioIsConnected);
+  }, [sioIsConnected]);
+
+  // Set collab player ID from user email and register when connected
+  useEffect(() => {
+    if (user?.email) {
+      const role = 'player';
+      const playerId = `${user.email}:${role}`;
+      // Note: Character name from seat is handled in PlayerRoomShell which has access to useRoom()
+      const playerName = user.name || user.email.split('@')[0];
+
+      setCollabPlayerId(playerId);
+      setAssignedPlayerName(playerName);
+
+      // Register with backend when connected
+      if (sioIsConnected && sioSocket) {
+        sioSocket.emit('register', { playerId, playerName });
+      }
+    }
+  }, [user?.email, user?.name, sioIsConnected, sioSocket]);
+
+  // Create a ref that holds the socket for backward compatibility
+  const socketRef = useRef(null);
+  useEffect(() => {
+    socketRef.current = sioSocket;
+    // Also update wsRef for backward compatibility with code that checks wsRef
+    wsRef.current = sioSocket ? {
+      // Provide WebSocket-like interface
+      readyState: sioSocket.connected ? 1 : 3, // OPEN = 1, CLOSED = 3
+      send: (data) => {
+        try {
+          const parsed = JSON.parse(data);
+          sioEmit(parsed.type || 'message', parsed);
+        } catch (e) {
+          console.warn('Failed to parse message for Socket.IO:', e);
+        }
+      },
+      close: () => sioSocket?.disconnect(),
+      __sessionId: sessionId,
+    } : null;
+  }, [sioSocket, sessionId, sioEmit]);
+
+  // Fetch audio queue when connected
+  useEffect(() => {
+    if (sioIsConnected && sessionId) {
+      fetchUserAudioQueue(sessionId);
+    }
+  }, [sioIsConnected, sessionId, fetchUserAudioQueue]);
+
+  // Legacy waitForSocketClose - kept for any remaining references
   const waitForSocketClose = useCallback((socket, timeoutMs = 1000) => {
+    // Socket.IO handles disconnection automatically
+    if (!socket) {
+      return Promise.resolve();
+    }
+    // For Socket.IO sockets
+    if (socket.disconnect) {
+      socket.disconnect();
+      return Promise.resolve();
+    }
+    // For raw WebSockets (legacy)
     if (!socket || socket.readyState === WebSocket.CLOSED) {
       return Promise.resolve();
     }
@@ -947,338 +1068,29 @@ const PlayerPage = () => {
     });
   }, []);
 
-  // WebSocket connection management
+  // WebSocket connection management - now handled by useGameSocket
+  // This function is kept for backward compatibility with error handlers
+  // that may call connectWebSocket({ forceReconnect: true })
   const connectWebSocket = useCallback(async (options = {}) => {
-    const { forceReconnect = false } = options;
-    const sessionId = activeSessionIdRef.current;
-    if (!sessionId) {
-      console.warn('🎮 Skipping WebSocket connect - no session ID available');
-      return;
-    }
+    // Socket.IO handles all connection management automatically via useGameSocket
+    // This is a no-op stub for backward compatibility
+    console.log('[Socket.IO] connectWebSocket called - Socket.IO handles connection automatically');
+  }, []);
 
-    // Prevent duplicate connection attempts
-    if (isConnectingRef.current) {
-      console.log('🎮 Connection already in progress, skipping duplicate attempt');
-      return;
-    }
+  // Socket.IO handles connection automatically via useGameSocket hook
+  // The useEffect below is a legacy placeholder for cleanup
 
-    if (!forceReconnect && typeof window !== 'undefined') {
-      const globalSocket = window[PLAYER_SOCKET_GLOBAL_KEY];
-      if (globalSocket && globalSocket !== wsRef.current) {
-        const state = globalSocket.readyState;
-        if (state !== WebSocket.CLOSED) {
-          try {
-            console.log('🎮 Closing stale global player socket before opening a new one');
-            globalSocket.__manualClose = true;
-            try {
-              globalSocket.onmessage = null;
-              globalSocket.onopen = null;
-              globalSocket.onerror = null;
-            } catch (cleanupError) {
-              // ignore cleanup errors
-            }
-            if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) {
-              globalSocket.close();
-            }
-          } catch (error) {
-            console.warn('🎮 Failed closing global player socket:', error);
-          }
-          await waitForSocketClose(globalSocket, 2000);
-        }
-        if (window[PLAYER_SOCKET_GLOBAL_KEY] === globalSocket) {
-          window[PLAYER_SOCKET_GLOBAL_KEY] = null;
-        }
-      }
-    }
-
-    const existingSocket = wsRef.current;
-    if (existingSocket) {
-      const sameSession = existingSocket.__sessionId === sessionId;
-      const state = existingSocket.readyState;
-
-      // If we already have an open or connecting socket for this session, skip reconnect unless forced
-      if (!forceReconnect && sameSession && (state === WebSocket.OPEN || state === WebSocket.CONNECTING)) {
-        console.log('🎮 WebSocket already exists for session, skipping duplicate connection');
-        isConnectingRef.current = false;
-        return;
-      }
-
-      // If the socket is already closing for this session and we're not forcing a reconnect, defer until close completes
-      if (!forceReconnect && sameSession && state === WebSocket.CLOSING) {
-        console.log('🎮 WebSocket closing for session, deferring new connection until close completes');
-        isConnectingRef.current = false;
-        return;
-      }
-
-      // Ensure the existing socket is fully closed before starting a new one
-      if (state !== WebSocket.CLOSED && state !== WebSocket.CLOSING) {
-        manualCloseRef.current = true;
-        existingSocket.__manualClose = true;
-        try {
-          existingSocket.onmessage = null;
-          existingSocket.onopen = null;
-          existingSocket.onerror = null;
-        } catch (cleanupError) {
-          // Ignore cleanup errors
-        }
-        try {
-          existingSocket.close();
-        } catch (closeError) {
-          console.warn('🎮 Error closing previous WebSocket:', closeError);
-        }
-      }
-      await waitForSocketClose(existingSocket);
-
-      // Ensure we clear the ref once the previous socket is done
-      if (wsRef.current === existingSocket) {
-        wsRef.current = null;
-      }
-      manualCloseRef.current = false;
-    }
-
-    // Mark connection in progress
-    isConnectingRef.current = true;
-
-    try {
-      // Prefer configured WebSocket base URL (supports proxied backends)
-      const configuredWsBase = (API_CONFIG?.WS_BASE_URL || '').trim();
-      const wsBase = configuredWsBase
-        ? configuredWsBase.replace(/\/$/, '')
-        : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname === 'localhost' ? 'localhost:8000' : window.location.host}`;
-      // Try to include Auth0 token when available. If not available yet, do NOT
-      // open an unauthenticated socket that will immediately be rejected.
-      let token = null;
-      try {
-        token = await getAccessTokenSilently();
-        if (!token && typeof getAccessTokenSilently === 'function') {
-          // Retry with explicit audience/scope in case initial login lacked API audience
-          const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
-          if (audience) {
-            try {
-              token = await getAccessTokenSilently({
-                authorizationParams: {
-                  audience,
-                  scope: 'openid profile email offline_access'
-                }
-              });
-            } catch (e2) {
-              // ignore, will fall through to retry logic
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('🎮 Failed to get Auth0 token for WS, will retry shortly:', err?.error || err?.message || err);
-        token = null;
-      }
-
-      // In production/auth-required environments, avoid connecting without a token
-      const isProduction = window.location.hostname !== 'localhost' && 
-                           window.location.hostname !== '127.0.0.1' &&
-                           !window.location.hostname.startsWith('192.168.');
-      const requireAuth = isProduction || import.meta.env.VITE_REQUIRE_AUTH === 'true';
-
-      if (requireAuth && !token) {
-        // Defer connection until a token is available to prevent 4401 loops
-        const nextDelay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 10000);
-        console.log(`🎮 Auth token unavailable; retrying WS connect in ${nextDelay}ms`);
-        setError('Authentication required');
-        if (!reconnectTimeoutRef.current) {
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttempts.current += 1;
-            reconnectTimeoutRef.current = null;
-            connectWebSocket();
-          }, nextDelay);
-        }
-        isConnectingRef.current = false;
-        return;
-      }
-      // Build WS URL without embedding sensitive tokens in query params
-      const wsUrl = `${wsBase}/ws/campaign/player?session_id=${encodeURIComponent(sessionId)}`;
-
-      console.log('🎮 Connecting to WebSocket:', wsUrl);
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-      ws.__sessionId = sessionId;
-      if (typeof window !== 'undefined') {
-        window[PLAYER_SOCKET_GLOBAL_KEY] = ws;
-      }
-
-      ws.onopen = () => {
-        console.log('🎮 Player WebSocket connected for session:', sessionId);
-
-        // Send authentication token as first message if available
-        if (token) {
-          ws.send(JSON.stringify({ type: 'auth', token: token }));
-        }
-
-        setIsConnected(true);
-        setError(null);
-        reconnectAttempts.current = 0;
-        isConnectingRef.current = false; // Clear connecting flag on success
-
-        // Clear any pending reconnection
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = null;
-        }
-
-        // Send a ping to confirm connection
-        ws.send(JSON.stringify({ type: 'ping' }));
-
-        // Fetch any pending audio in user's queue
-        fetchUserAudioQueue(sessionId);
-      };
-
-      ws.onmessage = (event) => {
-        console.log('🎮 RAW WebSocket message received:', event.data);
-        try {
-          const update = JSON.parse(event.data);
-          console.log('🎮 PARSED WebSocket message:', update);
-          handleCampaignUpdate(update);
-        } catch (e) {
-          console.error('Failed to parse WebSocket message:', e);
-        }
-      };
-
-      ws.onclose = async (event) => {
-        const closeCode = event?.code ?? 1000;
-        const closeReason = event?.reason ?? '';
-        console.log('🎮 Player WebSocket disconnected:', { code: closeCode, reason: closeReason });
-        setIsConnected(false);
-
-        const wasManualClose = Boolean(ws.__manualClose || manualCloseRef.current);
-        if (ws.__manualClose) {
-          delete ws.__manualClose;
-        }
-        if (manualCloseRef.current) {
-          manualCloseRef.current = false;
-        }
-
-        // Only clear our ref if this is the socket that's actually closing
-        if (wsRef.current === ws) {
-          wsRef.current = null;
-        } else {
-          console.log('🎮 Stale player socket closed, ignoring');
-          if (wasManualClose) {
-            return;
-          }
-          return;
-        }
-
-        if (typeof window !== 'undefined' && window[PLAYER_SOCKET_GLOBAL_KEY] === ws) {
-          window[PLAYER_SOCKET_GLOBAL_KEY] = null;
-        }
-
-        if (wasManualClose) {
-          console.log('🎮 Manual websocket shutdown detected; skipping auto-reconnect');
-          reconnectAttempts.current = 0;
-          return;
-        }
-
-        // On auth/ACL errors, try a one-time token refresh then reconnect
-        if ([4401, 4403, 4404].includes(closeCode)) {
-          if (closeCode === 4401 && isAuthenticated) {
-            try {
-              const refreshed = await refreshAccessToken?.();
-              if (refreshed) {
-                console.log('🎮 Refreshed token after 4401; reconnecting');
-                connectWebSocket();
-              } else {
-                console.log('🎮 Refresh token unavailable; prompted user to reauthenticate');
-              }
-            } catch (e) {
-              setError('Authentication required');
-            }
-          } else if (closeCode === 4403) {
-            setError('You do not have access to this campaign');
-          } else if (closeCode === 4404) {
-            setError('Campaign not found');
-        }
-        return;
-      }
-
-      const nextAttempt = reconnectAttempts.current + 1;
-
-      if (!reconnectTimeoutRef.current) {
-        const cappedBackoffStep = Math.min(Math.max(nextAttempt - 1, 0), MAX_BACKOFF_EXPONENT);
-        const delay = Math.min(1000 * Math.pow(2, cappedBackoffStep), 30000); // Max 30s delay
-        console.log(`🎮 Attempting WebSocket reconnection in ${delay}ms... (attempt ${nextAttempt})`);
-
-        reconnectAttempts.current = nextAttempt;
-        reconnectTimeoutRef.current = setTimeout(() => {
-          reconnectTimeoutRef.current = null;
-          connectWebSocket();
-        }, delay);
-      }
-
-      if (nextAttempt >= RECONNECT_WARNING_THRESHOLD) {
-        setError('Connection lost. Retrying automatically...');
-      } else {
-        setError('Connection interrupted. Reconnecting...');
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error('🎮 WebSocket error details:', {
-        type: error.type,
-          target: error.target?.url,
-          readyState: error.target?.readyState,
-          timestamp: new Date().toISOString()
-        });
-        setError('Connection error - attempting to reconnect...');
-        isConnectingRef.current = false; // Clear connecting flag on error
-        if (typeof window !== 'undefined' && window[PLAYER_SOCKET_GLOBAL_KEY] === ws) {
-          window[PLAYER_SOCKET_GLOBAL_KEY] = null;
-        }
-      };
-
-    } catch (error) {
-      console.error('Failed to connect WebSocket:', error);
-      setError(`Failed to connect: ${error.message}`);
-      isConnectingRef.current = false; // Clear connecting flag on exception
-    }
-  }, [handleCampaignUpdate, waitForSocketClose]);
-
-  // Initialize WebSocket connection when campaign is loaded
   useEffect(() => {
-    if (currentCampaignId) {
-      connectWebSocket();
-    }
-
+    // Cleanup on unmount
     return () => {
-      if (wsRef.current) {
-        try {
-          manualCloseRef.current = true;
-          wsRef.current.__manualClose = true;
-          try {
-            wsRef.current.onmessage = null;
-            wsRef.current.onopen = null;
-            wsRef.current.onerror = null;
-          } catch (cleanupError) {
-            // ignore
-          }
-          wsRef.current.close();
-        } catch (closeError) {
-          console.warn('🎮 Error closing WebSocket during cleanup:', closeError);
-        } finally {
-          wsRef.current = null;
-          manualCloseRef.current = false;
-        }
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
       if (historyRefreshTimerRef.current) {
         clearTimeout(historyRefreshTimerRef.current);
         historyRefreshTimerRef.current = null;
       }
-      // Clear connecting flag on cleanup
-      isConnectingRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCampaignId]); // Only reconnect when campaign changes, not when connectWebSocket changes
+  }, []);
 
+  // Audio stream completed event handler - uses Socket.IO
   useEffect(() => {
     if (typeof window === 'undefined') {
       return undefined;
@@ -1290,17 +1102,16 @@ const PlayerPage = () => {
       if (!chunkIds || !chunkIds.length) {
         return;
       }
-      const socket = wsRef.current;
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        console.warn('[PLAYER][AUDIO_STREAM] Cannot send audio_played ack - socket unavailable');
+      // Use Socket.IO to send audio_played acknowledgment
+      if (!sioIsConnected) {
+        console.warn('[PLAYER][AUDIO_STREAM] Cannot send audio_played ack - socket not connected');
         return;
       }
-      const payload = {
-        type: 'audio_played',
+      // Send via Socket.IO emit
+      sioEmit('audio_played', {
         campaign_id: detail.sessionId || currentCampaignId,
         chunk_ids: chunkIds,
-      };
-      socket.send(JSON.stringify(payload));
+      });
       console.log('[PLAYER][AUDIO_STREAM] Sent audio_played ack | chunks=%s',
         chunkIds.length);
     };
@@ -1309,7 +1120,7 @@ const PlayerPage = () => {
     return () => {
       window.removeEventListener(AUDIO_STREAM_COMPLETED_EVENT, handleStreamComplete);
     };
-  }, [currentCampaignId]);
+  }, [currentCampaignId, sioIsConnected, sioEmit]);
 
   // Handle player actions
   const handlePlayerAction = (action) => {
@@ -1400,7 +1211,19 @@ const PlayerPage = () => {
         campaignId={currentCampaignId}
         user={user}
         audioPermissionState={audioPermissionState}
+        setAudioPermissionState={setAudioPermissionState}
         userEmail={userEmail}
+        sioIsConnected={sioIsConnected}
+        sioEmit={sioEmit}
+        sioSocket={sioSocket}
+        collabIsConnected={collabIsConnected}
+        setCollabIsConnected={setCollabIsConnected}
+        collabPlayers={collabPlayers}
+        setCollabPlayers={setCollabPlayers}
+        collabPlayerId={collabPlayerId}
+        setCollabPlayerId={setCollabPlayerId}
+        assignedPlayerName={assignedPlayerName}
+        setAssignedPlayerName={setAssignedPlayerName}
       />
     </RoomProvider>
   );
@@ -1429,7 +1252,20 @@ const PlayerRoomShell = ({
   campaignId,
   user,
   audioPermissionState,
+  setAudioPermissionState,
   userEmail,
+  sioIsConnected,
+  sioEmit,
+  sioSocket,
+  // Collaborative editing state (managed in parent PlayerPage)
+  collabIsConnected,
+  setCollabIsConnected,
+  collabPlayers,
+  setCollabPlayers,
+  collabPlayerId,
+  setCollabPlayerId,
+  assignedPlayerName,
+  setAssignedPlayerName,
 }) => {
   const {
     playerSeats,
@@ -1446,12 +1282,23 @@ const PlayerRoomShell = ({
     isDMSeated,
   } = useRoom();
 
-  // Collaborative editing WebSocket state
-  const [collabIsConnected, setCollabIsConnected] = useState(false);
-  const [collabPlayers, setCollabPlayers] = useState([]);
-  const [collabPlayerId, setCollabPlayerId] = useState('');
-  const [assignedPlayerName, setAssignedPlayerName] = useState('');
-  const collabWsRef = useRef(null);
+  // Update assignedPlayerName from seat's character_name and re-register with backend
+  useEffect(() => {
+    const characterName = currentUserPlayerSeat?.character_name;
+    if (characterName && characterName !== assignedPlayerName) {
+      console.log('[PlayerRoomShell] Updating player name from seat character:', characterName);
+      setAssignedPlayerName(characterName);
+
+      // Re-register with backend so other players see the character name
+      if (sioIsConnected && sioSocket && collabPlayerId) {
+        sioSocket.emit('register', {
+          playerId: collabPlayerId,
+          playerName: characterName,
+        });
+        console.log('[PlayerRoomShell] Re-registered with character name:', characterName);
+      }
+    }
+  }, [currentUserPlayerSeat?.character_name, assignedPlayerName, setAssignedPlayerName, sioIsConnected, sioSocket, collabPlayerId]);
 
   // Voice transcription state
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -1473,7 +1320,7 @@ const PlayerRoomShell = ({
     });
   }, [isTranscribing, audioPermissionState]);
 
-  // Voice transcription handler - sends text to backend via collab WebSocket
+  // Voice transcription handler - sends text to backend via Socket.IO
   // Backend uses player_id from the connection to update the correct section
   const handleVoiceTranscription = useCallback((transcribedText, metadata) => {
     console.log('🎤 Voice transcription received:', transcribedText, metadata);
@@ -1484,21 +1331,20 @@ const PlayerRoomShell = ({
       return;
     }
 
-    if (!collabWsRef.current || collabWsRef.current.readyState !== WebSocket.OPEN) {
-      console.warn('🎤 Collab WebSocket not connected, voice text not sent');
+    if (!sioIsConnected) {
+      console.warn('🎤 Socket.IO not connected, voice text not sent');
       return;
     }
 
     // Send voice transcription to backend - it will update the Y.js doc
     // using the player_id associated with this connection
-    collabWsRef.current.send(JSON.stringify({
-      type: 'voice_transcription',
+    sioEmit('voice_transcription', {
       text: transcribedText,
       is_partial: metadata?.is_partial ?? false
-    }));
+    });
 
-    console.log('🎤 Sent voice_transcription to collab backend, is_partial:', metadata?.is_partial);
-  }, []);
+    console.log('🎤 Sent voice_transcription via Socket.IO, is_partial:', metadata?.is_partial);
+  }, [sioIsConnected, sioEmit]);
 
   // Toggle voice transcription on/off
   const toggleVoiceTranscription = useCallback(async () => {
@@ -1511,11 +1357,9 @@ const PlayerRoomShell = ({
     // Helper to signal backend that a new voice session is starting
     // This resets committed_content tracking so edits are preserved
     const sendVoiceSessionStart = () => {
-      if (collabWsRef.current?.readyState === WebSocket.OPEN) {
-        collabWsRef.current.send(JSON.stringify({
-          type: 'voice_session_start'
-        }));
-        console.log('🎤 Sent voice_session_start to reset backend tracking');
+      if (sioIsConnected) {
+        sioEmit('voice_session_start', {});
+        console.log('🎤 Sent voice_session_start via Socket.IO');
       }
     };
 
@@ -1550,89 +1394,10 @@ const PlayerRoomShell = ({
       sendVoiceSessionStart();
       setIsTranscribing(true);
     }
-  }, [isTranscribing, audioPermissionState]);
+  }, [isTranscribing, audioPermissionState, sioIsConnected, sioEmit]);
 
-  // Collaborative editing WebSocket connection
-  useEffect(() => {
-    if (!campaignId || !user || !user.email) {
-      return;
-    }
-
-    // PlayerRoomShell is ONLY used in player view, so always connect as 'player'
-    // (DM view uses App.jsx's separate WebSocket connection)
-    // Use stable player ID (don't include character_id to avoid reconnections)
-    const role = 'player';
-    const playerId = `${user.email}:${role}`;
-
-    // Use full character name to match document section labels
-    const characterName = currentUserSeat?.character_name;
-    const playerName = characterName || user.name || user.email.split('@')[0];
-
-    // Set player ID and name
-    setCollabPlayerId(playerId);
-    setAssignedPlayerName(playerName);
-
-    // Build collab WebSocket URL
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = window.location.hostname;
-    const wsPort = process.env.NODE_ENV === 'development' ? '8000' : window.location.port;
-    const collabWsUrl = `${wsProtocol}//${wsHost}:${wsPort}/ws/collab/session/${campaignId}`;
-
-    console.log('[Collab] Connecting as:', { playerId, playerName, role });
-
-    const collabWs = new WebSocket(collabWsUrl);
-    collabWsRef.current = collabWs;
-
-    collabWs.onopen = () => {
-      console.log('[Collab] WebSocket connected for session:', campaignId);
-      setCollabIsConnected(true);
-
-      // Register with backend
-      collabWs.send(JSON.stringify({
-        type: 'register',
-        playerId: playerId,
-        playerName: playerName,
-        timestamp: new Date().toISOString()
-      }));
-    };
-
-    collabWs.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'initial_state') {
-          if (data.allPlayers) {
-            setCollabPlayers(data.allPlayers);
-            console.log('[Collab] All players:', data.allPlayers);
-          }
-        } else if (
-          (data.type === 'collab_players' || data.type === 'collab_reset' || data.type === 'player_list') &&
-          Array.isArray(data.players)
-        ) {
-          setCollabPlayers(data.players);
-          console.log('[Collab] Updated player roster:', data.players);
-        }
-      } catch (err) {
-        console.warn('[Collab] Failed to parse message:', err);
-      }
-    };
-
-    collabWs.onclose = () => {
-      console.log('[Collab] WebSocket disconnected');
-      setCollabIsConnected(false);
-    };
-
-    collabWs.onerror = (error) => {
-      console.error('[Collab] WebSocket error:', error);
-    };
-
-    return () => {
-      if (collabWs && collabWs.readyState === WebSocket.OPEN) {
-        collabWs.close();
-      }
-      collabWsRef.current = null;
-      setCollabIsConnected(false);
-    };
-  }, [campaignId, user?.email, currentUserSeat?.character_name]);
+  // Collaborative editing is now handled via Socket.IO (useGameSocket hook)
+  // See handlers: player_list, initial_state, registered in socketHandlers
 
   const [seatModalOpen, setSeatModalOpen] = useState(false);
   const [seatError, setSeatError] = useState(null);
@@ -1953,8 +1718,8 @@ const PlayerRoomShell = ({
               streamingResponse={streamingResponseBySession[currentCampaignId] || ''}
               isNarrativeStreaming={isNarrativeStreamingBySession[currentCampaignId] || false}
               isResponseStreaming={isResponseStreamingBySession[currentCampaignId] || false}
-              // Collaborative editing props
-              collabWebSocket={collabWsRef.current}
+              // Collaborative editing props (now via Socket.IO)
+              collabWebSocket={sioSocket}
               collabPlayerId={collabPlayerId}
               collabPlayerName={assignedPlayerName}
               collabAllPlayers={collabPlayers}
