@@ -135,8 +135,20 @@ const VoiceInputScribeV2 = ({
       analyserRef.current.fftSize = 2048;
 
       // Connect to backend STT service (which proxies to ElevenLabs Scribe V2)
-      const sttBaseUrl = API_CONFIG.STT_BASE_URL || 'http://localhost:8001';
-      const wsUrl = sttBaseUrl.replace(/^http/, 'ws') + '/stt/transcribe/realtime';
+      // In production, use relative URL to current host; in dev, use localhost:8001
+      let wsUrl;
+      if (API_CONFIG.STT_BASE_URL) {
+        // If STT_BASE_URL is set (e.g., 'https://play.partyup.ai/stt'), use it
+        // Note: STT_BASE_URL already includes /stt suffix
+        wsUrl = API_CONFIG.STT_BASE_URL.replace(/^http/, 'ws') + '/transcribe/realtime';
+      } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        // Production fallback: use current host with wss
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${wsProtocol}//${window.location.host}/stt/transcribe/realtime`;
+      } else {
+        // Development: connect directly to STT service
+        wsUrl = 'ws://localhost:8001/stt/transcribe/realtime';
+      }
 
       // Get auth token and pass via WebSocket subprotocol (more secure than URL query param)
       let wsProtocols = [];

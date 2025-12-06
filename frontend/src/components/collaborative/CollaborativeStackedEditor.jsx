@@ -8,17 +8,20 @@ const REMOTE_ORIGIN = Symbol('collaboration-remote-update');
 /**
  * CollaborativeStackedEditor - Stacked text boxes for each player
  *
+ * Each player has their own isolated text entry. No shared editing.
+ * Players can see each other's text (read-only) but only edit their own.
+ *
  * Visual layout:
  * ┌─────────────────────┐
  * │ [Aragorn]:         │ ← Dark, non-editable label
  * ├─────────────────────┤
- * │ Player's text here │ ← Light, editable (if my turn)
+ * │ Player's text here │ ← Light, editable (if my section)
  * └─────────────────────┘
- * ─────────────────────── ← Separator
+ * ───────────────────────
  * ┌─────────────────────┐
  * │ [Gandalf]:         │
  * ├─────────────────────┤
- * │ ...                │
+ * │ ...                │ ← Read-only for other players
  * └─────────────────────┘
  */
 const CollaborativeStackedEditor = forwardRef(({
@@ -40,27 +43,24 @@ const CollaborativeStackedEditor = forwardRef(({
   voiceLevel = 0
 }, ref) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [sections, setSections] = useState([]);
+  // playerContents: { [playerId]: string } - each player's text content
+  const [playerContents, setPlayerContents] = useState({});
   const [partialOverlays, setPartialOverlays] = useState({}); // {playerId: partialText}
   const ydocRef = useRef(null);
-  const ytextRef = useRef(null);
+  const yMapRef = useRef(null);
   const textareasRef = useRef({});
-  const registeredWebSocketRef = useRef(null); // Track which websocket we've registered with
-  const lastLocalEditTimeRef = useRef(0); // Track when user last made a local edit (ms since epoch)
-  const isPushToTalkActiveRef = useRef(false); // Track if push-to-talk is currently active
+  const registeredWebSocketRef = useRef(null);
+  const lastLocalEditTimeRef = useRef(0);
+  const isPushToTalkActiveRef = useRef(false);
 
   // Push-to-talk hotkey: Hold backtick (`) to enable voice transcription
   useEffect(() => {
     if (!showMicButton || !onToggleTranscription) return;
 
     const handleKeyDown = (e) => {
-      // Only trigger on backtick key
       if (e.key !== '`') return;
-
-      // Don't trigger if already in push-to-talk mode (key repeat)
       if (isPushToTalkActiveRef.current) return;
 
-      // Don't trigger if focus is in a text input, textarea, or contenteditable
       const activeElement = document.activeElement;
       const isInputFocused = activeElement && (
         activeElement.tagName === 'INPUT' ||
@@ -70,10 +70,7 @@ const CollaborativeStackedEditor = forwardRef(({
 
       if (isInputFocused) return;
 
-      // Prevent the backtick from being typed
       e.preventDefault();
-
-      // Start push-to-talk
       isPushToTalkActiveRef.current = true;
       if (!isTranscribing) {
         console.log('🎤 Push-to-talk: Starting transcription (backtick held)');
@@ -82,13 +79,9 @@ const CollaborativeStackedEditor = forwardRef(({
     };
 
     const handleKeyUp = (e) => {
-      // Only trigger on backtick key
       if (e.key !== '`') return;
-
-      // Only stop if we started via push-to-talk
       if (!isPushToTalkActiveRef.current) return;
 
-      // End push-to-talk
       isPushToTalkActiveRef.current = false;
       if (isTranscribing) {
         console.log('🎤 Push-to-talk: Stopping transcription (backtick released)');
@@ -96,7 +89,6 @@ const CollaborativeStackedEditor = forwardRef(({
       }
     };
 
-    // Add listeners to window for global hotkey
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
@@ -112,93 +104,13 @@ const CollaborativeStackedEditor = forwardRef(({
       onConnectionChange(isConnected);
     }
   }, [isConnected, onConnectionChange]);
-  const allPlayersRef = useRef(allPlayers); // Stable ref to avoid useEffect re-runs
 
   const logPrefix = useMemo(() => `[StackedCollab:${sessionId}:${playerId}]`, [sessionId, playerId]);
   const logDebug = useMemo(() => (...args) => console.debug(logPrefix, ...args), [logPrefix]);
   const logWarn = useMemo(() => (...args) => console.warn(logPrefix, ...args), [logPrefix]);
   const logError = useMemo(() => (...args) => console.error(logPrefix, ...args), [logPrefix]);
 
-  // Parse Yjs document into player sections
-  // Uses allPlayersRef to avoid causing useEffect re-runs when allPlayers changes
-  const parseDocumentIntoSections = useCallback((text) => {
-    const playerSections = [];
-    const currentAllPlayers = allPlayersRef.current;
-
-    console.log('[DEBUG parseDoc] characterName:', characterName);
-    console.log('[DEBUG parseDoc] allPlayers:', currentAllPlayers.map(p => ({ id: p.id, name: p.name })));
-    console.log('[DEBUG parseDoc] Document text:', text);
-
-    // Deduplicate players by ID to prevent multiple sections for same player
-    const uniquePlayersMap = new Map();
-    for (const player of currentAllPlayers) {
-      if (!uniquePlayersMap.has(player.id)) {
-        uniquePlayersMap.set(player.id, player);
-      }
-    }
-    const uniquePlayers = Array.from(uniquePlayersMap.values());
-
-    console.log('[DEBUG parseDoc] Unique players after deduplication:', uniquePlayers.map(p => ({ id: p.id, name: p.name })));
-
-    for (const player of uniquePlayers) {
-      const playerLabel = `[${player.name}]:`;
-      const labelIndex = text.indexOf(playerLabel);
-
-      if (labelIndex === -1) {
-        // Player not in document yet - all players (including DM) use [Name]: label format
-        playerSections.push({
-          playerId: player.id,
-          playerName: player.name,
-          content: '',
-          startPos: -1,
-          endPos: -1
-        });
-        continue;
-      }
-
-      const contentStart = labelIndex + playerLabel.length;
-
-      // Find next player label or end of document
-      let contentEnd = text.length;
-      const afterLabel = text.slice(contentStart);
-      const nextLabelMatch = afterLabel.match(/\n\[/);
-      if (nextLabelMatch) {
-        contentEnd = contentStart + nextLabelMatch.index;
-      }
-
-      let content = text.slice(contentStart, contentEnd);
-
-      playerSections.push({
-        playerId: player.id,
-        playerName: player.name,
-        content: content,
-        startPos: contentStart,
-        endPos: contentEnd
-      });
-    }
-
-    return playerSections;
-  }, []); // Uses allPlayersRef to avoid re-creating this callback when allPlayers changes
-
-  // Keep allPlayersRef in sync with allPlayers prop and re-parse sections when players change
-  useEffect(() => {
-    allPlayersRef.current = allPlayers;
-    // Re-parse sections with updated player list (without reinitializing Yjs document)
-    if (ytextRef.current) {
-      const text = ytextRef.current.toString();
-      const parsed = parseDocumentIntoSections(text);
-      setSections(parsed);
-    }
-  }, [allPlayers, parseDocumentIntoSections]);
-
-  // Notify parent of connection state changes
-  useEffect(() => {
-    if (onConnectionChange) {
-      onConnectionChange(isConnected);
-    }
-  }, [isConnected, onConnectionChange]);
-
-  // Initialize Yjs document
+  // Initialize Yjs document with a Map structure (each player has their own key)
   useEffect(() => {
     if (!websocket) {
       logDebug('Initialization skipped – websocket not available');
@@ -208,25 +120,28 @@ const CollaborativeStackedEditor = forwardRef(({
     logDebug('Starting collaborative session initialization');
 
     const ydoc = new Y.Doc();
-    const ytext = ydoc.getText('codemirror');
+    // Use a Map where each player's ID maps to their text content
+    const yMap = ydoc.getMap('playerContents');
     ydocRef.current = ydoc;
-    ytextRef.current = ytext;
+    yMapRef.current = yMap;
 
-    // Parse and render sections whenever Yjs document changes
-    const updateSections = () => {
-      const text = ytext.toString();
-      const parsed = parseDocumentIntoSections(text);
-      setSections(parsed);
-      logDebug('Updated sections', { count: parsed.length });
+    // Update local state whenever the Yjs map changes
+    const updateContents = () => {
+      const contents = {};
+      yMap.forEach((value, key) => {
+        contents[key] = value;
+      });
+      setPlayerContents(contents);
+      logDebug('Updated player contents from Yjs', { playerCount: Object.keys(contents).length });
 
+      // Notify parent of my section changes
       if (onMySectionChange) {
-        const mySection = parsed.find((section) => section.playerId === playerId);
-        onMySectionChange(mySection?.content || '');
+        onMySectionChange(contents[playerId] || '');
       }
     };
 
-    ytext.observe(updateSections);
-    updateSections(); // Initial render
+    yMap.observe(updateContents);
+    updateContents(); // Initial render
 
     // Socket.IO message handlers
     const handleYjsUpdateMessage = (data) => {
@@ -237,17 +152,14 @@ const CollaborativeStackedEditor = forwardRef(({
           return;
         }
 
-        // Check if this is a voice update (from backend STT) or from another player
         const isVoiceUpdate = data.source === 'voice';
         const isFromOtherPlayer = data.playerId !== playerId;
 
         // Apply updates from other players OR voice updates (even from self)
         if (isFromOtherPlayer || isVoiceUpdate) {
-          // For voice updates from self, use a grace period after local edits
-          // This prevents voice updates from overwriting user's manual edits/deletions
           if (isVoiceUpdate && !isFromOtherPlayer) {
             const timeSinceEdit = Date.now() - lastLocalEditTimeRef.current;
-            if (timeSinceEdit < 2000) { // 2 second grace period after local edit
+            if (timeSinceEdit < 2000) {
               logDebug('Ignoring voice update within 2s of local edit', { timeSinceEdit });
               return;
             }
@@ -263,9 +175,7 @@ const CollaborativeStackedEditor = forwardRef(({
 
     const handlePartialOverlayMessage = (data) => {
       try {
-        if (data.sessionId !== sessionId) {
-          return;
-        }
+        if (data.sessionId !== sessionId) return;
 
         const overlayPlayerId = data.playerId;
         const overlayText = data.text || '';
@@ -298,60 +208,22 @@ const CollaborativeStackedEditor = forwardRef(({
 
     const handleVoiceCommitted = (data) => {
       try {
-        if (data.sessionId !== sessionId) {
-          return;
-        }
-
-        // Only process voice commits for our own player
+        if (data.sessionId !== sessionId) return;
         if (data.playerId !== playerId) {
           logDebug('Ignoring voice_committed for other player', { from: data.playerId });
           return;
         }
 
         const text = data.text || '';
-        if (!text) {
-          return;
-        }
+        if (!text) return;
 
-        logDebug('Received voice_committed, inserting text', { length: text.length });
+        logDebug('Received voice_committed, appending text', { length: text.length });
 
-        // Insert the committed text into the Yjs document
-        // Find our section and append the text
-        const fullText = ytext.toString();
-        const playerLabel = `[${characterName}]:`;
-        let labelIndex = fullText.indexOf(playerLabel);
-
-        // If label doesn't exist, create it first (all players including DM use [Name]: format)
-        if (labelIndex === -1) {
-          ydoc.transact(() => {
-            if (fullText.length === 0) {
-              ytext.insert(0, playerLabel);
-            } else {
-              ytext.insert(fullText.length, `\n\n${playerLabel}`);
-            }
-          });
-
-          // Re-find the label after insertion
-          const updatedText = ytext.toString();
-          labelIndex = updatedText.indexOf(playerLabel);
-        }
-
-        if (labelIndex === -1) {
-          logError('Failed to find/create player label for voice commit');
-          return;
-        }
-
-        const contentStart = labelIndex + playerLabel.length;
-        const afterLabel = ytext.toString().slice(contentStart);
-        const nextLabelMatch = afterLabel.match(/\n\[/);
-        const contentEnd = nextLabelMatch ? contentStart + nextLabelMatch.index : ytext.toString().length;
-
-        // Calculate spacer - add space if there's existing content without trailing space
-        const currentContent = ytext.toString().slice(contentStart, contentEnd);
-        const spacer = currentContent.length > 0 && !currentContent.endsWith(' ') && !currentContent.endsWith('\n') ? ' ' : '';
-
+        // Append voice text to my section
         ydoc.transact(() => {
-          ytext.insert(contentEnd, spacer + text);
+          const currentContent = yMap.get(playerId) || '';
+          const spacer = currentContent && !currentContent.endsWith(' ') && !currentContent.endsWith('\n') ? ' ' : '';
+          yMap.set(playerId, currentContent + spacer + text);
         });
 
         logDebug('Inserted voice text into player section', { textLength: text.length });
@@ -367,7 +239,6 @@ const CollaborativeStackedEditor = forwardRef(({
         return;
       }
 
-      // User made a local edit - track the time to filter stale voice updates
       lastLocalEditTimeRef.current = Date.now();
 
       if (!websocket || !websocket.connected) {
@@ -386,7 +257,6 @@ const CollaborativeStackedEditor = forwardRef(({
     };
 
     const sendRegistration = () => {
-      // Only register if this is a different websocket instance than before
       if (registeredWebSocketRef.current === websocket) {
         logDebug('Skipping registration - already registered with this websocket');
         return;
@@ -416,13 +286,11 @@ const CollaborativeStackedEditor = forwardRef(({
     const handleDisconnect = () => {
       logDebug('Socket disconnected');
       setIsConnected(false);
-      registeredWebSocketRef.current = null; // Allow re-registration on reconnect
+      registeredWebSocketRef.current = null;
     };
 
-    // Set initial connection state
     setIsConnected(websocket.connected === true);
 
-    // Set up Socket.IO event listeners
     websocket.on('yjs_update', handleYjsUpdateMessage);
     websocket.on('partial_overlay', handlePartialOverlayMessage);
     websocket.on('initial_state', handleInitialState);
@@ -432,7 +300,6 @@ const CollaborativeStackedEditor = forwardRef(({
 
     ydoc.on('update', handleYjsUpdate);
 
-    // If socket already connected, send registration
     if (websocket.connected) {
       sendRegistration();
     }
@@ -448,90 +315,41 @@ const CollaborativeStackedEditor = forwardRef(({
       websocket.off('disconnect', handleDisconnect);
 
       ydoc.off('update', handleYjsUpdate);
-      ytext.unobserve(updateSections);
+      yMap.unobserve(updateContents);
       ydoc.destroy();
       setIsConnected(false);
     };
-  }, [websocket, sessionId, playerId, characterName, parseDocumentIntoSections, logDebug, logWarn, logError, onMySectionChange]);
+  }, [websocket, sessionId, playerId, characterName, logDebug, logWarn, logError, onMySectionChange]);
 
-  // Handle text change in a player's textarea
-  const handleTextChange = useCallback((playerName, newContent) => {
-    const ytext = ytextRef.current;
+  // Handle text change for a player's textarea
+  const handleTextChange = useCallback((targetPlayerId, newContent) => {
+    const yMap = yMapRef.current;
     const ydoc = ydocRef.current;
-    if (!ytext || !ydoc) return;
+    if (!yMap || !ydoc) return;
 
-    const fullText = ytext.toString();
-    const playerLabel = `[${playerName}]:`;
-    let labelIndex = fullText.indexOf(playerLabel);
-
-    // If label doesn't exist, create it
-    if (labelIndex === -1) {
-      logDebug('Player label not found, creating it', { playerName });
-
-      ydoc.transact(() => {
-        if (fullText.length === 0) {
-          // First player - just add the label
-          ytext.insert(0, playerLabel);
-        } else {
-          // Subsequent player - add with newlines
-          ytext.insert(fullText.length, `\n\n${playerLabel}`);
-        }
-      });
-
-      // Update labelIndex after insertion
-      const updatedText = ytext.toString();
-      labelIndex = updatedText.indexOf(playerLabel);
-
-      if (labelIndex === -1) {
-        logError('Failed to create player label', { playerName });
-        return;
-      }
-    }
-
-    const contentStart = labelIndex + playerLabel.length;
-
-    // Find content end
-    let contentEnd = fullText.length;
-    const afterLabel = fullText.slice(contentStart);
-    const nextLabelMatch = afterLabel.match(/\n\[/);
-    if (nextLabelMatch) {
-      contentEnd = contentStart + nextLabelMatch.index;
-    }
-
-    const currentContent = fullText.slice(contentStart, contentEnd);
-
-    // Only update if content actually changed
-    if (currentContent === newContent) {
+    // Only allow editing own section
+    if (targetPlayerId !== playerId) {
+      logWarn('Attempted to edit another player\'s section', { targetPlayerId, myId: playerId });
       return;
     }
 
     ydoc.transact(() => {
-      // Delete old content
-      const deleteLength = contentEnd - contentStart;
-      if (deleteLength > 0) {
-        ytext.delete(contentStart, deleteLength);
-      }
-
-      // Insert new content
-      if (newContent.length > 0) {
-        ytext.insert(contentStart, newContent);
-      }
+      yMap.set(playerId, newContent);
     });
 
-    logDebug('Updated player section', { playerName, oldLength: currentContent.length, newLength: newContent.length });
-  }, [logDebug, logWarn]);
+    logDebug('Updated my section', { length: newContent.length });
+  }, [playerId, logDebug, logWarn]);
 
   // Clear all player text in the Yjs document
   const clearAllText = useCallback(() => {
-    const ytext = ytextRef.current;
+    const yMap = yMapRef.current;
     const ydoc = ydocRef.current;
-    if (!ytext || !ydoc) return;
+    if (!yMap || !ydoc) return;
 
     ydoc.transact(() => {
-      const fullText = ytext.toString();
-      if (fullText.length > 0) {
-        ytext.delete(0, fullText.length);
-      }
+      yMap.forEach((_, key) => {
+        yMap.set(key, '');
+      });
     });
 
     logDebug('Cleared all player text');
@@ -541,11 +359,16 @@ const CollaborativeStackedEditor = forwardRef(({
   const handleSubmitMyInput = useCallback(() => {
     if (!onSubmit) return;
 
+    const myContent = playerContents[playerId] || '';
+
     // If DM is submitting, combine all player inputs
     if (characterName === 'DM') {
-      const combinedInput = sections
-        .filter(section => section.content && section.content.trim())
-        .map(section => `[${section.playerName}]: ${section.content.trim()}`)
+      const combinedInput = allPlayers
+        .map(player => {
+          const content = (playerContents[player.id] || '').trim();
+          return content ? `[${player.name}]: ${content}` : null;
+        })
+        .filter(Boolean)
         .join('\n\n');
 
       if (combinedInput) {
@@ -554,126 +377,39 @@ const CollaborativeStackedEditor = forwardRef(({
       }
     } else {
       // Regular player submission (just their part)
-      const mySection = sections.find(s => s.playerId === playerId);
-      if (mySection && mySection.content.trim()) {
-        onSubmit(mySection.content.trim());
+      if (myContent.trim()) {
+        onSubmit(myContent.trim());
       }
     }
-  }, [onSubmit, sections, playerId, characterName, clearAllText]);
+  }, [onSubmit, playerContents, playerId, characterName, allPlayers, clearAllText]);
 
   // Insert text into current player's section
   const insertTextIntoMySection = useCallback((textToInsert) => {
-    const ytext = ytextRef.current;
+    const yMap = yMapRef.current;
     const ydoc = ydocRef.current;
-    if (!ytext || !ydoc || !textToInsert) return;
-
-    let fullText = ytext.toString();
-    const playerLabel = `[${characterName}]:`;
-    let labelIndex = fullText.indexOf(playerLabel);
-
-    // If label doesn't exist, create it (all players including DM use [Name]: format)
-    if (labelIndex === -1) {
-      logDebug('Player label not found during insertion, creating it', { characterName });
-
-      ydoc.transact(() => {
-        if (fullText.length === 0) {
-          // First player - just add the label
-          ytext.insert(0, playerLabel);
-        } else {
-          // Subsequent player - add with newlines
-          ytext.insert(fullText.length, `\n\n${playerLabel}`);
-        }
-      });
-
-      // Update text and labelIndex after insertion
-      fullText = ytext.toString();
-      labelIndex = fullText.indexOf(playerLabel);
-
-      if (labelIndex === -1) {
-        logError('Failed to create player label during insertion', { characterName });
-        return;
-      }
-    }
-
-    const contentStart = labelIndex + playerLabel.length;
-
-    // Find content end
-    let contentEnd = fullText.length;
-    const afterLabel = fullText.slice(contentStart);
-    const nextLabelMatch = afterLabel.match(/\n\[/);
-    if (nextLabelMatch) {
-      contentEnd = contentStart + nextLabelMatch.index;
-    }
-
-    const currentContent = fullText.slice(contentStart, contentEnd).trim();
-
-    // Insert text at the end of current content with appropriate spacing
-    const separator = currentContent ? ' ' : '';
-    // Calculate insert position relative to the start of the document
-    // We need to find where currentContent ends within the slice to account for trailing spaces if any,
-    // but we trimmed currentContent for the check.
-    // Actually, we want to append to the *actual* content, likely preserving trailing newlines of the section?
-    // The logic in handleTextChange replaces the whole section.
-    // Here we want to append.
-    
-    // Re-calculate content end without trim for positioning
-    // But we want to append visually nicely.
-    
-    // Let's just append to the end of the section (before next label)
-    const insertPosition = contentEnd;
-    const spacer = (insertPosition > contentStart && fullText[insertPosition - 1] !== ' ' && fullText[insertPosition - 1] !== '\n') ? ' ' : '';
+    if (!yMap || !ydoc || !textToInsert) return;
 
     ydoc.transact(() => {
-      ytext.insert(insertPosition, spacer + textToInsert);
+      const currentContent = yMap.get(playerId) || '';
+      const spacer = currentContent && !currentContent.endsWith(' ') && !currentContent.endsWith('\n') ? ' ' : '';
+      yMap.set(playerId, currentContent + spacer + textToInsert);
     });
 
     logDebug('Inserted text into my section', { textLength: textToInsert.length });
-  }, [characterName, logDebug, logWarn, logError]);
+  }, [playerId, logDebug]);
 
-  // Replace text in current player's section (for voice partials that replace previous content)
+  // Replace text in current player's section
   const replaceMySection = useCallback((newText) => {
-    const ytext = ytextRef.current;
+    const yMap = yMapRef.current;
     const ydoc = ydocRef.current;
-    if (!ytext || !ydoc) return;
-
-    const fullText = ytext.toString();
-    const playerLabel = `[${characterName}]:`;
-    const labelIndex = fullText.indexOf(playerLabel);
-
-    if (labelIndex === -1) {
-      // All players (including DM) use [Name]: format - cannot replace if no label
-      logWarn('Cannot replace text - player label not found', { characterName });
-      return;
-    }
-
-    const contentStart = labelIndex + playerLabel.length;
-
-    // Find content end
-    let contentEnd = fullText.length;
-    const afterLabel = fullText.slice(contentStart);
-    const nextLabelMatch = afterLabel.match(/\n\[/);
-    if (nextLabelMatch) {
-      contentEnd = contentStart + nextLabelMatch.index;
-    }
-
-    // Calculate the actual content range (skip leading whitespace after label)
-    const contentWithWhitespace = fullText.slice(contentStart, contentEnd);
-    const leadingWhitespace = contentWithWhitespace.match(/^\s*/)[0];
-    const actualContentStart = contentStart + leadingWhitespace.length;
+    if (!yMap || !ydoc) return;
 
     ydoc.transact(() => {
-      // Delete existing content (preserving the label and its whitespace)
-      const deleteLength = contentEnd - actualContentStart;
-      if (deleteLength > 0) {
-        ytext.delete(actualContentStart, deleteLength);
-      }
-      // Insert new text (with a space after the label if needed)
-      const prefix = leadingWhitespace.length === 0 ? ' ' : '';
-      ytext.insert(actualContentStart, prefix + (newText || ''));
+      yMap.set(playerId, newText || '');
     });
 
     logDebug('Replaced my section', { textLength: newText?.length || 0 });
-  }, [characterName, logDebug, logWarn]);
+  }, [playerId, logDebug]);
 
   useImperativeHandle(ref, () => ({
     submitMyInput: handleSubmitMyInput,
@@ -683,13 +419,13 @@ const CollaborativeStackedEditor = forwardRef(({
 
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback((e) => {
-    // Ctrl+Enter or Cmd+Enter to submit
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       handleSubmitMyInput();
     }
   }, [handleSubmitMyInput]);
 
+  // Build sections for display from allPlayers and playerContents
   const visibleSections = useMemo(() => {
     // Extract current user's role from playerId (format: email:role or email:role:characterId)
     const playerIdParts = playerId?.split(':') || [];
@@ -699,20 +435,37 @@ const CollaborativeStackedEditor = forwardRef(({
       console.error('[CollabEditor] Invalid playerId format - missing role segment:', playerId);
     }
 
+    // Deduplicate players by ID
+    const uniquePlayersMap = new Map();
+    for (const player of allPlayers) {
+      if (!uniquePlayersMap.has(player.id)) {
+        uniquePlayersMap.set(player.id, player);
+      }
+    }
+    const uniquePlayers = Array.from(uniquePlayersMap.values());
+
+    // Build sections from players
+    const sections = uniquePlayers.map(player => ({
+      playerId: player.id,
+      playerName: player.name,
+      content: playerContents[player.id] || ''
+    }));
+
+    // Sort: DM first
     const dmFirst = [...sections].sort((a, b) => {
       if (a.playerName === 'DM') return -1;
       if (b.playerName === 'DM') return 1;
       return 0;
     });
 
+    // Filter based on role visibility
     const withoutHidden = dmFirst.filter((section) => {
-      // Extract section's role from their playerId
       const sectionParts = section.playerId?.split(':') || [];
       const sectionRole = sectionParts[1];
 
       if (!sectionRole && section.playerId) {
         console.error('[CollabEditor] Section has invalid playerId format:', section.playerId);
-        return true; // Show sections with invalid IDs rather than hiding
+        return true;
       }
 
       // DM sees everything
@@ -724,6 +477,7 @@ const CollaborativeStackedEditor = forwardRef(({
       return true;
     });
 
+    // Final sort: my section first, then alphabetical
     return withoutHidden.sort((a, b) => {
       if (myRole === 'dm') {
         return a.playerName.localeCompare(b.playerName);
@@ -732,7 +486,7 @@ const CollaborativeStackedEditor = forwardRef(({
       if (b.playerId === playerId) return 1;
       return a.playerName.localeCompare(b.playerName);
     });
-  }, [sections, playerId]);
+  }, [allPlayers, playerContents, playerId]);
 
   const gridPlayerCountClass = layout === 'grid'
     ? `player-count-${Math.min(Math.max(visibleSections.length, 1), 4)}`
@@ -745,10 +499,6 @@ const CollaborativeStackedEditor = forwardRef(({
     }
     return classes.join(' ');
   }, [layout]);
-
-  useEffect(() => {
-    // Keep hook for future side effects; no resizing here to honor user-controlled sizing
-  }, [visibleSections, partialOverlays]);
 
   return (
     <div
@@ -768,7 +518,7 @@ const CollaborativeStackedEditor = forwardRef(({
           <button
             className="submit-button"
             onClick={handleSubmitMyInput}
-            disabled={!sections.find(s => s.playerId === playerId)?.content.trim()}
+            disabled={!(playerContents[playerId] || '').trim()}
             title="Submit your input"
           >
             Submit
@@ -782,7 +532,7 @@ const CollaborativeStackedEditor = forwardRef(({
           const isMySection = section.playerId === playerId;
           const canEdit = isMySection;
 
-          // 400ms grace period after typing - don't apply voice-active state or show partials
+          // Grace period after typing - don't apply voice-active state or show partials
           const timeSinceEdit = Date.now() - lastLocalEditTimeRef.current;
           const inTypingGracePeriod = isMySection && timeSinceEdit < 400;
 
@@ -792,7 +542,6 @@ const CollaborativeStackedEditor = forwardRef(({
                 <span className="player-name">[{section.playerName}]:</span>
                 {isMySection && <span className="you-indicator">(you)</span>}
                 {isMySection && showMicButton && onToggleTranscription && (() => {
-                  // Negative voiceLevel indicates "too low" warning from VoiceInputScribeV2
                   const isTooLow = voiceLevel < 0;
                   const absLevel = Math.abs(voiceLevel);
                   return (
@@ -837,18 +586,14 @@ const CollaborativeStackedEditor = forwardRef(({
                 }}
                 className={`player-textarea ${isMySection && isTranscribing && Math.abs(voiceLevel) > 10 && !inTypingGracePeriod ? 'voice-active' : ''} ${partialOverlays[section.playerId] && !inTypingGracePeriod ? 'has-partial' : ''}`}
                 value={
-                  // Show ONLY the partial while transcribing (not concatenated with committed)
-                  // This gives cleaner UX - user sees just what they're currently saying
-                  // But not during typing grace period - let user type freely
+                  // Show partial while transcribing (not during typing grace period)
                   (partialOverlays[section.playerId] && !inTypingGracePeriod)
                     ? partialOverlays[section.playerId]
                     : section.content
                 }
                 onChange={(e) => {
-                  // Don't allow edits while partial is showing (wait for final)
-                  // Unless in typing grace period - let user continue editing
                   if (canEdit && (!partialOverlays[section.playerId] || inTypingGracePeriod)) {
-                    handleTextChange(section.playerName, e.target.value);
+                    handleTextChange(section.playerId, e.target.value);
                   }
                 }}
                 readOnly={!canEdit || (isMySection && isTranscribing && Math.abs(voiceLevel) > 10 && !inTypingGracePeriod) || (!!partialOverlays[section.playerId] && !inTypingGracePeriod)}

@@ -89,6 +89,29 @@ const CampaignSetup = ({ isOpen, onComplete, onCancel, onCreateBlank }) => {
   // Track original pre-generated character data to detect modifications
   const [originalPregenData, setOriginalPregenData] = useState({});
 
+  // Helper to get character names already selected in other slots
+  const getSelectedCharacterNames = (excludeSlotId = null) => {
+    const selectedNames = new Set();
+
+    // Add names from dropdown selections
+    Object.entries(selectedCharacters).forEach(([slotId, name]) => {
+      if (name && (excludeSlotId === null || parseInt(slotId) !== excludeSlotId)) {
+        selectedNames.add(name);
+      }
+    });
+
+    // Also check characterSlots for names that were auto-filled (random button)
+    // These may not be in selectedCharacters since dropdown is cleared for random
+    characterSlots.forEach(slot => {
+      if (slot.name && slot.was_pregenerated &&
+          (excludeSlotId === null || slot.slot_id !== excludeSlotId)) {
+        selectedNames.add(slot.name);
+      }
+    });
+
+    return selectedNames;
+  };
+
   // Load available voices and pregenerated characters
   useEffect(() => {
     loadAvailableVoices();
@@ -149,58 +172,67 @@ const CampaignSetup = ({ isOpen, onComplete, onCancel, onCreateBlank }) => {
     }
   };
 
-  // Auto-fill all characters with generated data
+  // Auto-fill all characters with unique pregenerated characters
   const autoFillAllCharacters = async () => {
     setLoading(true);
     setError('');
 
     try {
+      // Create a shuffled copy of pregenerated characters for random selection
+      const shuffledCharacters = [...pregeneratedCharacters]
+        .sort(() => Math.random() - 0.5);
+
       const updatedSlots = [];
+      const newOriginalPregenData = {};
+      const usedNames = new Set();
 
       for (let i = 0; i < characterSlots.length; i++) {
-        const data = await apiService.generateCharacter({
-          slot_id: i
-        });
+        // Find first available character not yet used
+        const availableChar = shuffledCharacters.find(char => !usedNames.has(char.name));
 
-        if (data.success && data.character) {
-          const char = data.character;
+        if (availableChar) {
+          usedNames.add(availableChar.name);
+
           const slotData = {
             ...characterSlots[i],
-            name: char.name || `Player ${i + 1}`,
-            character_class: char.character_class || 'Fighter',
-            race: char.race || 'Human',
-            level: char.level || 1,
-            description: char.description || '',
-            backstory: char.backstory || '',
+            name: availableChar.name || `Player ${i + 1}`,
+            character_class: availableChar.character_class || 'Fighter',
+            race: availableChar.race || 'Human',
+            level: availableChar.level || 1,
+            description: availableChar.description || '',
+            backstory: availableChar.backstory || '',
+            appearance: availableChar.appearance || '',
+            visual_description: availableChar.visual_description || '',
             // Visual metadata fields for portrait generation
-            gender: char.gender || '',
-            age_category: char.age_category || '',
-            build: char.build || '',
-            height_description: char.height_description || '',
-            facial_expression: char.facial_expression || '',
-            facial_features: char.facial_features || '',
-            attire: char.attire || '',
-            primary_weapon: char.primary_weapon || '',
-            distinguishing_feature: char.distinguishing_feature || '',
-            background_setting: char.background_setting || '',
-            pose: char.pose || '',
+            gender: availableChar.gender || '',
+            age_category: availableChar.age_category || '',
+            build: availableChar.build || '',
+            height_description: availableChar.height_description || '',
+            facial_expression: availableChar.facial_expression || '',
+            facial_features: availableChar.facial_features || '',
+            attire: availableChar.attire || '',
+            primary_weapon: availableChar.primary_weapon || '',
+            distinguishing_feature: availableChar.distinguishing_feature || '',
+            background_setting: availableChar.background_setting || '',
+            pose: availableChar.pose || '',
             is_filled: true,
             was_pregenerated: true  // Mark as pre-generated
           };
           updatedSlots.push(slotData);
 
           // Store original pre-generated data for comparison
-          setOriginalPregenData(prev => ({
-            ...prev,
-            [i]: { ...char }
-          }));
+          newOriginalPregenData[i] = { ...availableChar };
         } else {
-          // Keep the original slot if generation failed
+          // Keep the original slot if no more characters available
           updatedSlots.push(characterSlots[i]);
+          console.warn(`Not enough pregenerated characters for slot ${i}`);
         }
       }
 
       setCharacterSlots(updatedSlots);
+      setOriginalPregenData(prev => ({ ...prev, ...newOriginalPregenData }));
+      // Clear all dropdown selections since we're using random assignment
+      setSelectedCharacters({});
     } catch (error) {
       console.error('Error generating characters:', error);
       setError('Error generating characters: ' + error.message);
@@ -397,7 +429,7 @@ const CampaignSetup = ({ isOpen, onComplete, onCancel, onCreateBlank }) => {
     }
   };
 
-  // Auto-fill character using AI (random generation via API)
+  // Auto-fill character using random selection from pregenerated characters
   const autoFillCharacter = async (slotId) => {
     const slot = characterSlots.find(s => s.slot_id === slotId);
     if (!slot) return;
@@ -405,53 +437,64 @@ const CampaignSetup = ({ isOpen, onComplete, onCancel, onCreateBlank }) => {
     setGeneratingBackstory(prev => ({ ...prev, [slotId]: true }));
 
     try {
-      // Always pass null for character_name to get random character from API
-      const data = await apiService.generateCharacter({
-        slot_id: slotId,
-        character_name: null
-      });
+      // Get already-selected character names (excluding this slot)
+      const alreadySelectedNames = getSelectedCharacterNames(slotId);
 
-      if (data.character) {
-        // Update all fields with generated data including visual metadata
-        setCharacterSlots(slots =>
-          slots.map(s =>
-            s.slot_id === slotId
-              ? {
-                ...s,
-                name: data.character.name || s.name,
-                character_class: data.character.character_class || s.character_class,
-                race: data.character.race || s.race,
-                level: data.character.level || s.level,
-                description: data.character.description || s.description,
-                backstory: data.character.backstory || s.backstory,
-                // Visual metadata fields for portrait generation
-                gender: data.character.gender || s.gender,
-                age_category: data.character.age_category || s.age_category,
-                build: data.character.build || s.build,
-                height_description: data.character.height_description || s.height_description,
-                facial_expression: data.character.facial_expression || s.facial_expression,
-                facial_features: data.character.facial_features || s.facial_features,
-                attire: data.character.attire || s.attire,
-                primary_weapon: data.character.primary_weapon || s.primary_weapon,
-                distinguishing_feature: data.character.distinguishing_feature || s.distinguishing_feature,
-                background_setting: data.character.background_setting || s.background_setting,
-                pose: data.character.pose || s.pose,
-                is_filled: true,
-                was_pregenerated: true  // Mark as pre-generated
-              }
-              : s
-          )
-        );
+      // Filter available characters
+      const availableCharacters = pregeneratedCharacters.filter(
+        char => !alreadySelectedNames.has(char.name)
+      );
 
-        // Store original pre-generated data for comparison
-        setOriginalPregenData(prev => ({
-          ...prev,
-          [slotId]: { ...data.character }
-        }));
-
-        // Clear the dropdown selection since this was random
-        setSelectedCharacters(prev => ({ ...prev, [slotId]: '' }));
+      if (availableCharacters.length === 0) {
+        setError('No more unique characters available. All pregenerated characters are already selected.');
+        return;
       }
+
+      // Select a random character from available ones
+      const randomIndex = Math.floor(Math.random() * availableCharacters.length);
+      const randomChar = availableCharacters[randomIndex];
+
+      // Update all fields with character data including visual metadata
+      setCharacterSlots(slots =>
+        slots.map(s =>
+          s.slot_id === slotId
+            ? {
+              ...s,
+              name: randomChar.name || s.name,
+              character_class: randomChar.character_class || s.character_class,
+              race: randomChar.race || s.race,
+              level: randomChar.level || s.level,
+              description: randomChar.description || s.description,
+              backstory: randomChar.backstory || s.backstory,
+              appearance: randomChar.appearance || '',
+              visual_description: randomChar.visual_description || '',
+              // Visual metadata fields for portrait generation
+              gender: randomChar.gender || s.gender,
+              age_category: randomChar.age_category || s.age_category,
+              build: randomChar.build || s.build,
+              height_description: randomChar.height_description || s.height_description,
+              facial_expression: randomChar.facial_expression || s.facial_expression,
+              facial_features: randomChar.facial_features || s.facial_features,
+              attire: randomChar.attire || s.attire,
+              primary_weapon: randomChar.primary_weapon || s.primary_weapon,
+              distinguishing_feature: randomChar.distinguishing_feature || s.distinguishing_feature,
+              background_setting: randomChar.background_setting || s.background_setting,
+              pose: randomChar.pose || s.pose,
+              is_filled: true,
+              was_pregenerated: true  // Mark as pre-generated
+            }
+            : s
+        )
+      );
+
+      // Store original pre-generated data for comparison
+      setOriginalPregenData(prev => ({
+        ...prev,
+        [slotId]: { ...randomChar }
+      }));
+
+      // Clear the dropdown selection since this was random
+      setSelectedCharacters(prev => ({ ...prev, [slotId]: '' }));
     } catch (error) {
       console.error('Error generating character:', error);
       setError('Failed to generate character. Please try again.');
@@ -770,6 +813,14 @@ const CampaignSetup = ({ isOpen, onComplete, onCancel, onCreateBlank }) => {
 
         <div className="character-slots">
           {characterSlots.map((slot, index) => {
+            // Get names already selected in OTHER slots (not this one)
+            const alreadySelectedNames = getSelectedCharacterNames(slot.slot_id);
+
+            // Filter pregenerated characters to exclude already-selected ones
+            const availableCharacters = pregeneratedCharacters.filter(
+              char => !alreadySelectedNames.has(char.name)
+            );
+
             const headerControls = (
               <>
                 <Select
@@ -781,7 +832,7 @@ const CampaignSetup = ({ isOpen, onComplete, onCancel, onCreateBlank }) => {
                   forceNative={true}
                   options={[
                     { value: '', label: 'Select a character...' },
-                    ...pregeneratedCharacters.map((char) => ({
+                    ...availableCharacters.map((char) => ({
                       value: char.name,
                       label: `${char.name} (${char.race} ${char.character_class})`,
                     })),

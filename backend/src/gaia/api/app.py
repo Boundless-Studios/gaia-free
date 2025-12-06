@@ -82,11 +82,6 @@ from gaia.api.routes.chat import router as chat_router
 from gaia.api.routes.debug import router as debug_router
 from gaia.api.routes.room import router as room_router
 from gaia.api.routes.sound_effects import router as sfx_router
-from gaia.connection.ws_helpers import (
-    send_error_and_close,
-    authenticate_ws_user,
-    ws_message_loop,
-)
 from gaia.connection.websocket.audio_websocket_handler import AudioWebSocketHandler
 
 # Socket.IO server for real-time communication
@@ -551,7 +546,7 @@ async def test_endpoint(
     logger.info("🔍 Test endpoint called")
     logger.info(f"🔍 Request method: {request.method}")
     logger.info(f"🔍 Request URL: {request.url}")
-    logger.info(f"🔍 Request headers: {dict(request.headers)}")
+    # Note: Don't log headers as they contain sensitive auth tokens
     
     body = await request.body()
     logger.info(f"🔍 Request body length: {len(body)} bytes")
