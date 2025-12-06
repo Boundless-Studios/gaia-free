@@ -3,7 +3,9 @@ Player Options Service - handles personalized options generation for multiple pl
 
 This service coordinates generating options for each connected player:
 - Active player (turn-taker): Uses ActivePlayerOptionsAgent with action-oriented prompt
-- Secondary players: Uses PlayerOptionsAgent with discovery-focused prompt
+- Secondary players: Uses ObservingPlayerOptionsAgent with discovery-focused prompt
+
+Both agents are imported from gaia_private and use DB-centric prompts (no in-code fallbacks).
 """
 
 import logging
@@ -18,7 +20,9 @@ from gaia.models.player_options import (
     PendingObservations,
     PlayerObservation
 )
-from gaia.agents.scene.active_player_options_agent import ActivePlayerOptionsAgent
+
+# Import both agents from gaia_private
+from gaia_private.agents.scene import ActivePlayerOptionsAgent, ObservingPlayerOptionsAgent
 
 logger = logging.getLogger(__name__)
 
@@ -49,22 +53,10 @@ class PlayerOptionsService:
 
     def __init__(self):
         self._active_agent = ActivePlayerOptionsAgent()
-        # Lazy-load the passive agent from gaia_private
-        self._passive_agent = None
+        self._passive_agent = ObservingPlayerOptionsAgent()
 
     def _get_passive_agent(self):
-        """Get or create the passive PlayerOptionsAgent (from gaia_private)."""
-        if self._passive_agent is None:
-            try:
-                from gaia_private.agents.scene.player_options_agent import PlayerOptionsAgent
-                self._passive_agent = PlayerOptionsAgent()
-            except ImportError:
-                logger.warning(
-                    "PlayerOptionsAgent not available from gaia_private, "
-                    "using ActivePlayerOptionsAgent for all players"
-                )
-                # Fallback: use active agent for all
-                self._passive_agent = self._active_agent
+        """Get the passive ObservingPlayerOptionsAgent."""
         return self._passive_agent
 
     async def generate_all_player_options(

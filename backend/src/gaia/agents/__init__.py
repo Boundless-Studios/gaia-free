@@ -1,5 +1,14 @@
-"""Gaia agents package - local agent implementations."""
+"""Gaia agents package - re-exports agents from gaia_private."""
 
-from gaia.agents.scene.active_player_options_agent import ActivePlayerOptionsAgent
+# All agents are now in gaia_private - re-export for backward compatibility
+from gaia_private.agents.scene import (
+    ActivePlayerOptionsAgent,
+    ObservingPlayerOptionsAgent,
+    PlayerOptionsAgent,  # Alias for ObservingPlayerOptionsAgent
+)
 
-__all__ = ["ActivePlayerOptionsAgent"]
+__all__ = [
+    "ActivePlayerOptionsAgent",
+    "ObservingPlayerOptionsAgent",
+    "PlayerOptionsAgent",
+]
