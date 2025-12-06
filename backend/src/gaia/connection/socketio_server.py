@@ -25,6 +25,90 @@ from gaia.connection.models import ConnectionStatus
 
 logger = logging.getLogger(__name__)
 
+
+# =============================================================================
+# Server-Side Yjs State Management (for late joiner sync)
+# =============================================================================
+
+class SessionYjsState:
+    """Manages server-side Yjs document state for a campaign session.
+
+    This ensures late joiners receive the current collaborative editor state.
+    Uses pycrdt (Python CRDT) to maintain Yjs-compatible documents.
+    """
+
+    def __init__(self):
+        """Initialize state manager."""
+        self._sessions: Dict[str, Any] = {}  # {session_id: pycrdt.Doc}
+        self._lock = None  # Lazy init for async lock
+
+    def _get_or_create_doc(self, session_id: str):
+        """Get or create a Yjs document for a session."""
+        if session_id not in self._sessions:
+            try:
+                from pycrdt import Doc
+                self._sessions[session_id] = Doc()
+                logger.debug("[YjsState] Created new doc for session=%s", session_id)
+            except ImportError:
+                logger.warning("[YjsState] pycrdt not available, late joiner sync disabled")
+                return None
+        return self._sessions[session_id]
+
+    def apply_update(self, session_id: str, update: List[int]) -> bool:
+        """Apply a Yjs update to the server-side document.
+
+        Args:
+            session_id: Campaign session ID
+            update: Yjs update as list of integers
+
+        Returns:
+            True if update was applied successfully
+        """
+        doc = self._get_or_create_doc(session_id)
+        if doc is None:
+            return False
+
+        try:
+            update_bytes = bytes(update)
+            doc.apply_update(update_bytes)
+            logger.debug("[YjsState] Applied update (%d bytes) to session=%s", len(update_bytes), session_id)
+            return True
+        except Exception as e:
+            logger.warning("[YjsState] Failed to apply update: %s", e)
+            return False
+
+    def get_state_update(self, session_id: str) -> Optional[List[int]]:
+        """Get the current document state as a Yjs update.
+
+        Args:
+            session_id: Campaign session ID
+
+        Returns:
+            Yjs update as list of integers, or None if no state
+        """
+        doc = self._get_or_create_doc(session_id)
+        if doc is None:
+            return None
+
+        try:
+            state_bytes = doc.get_update()
+            if state_bytes and len(state_bytes) > 0:
+                return list(state_bytes)
+            return None
+        except Exception as e:
+            logger.warning("[YjsState] Failed to get state: %s", e)
+            return None
+
+    def cleanup_session(self, session_id: str) -> None:
+        """Remove session state when no longer needed."""
+        if session_id in self._sessions:
+            del self._sessions[session_id]
+            logger.debug("[YjsState] Cleaned up session=%s", session_id)
+
+
+# Global instance for session Yjs state
+session_yjs_state = SessionYjsState()
+
 # =============================================================================
 # Socket.IO Server Configuration
 # =============================================================================
@@ -597,6 +681,11 @@ async def yjs_update(sid: str, data: Dict[str, Any]):
         logger.warning("[SocketIO] yjs_update without session_id | sid=%s", sid)
         return
 
+    # Apply update to server-side Yjs doc (for late joiner sync)
+    update_payload = data.get("update")
+    if update_payload and isinstance(update_payload, list):
+        session_yjs_state.apply_update(session_id, update_payload)
+
     # Broadcast to room except sender
     await sio.emit(
         "yjs_update",
@@ -676,6 +765,24 @@ async def register(sid: str, data: Dict[str, Any]):
         to=sid,
         namespace="/campaign",
     )
+
+    # Send initial_state to late joiners (if there's existing Yjs state)
+    initial_state = session_yjs_state.get_state_update(session_id)
+    if initial_state:
+        await sio.emit(
+            "initial_state",
+            {
+                "sessionId": session_id,
+                "update": initial_state,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+            to=sid,
+            namespace="/campaign",
+        )
+        logger.info(
+            "[SocketIO] Sent initial_state to late joiner | sid=%s session=%s size=%d",
+            sid, session_id, len(initial_state)
+        )
 
     # Broadcast updated player list to all users in the room
     users = await get_room_users(session_id)
