@@ -1498,3 +1498,81 @@
   border-radius: 9999px;
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* ============================================
+   Pending Observations Section
+   Shows observations from other players (gold theme)
+   ============================================ */
+
+.pending-observations-section {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  width: 100%;
+  flex-basis: 100%;
+}
+
+.observations-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 0.75rem;
+}
+
+.observations-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.observations-title {
+  color: #f59e0b;
+  font-weight: 600;
+  flex: 1;
+}
+
+.observations-count {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.observations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.observation-item {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.observation-item:hover {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  transform: translateY(-1px);
+}
+
+.observation-item:active {
+  transform: translateY(0);
+}
+
+.observation-author {
+  color: #fbbf24;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.observation-text {
+  color: #e5e7eb;
+}

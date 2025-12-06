@@ -365,6 +365,9 @@ const PlayerPage = () => {
       // New StructuredGameData fields
       answer: structData.answer || '',
       player_options: structData.player_options || '',
+      // Personalized player options (per-character options)
+      personalized_player_options: structData.personalized_player_options || null,
+      pending_observations: structData.pending_observations || null,
       // Image generation fields
       generated_image_url: structData.generated_image_url || '',
       generated_image_path: structData.generated_image_path || '',
@@ -870,6 +873,30 @@ const PlayerPage = () => {
       }
 
       case 'connection_registered': {
+        break;
+      }
+
+      case 'personalized_player_options': {
+        // Received personalized options for all connected players
+        console.log('🎲 Personalized player options received:', update.personalized_player_options);
+        if (sessionId && update.personalized_player_options) {
+          setSessionStructuredData(sessionId, (prevData) => ({
+            ...prevData,
+            personalized_player_options: update.personalized_player_options
+          }));
+        }
+        break;
+      }
+
+      case 'pending_observations': {
+        // Received pending observations from secondary players
+        console.log('👁️ Pending observations received:', update.pending_observations);
+        if (sessionId && update.pending_observations) {
+          setSessionStructuredData(sessionId, (prevData) => ({
+            ...prevData,
+            pending_observations: update.pending_observations
+          }));
+        }
         break;
       }
 

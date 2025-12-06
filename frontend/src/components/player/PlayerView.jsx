@@ -31,7 +31,12 @@ const PlayerView = ({
   collabPlayerName = '',
   collabAllPlayers = [],
   collabIsConnected = false,
-  collabEditorRef = null
+  collabEditorRef = null,
+  // Personalized player options props
+  currentCharacterId = null,
+  isActivePlayer = true,
+  pendingObservations = [],
+  onCopyObservation = null
 }) => {
   const [error, setError] = useState(null);
   const [currentCharacter] = useState(characterData);
@@ -236,6 +241,11 @@ const PlayerView = ({
             collabIsConnected={collabIsConnected}
             // Ref for voice transcription integration
             collabEditorRef={collabEditorRef}
+            // Personalized player options props
+            currentCharacterId={currentCharacterId}
+            isActivePlayer={isActivePlayer}
+            pendingObservations={pendingObservations}
+            onCopyObservation={onCopyObservation}
           />
         </div>
       </div>

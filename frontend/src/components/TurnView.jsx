@@ -9,15 +9,15 @@ import './ChatMessage.css';
  * 1. Legacy: `turn` prop is an array or string of options (shared across all players)
  * 2. Personalized: `personalizedPlayerOptions` prop contains per-character options
  *
- * When personalized options are available:
- * - Shows options specific to the current character
- * - Displays "Your Turn" indicator for active player
- * - Shows "Observe" indicator for passive players
+ * Also displays pending observations from other players when the user is the active player.
  */
 const TurnView = ({
   turn,
   personalizedPlayerOptions,
   currentCharacterId,
+  pendingObservations = [],
+  isActivePlayer = true,
+  onCopyObservation,
   className = '',
   showHeader = true,
   onPlayStop,
@@ -53,7 +53,7 @@ const TurnView = ({
 
     // Fall back to legacy format
     if (!turn) {
-      return { turnLines: [], isActive: true, characterName: null };
+      return { turnLines: [], isActive: isActivePlayer, characterName: null };
     }
 
     let processedTurn = turn;
@@ -79,15 +79,21 @@ const TurnView = ({
       lines = processedTurn.split('\n').filter(line => line.trim());
     }
 
-    return { turnLines: lines, isActive: true, characterName: null };
-  }, [turn, personalizedPlayerOptions, currentCharacterId]);
+    return { turnLines: lines, isActive: isActivePlayer, characterName: null };
+  }, [turn, personalizedPlayerOptions, currentCharacterId, isActivePlayer]);
 
-  // Don't render if no options
-  if (!turnLines || turnLines.length === 0) {
+  // Filter pending observations that haven't been included yet
+  const unincludedObservations = useMemo(() => {
+    if (!pendingObservations || !isActive) return [];
+    return pendingObservations.filter(obs => !obs.included_in_turn);
+  }, [pendingObservations, isActive]);
+
+  // Don't render if no options and no observations
+  if ((!turnLines || turnLines.length === 0) && unincludedObservations.length === 0) {
     return null;
   }
 
-  // Determine header text based on active status
+  // Determine header text
   const getHeaderText = () => {
     if (personalizedPlayerOptions && currentCharacterId) {
       if (isActive) {
@@ -99,42 +105,57 @@ const TurnView = ({
     return 'Player Options';
   };
 
-  // Determine header style class
-  const getHeaderClass = () => {
-    if (personalizedPlayerOptions && currentCharacterId) {
-      return isActive ? 'turn-header--active' : 'turn-header--passive';
-    }
-    return '';
-  };
-
   return (
-    <div className={`turn-view base-view ${className} ${isActive ? 'turn-view--active' : 'turn-view--passive'}`}>
+    <div className={`turn-view base-view ${className}`}>
       {showHeader && (
-        <div className={`turn-header base-header ${getHeaderClass()}`}>
+        <div className="turn-header base-header">
           <h2 className="turn-title base-title">{getHeaderText()}</h2>
-          {personalizedPlayerOptions && currentCharacterId && (
-            <span className={`turn-role-badge ${isActive ? 'turn-role-badge--active' : 'turn-role-badge--passive'}`}>
-              {isActive ? '⚔️' : '👁️'}
-            </span>
-          )}
         </div>
       )}
       <div className="turn-content base-content">
-        <div className="turn-text base-text">
-          {turnLines.map((line, index) => (
-            <div
-              key={index}
-              className={`chat-message-container dm ${isActive ? 'option--active' : 'option--passive'}`}
-              onClick={() => onCopyToChat && onCopyToChat(line)}
-              style={onCopyToChat ? { cursor: 'pointer' } : {}}
-              title={onCopyToChat ? "Click to copy to chat input" : ""}
-            >
-              <div className="chat-message-content">
-                {line}
-              </div>
+        {/* Pending observations from other players (shown to active player) */}
+        {unincludedObservations.length > 0 && (
+          <div className="turn-observations-section">
+            <div className="turn-observations-header">
+              <span className="turn-observations-icon">👁️</span>
+              <span className="turn-observations-title">Party Observations</span>
+              <span className="turn-observations-count">{unincludedObservations.length}</span>
             </div>
-          ))}
-        </div>
+            <div className="turn-observations-list">
+              {unincludedObservations.map((observation, index) => (
+                <div
+                  key={`obs-${observation.character_id}-${index}`}
+                  className="turn-observation-item"
+                  onClick={() => onCopyObservation && onCopyObservation(observation)}
+                  style={onCopyObservation ? { cursor: 'pointer' } : {}}
+                  title={onCopyObservation ? "Click to add to your turn" : ""}
+                >
+                  <span className="turn-observation-author">{observation.character_name}:</span>
+                  <span className="turn-observation-text">{observation.observation_text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Player options */}
+        {turnLines.length > 0 && (
+          <div className="turn-text base-text">
+            {turnLines.map((line, index) => (
+              <div
+                key={index}
+                className="chat-message-container dm"
+                onClick={() => onCopyToChat && onCopyToChat(line)}
+                style={onCopyToChat ? { cursor: 'pointer' } : {}}
+                title={onCopyToChat ? "Click to copy to chat input" : ""}
+              >
+                <div className="chat-message-content">
+                  {line}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

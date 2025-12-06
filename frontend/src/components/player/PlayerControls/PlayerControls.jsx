@@ -21,7 +21,12 @@ const PlayerControls = ({
   collabPlayerName = '',
   collabAllPlayers = [],
   collabIsConnected = false,
-  collabEditorRef = null
+  collabEditorRef = null,
+  // Personalized player options props
+  currentCharacterId = null,
+  isActivePlayer = true,
+  pendingObservations = [],
+  onCopyObservation = null
 }) => {
   const [activeTab, setActiveTab] = useState('voice');
   const [recentMedia, setRecentMedia] = useState([]);
@@ -83,11 +88,22 @@ const PlayerControls = ({
   const isMyTurn = true;
 
   // Parse player options from structuredData
+  // Priority: personalized_player_options > player_options > turn
   const playerOptions = useMemo(() => {
     if (!structuredData) return [];
 
+    // Check for personalized options first (if we have a character ID)
+    const personalizedOptions = structuredData.personalized_player_options;
+    if (personalizedOptions && currentCharacterId) {
+      const charOptions = personalizedOptions.characters?.[currentCharacterId];
+      if (charOptions?.options && Array.isArray(charOptions.options)) {
+        return charOptions.options.filter(option => option && option.trim().length > 0);
+      }
+    }
+
+    // Fall back to legacy format
     const optionsData = structuredData.player_options || structuredData.turn || '';
-    
+
     // Handle both array and string formats
     let parsed = [];
     if (Array.isArray(optionsData)) {
@@ -102,7 +118,7 @@ const PlayerControls = ({
     }
 
     return parsed;
-  }, [structuredData]);
+  }, [structuredData, currentCharacterId]);
 
   const tabs = useMemo(() => [
     {
@@ -143,6 +159,31 @@ const PlayerControls = ({
             </div>
           )}
 
+          {/* Pending Observations (shown to active player) */}
+          {isActivePlayer && pendingObservations && pendingObservations.length > 0 && (
+            <div className="pending-observations-section">
+              <div className="observations-header">
+                <span className="observations-icon">👁️</span>
+                <span className="observations-title">Party Observations</span>
+                <span className="observations-count">{pendingObservations.length}</span>
+              </div>
+              <div className="observations-list">
+                {pendingObservations.filter(obs => !obs.included_in_turn).map((observation, index) => (
+                  <div
+                    key={`obs-${observation.character_id}-${index}`}
+                    className="observation-item"
+                    onClick={() => onCopyObservation && onCopyObservation(observation)}
+                    style={onCopyObservation ? { cursor: 'pointer' } : {}}
+                    title={onCopyObservation ? "Click to add to your turn" : ""}
+                  >
+                    <span className="observation-author">{observation.character_name}:</span>
+                    <span className="observation-text">{observation.observation_text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Player Options */}
           <div className="quick-actions-sidebar">
             {playerOptions.length > 0 ? (
@@ -157,7 +198,7 @@ const PlayerControls = ({
               ))
             ) : (
               <div className="no-options-message">
-                Waiting for options...
+                {isActivePlayer ? 'Waiting for options...' : 'Observe & Discover'}
               </div>
             )}
           </div>

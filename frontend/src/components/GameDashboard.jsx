@@ -4,7 +4,6 @@ import CombatStatusView from './CombatStatusView';
 import ImageGalleryWithPolling from './ImageGalleryWithPolling';
 import PlayerAndTurnList from './PlayerAndTurnList/PlayerAndTurnList';
 import CollaborativeStackedEditor from './collaborative/CollaborativeStackedEditor.jsx';
-import ObservationPanel from './ObservationPanel';
 import apiService from '../services/apiService';
 import './GameDashboard.css';
 import StreamingNarrativeView from './player/StreamingNarrativeView.jsx';
@@ -358,21 +357,15 @@ const GameDashboard = forwardRef(
 
         {/* Player Options + Input - Right side 25% */}
         <div className="dashboard-player-options-section">
-          {/* Observation Panel for Primary Player */}
-          {isActivePlayer && pendingObservations.length > 0 && (
-            <ObservationPanel
-              observations={pendingObservations}
-              onCopyObservation={onCopyObservation || handleCopyObservationToChat}
-              primaryCharacterName={collabPlayerName}
-            />
-          )}
-
           <div className="dashboard-player-options-list">
-            {hasPlayerOptions ? (
+            {hasPlayerOptions || (isActivePlayer && pendingObservations.length > 0) ? (
               <TurnView
                 turn={latestStructuredData.player_options || latestStructuredData.turn}
                 personalizedPlayerOptions={latestStructuredData.personalized_player_options}
                 currentCharacterId={currentCharacterId}
+                pendingObservations={pendingObservations}
+                isActivePlayer={isActivePlayer}
+                onCopyObservation={onCopyObservation || handleCopyObservationToChat}
                 showHeader={true}
                 onPlayStop={handlePlayStopOptions}
                 isPlaying={false}

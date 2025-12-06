@@ -26,6 +26,13 @@ from gaia.api.schemas.chat import (
     InputType,
     AudioArtifactPayload,
     PlayerCharacterContext,
+    PersonalizedPlayerOptionsSchema,
+    CharacterOptionsSchema,
+)
+from gaia.services.player_options_service import (
+    PlayerOptionsService,
+    ConnectedPlayer,
+    get_observations_manager,
 )
 from auth.src.flexible_auth import optional_auth
 from gaia.infra.audio.auto_tts_service import auto_tts_service
@@ -33,6 +40,7 @@ from gaia.infra.audio.playback_request_writer import PlaybackRequestWriter
 from gaia.infra.audio.audio_artifact_store import audio_artifact_store
 from gaia.infra.audio.audio_playback_service import audio_playback_service
 from gaia_private.session.session_manager import SessionNotFoundError
+from gaia_private.session.session_models import RoomSeat
 from auth.src.models import AccessControl, PermissionLevel
 from db.src import get_async_db
 from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster
@@ -146,6 +154,151 @@ def _extract_player_character_context(chat_request: ChatRequest) -> Optional[Pla
         return None
 
     return None if context.is_empty() else context
+
+
+def _get_connected_players(campaign_id: str) -> List[ConnectedPlayer]:
+    """
+    Get list of connected players with their character info from room seats.
+
+    Args:
+        campaign_id: The campaign/session ID
+
+    Returns:
+        List of ConnectedPlayer objects for players with assigned characters
+    """
+    from db.src.connection import db_manager
+    from gaia.mechanics.character.character_storage import CharacterStorage
+
+    connected_players = []
+
+    try:
+        with db_manager.get_sync_session() as db:
+            # Get all player seats with characters
+            stmt = select(RoomSeat).where(
+                RoomSeat.campaign_id == campaign_id,
+                RoomSeat.seat_type == "player",
+                RoomSeat.character_id.isnot(None)
+            )
+            seats = db.execute(stmt).scalars().all()
+
+            # Get character info for each seat
+            char_storage = CharacterStorage(campaign_id)
+
+            for seat in seats:
+                if not seat.character_id:
+                    continue
+
+                # Get character name from storage
+                character_name = "Unknown"
+                try:
+                    char_data = char_storage.get_character_data(seat.character_id)
+                    if char_data:
+                        character_name = char_data.get("name", "Unknown")
+                except Exception as e:
+                    logger.warning(f"Failed to get character name for {seat.character_id}: {e}")
+
+                connected_players.append(ConnectedPlayer(
+                    character_id=seat.character_id,
+                    character_name=character_name,
+                    user_id=seat.owner_user_id,
+                    seat_id=str(seat.seat_id) if seat.seat_id else None,
+                    is_dm=False
+                ))
+
+    except Exception as e:
+        logger.error(f"Error getting connected players for campaign {campaign_id}: {e}")
+
+    return connected_players
+
+
+# Global player options service instance
+_player_options_service: Optional[PlayerOptionsService] = None
+
+
+def get_player_options_service() -> PlayerOptionsService:
+    """Get the global player options service instance."""
+    global _player_options_service
+    if _player_options_service is None:
+        _player_options_service = PlayerOptionsService()
+    return _player_options_service
+
+
+async def _generate_personalized_options(
+    campaign_id: str,
+    structured_data: dict,
+) -> Optional[PersonalizedPlayerOptionsSchema]:
+    """
+    Generate personalized player options for all connected players.
+
+    Args:
+        campaign_id: The campaign/session ID
+        structured_data: The structured data from the orchestrator response
+
+    Returns:
+        PersonalizedPlayerOptionsSchema or None if no options generated
+    """
+    try:
+        # Get connected players
+        connected_players = _get_connected_players(campaign_id)
+        if not connected_players:
+            logger.debug("[PlayerOptions] No connected players found for campaign %s", campaign_id)
+            return None
+
+        # Extract turn info to determine active character
+        turn_info = structured_data.get("turn_info", {})
+        if isinstance(turn_info, str):
+            import json
+            try:
+                turn_info = json.loads(turn_info)
+            except (json.JSONDecodeError, TypeError):
+                turn_info = {}
+
+        active_character_id = turn_info.get("active_character_id") or turn_info.get("activeCharacterId")
+        previous_char_name = turn_info.get("previous_character_name") or turn_info.get("previousCharacterName") or "the previous player"
+
+        # If no active character specified, use the first connected player
+        if not active_character_id and connected_players:
+            active_character_id = connected_players[0].character_id
+            logger.debug("[PlayerOptions] No active character specified, using first player: %s", active_character_id)
+
+        # Get scene narrative
+        scene_narrative = structured_data.get("narrative", "") or structured_data.get("answer", "")
+        if not scene_narrative:
+            logger.debug("[PlayerOptions] No scene narrative available")
+            return None
+
+        # Generate options
+        service = get_player_options_service()
+        options = await service.generate_all_player_options(
+            connected_players=connected_players,
+            active_character_id=active_character_id,
+            scene_narrative=scene_narrative,
+            previous_char_name=previous_char_name,
+        )
+
+        # Convert to schema
+        if options and options.characters:
+            characters_schema = {}
+            for char_id, char_opts in options.characters.items():
+                characters_schema[char_id] = CharacterOptionsSchema(
+                    character_id=char_opts.character_id,
+                    character_name=char_opts.character_name,
+                    options=char_opts.options,
+                    is_active=char_opts.is_active,
+                    generated_at=char_opts.generated_at.isoformat() if char_opts.generated_at else None
+                )
+
+            return PersonalizedPlayerOptionsSchema(
+                active_character_id=options.active_character_id,
+                scene_narrative=options.scene_narrative,
+                generated_at=options.generated_at.isoformat() if options.generated_at else None,
+                characters=characters_schema
+            )
+
+    except Exception as e:
+        logger.error("[PlayerOptions] Error generating personalized options: %s", e, exc_info=True)
+
+    return None
 
 
 def transform_structured_data(data: dict) -> StructuredGameData:
@@ -313,6 +466,41 @@ async def chat(
             structured_data.generated_image_path = image_data.get("local_path", "")
             structured_data.generated_image_prompt = image_data.get("prompt", "")
             structured_data.generated_image_type = image_data.get("type", "")
+
+        # Generate personalized player options for all connected players
+        try:
+            personalized_options = await _generate_personalized_options(
+                campaign_id=session_id,
+                structured_data=structured_data_raw,
+            )
+            if personalized_options:
+                structured_data.personalized_player_options = personalized_options
+                logger.info("[PlayerOptions] Generated personalized options for %d characters",
+                           len(personalized_options.characters) if personalized_options.characters else 0)
+
+                # Broadcast personalized options via WebSocket
+                if personalized_options.characters:
+                    # Convert to dict for broadcasting
+                    options_dict = {
+                        "active_character_id": personalized_options.active_character_id,
+                        "characters": {
+                            char_id: {
+                                "character_id": opts.character_id,
+                                "character_name": opts.character_name,
+                                "options": opts.options,
+                                "is_active": opts.is_active,
+                            }
+                            for char_id, opts in personalized_options.characters.items()
+                        }
+                    }
+                    await campaign_broadcaster.broadcast_campaign_update(
+                        session_id,
+                        "personalized_player_options",
+                        {"personalized_player_options": options_dict}
+                    )
+        except Exception as opts_err:
+            logger.warning("[PlayerOptions] Failed to generate personalized options: %s", opts_err)
+            # Continue without personalized options - fall back to legacy player_options
 
         machine_response = MachineResponse(
             session_id=session_id,
