@@ -33,13 +33,28 @@ const WelcomePage = () => {
     const [checkingAuthorization, setCheckingAuthorization] = useState(false);
     const [showRegistration, setShowRegistration] = useState(false);
 
-    // Handle invite token on mount
+    // Handle invite token on mount - must check auth first
     useEffect(() => {
         const inviteToken = searchParams.get('invite');
-        if (inviteToken) {
-            handleInviteToken(inviteToken);
+        if (!inviteToken) return;
+
+        // Wait for auth state to be determined
+        if (loading) return;
+
+        // If not authenticated, redirect to login with invite token preserved
+        if (!isAuthenticated && !DEV_BYPASS_AUTH) {
+            console.log('🔐 User not authenticated, redirecting to login with invite token');
+            login({
+                appState: {
+                    returnTo: `/?invite=${encodeURIComponent(inviteToken)}`
+                }
+            });
+            return;
         }
-    }, [searchParams]);
+
+        // User is authenticated, process the invite
+        handleInviteToken(inviteToken);
+    }, [searchParams, loading, isAuthenticated, login, DEV_BYPASS_AUTH]);
 
     // Handle intent after login (check URL params)
     useEffect(() => {
