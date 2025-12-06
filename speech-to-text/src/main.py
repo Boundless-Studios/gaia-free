@@ -16,7 +16,6 @@ import os
 
 from .config import get_settings
 from .websocket_handlers import (
-    handle_transcription_websocket,
     handle_simple_transcription_websocket,
     handle_scribe_v2_realtime_websocket
 )
@@ -310,26 +309,6 @@ async def websocket_transcribe(
         await websocket.close(code=1008, reason="Authentication failed")
         return
     await handle_simple_transcription_websocket(websocket, user_info)
-
-
-@app.websocket("/stt/transcribe/continuous")
-async def websocket_transcribe_continuous(
-    websocket: WebSocket,
-    token: Optional[str] = Query(None),
-    authorization: Optional[str] = Header(None),
-    cookie: Optional[str] = Header(None)
-):
-    """
-    WebSocket endpoint for continuous audio transcription
-    Stream audio chunks and receive transcriptions in real-time
-    Requires authentication via HttpOnly cookie or subprotocol header
-    """
-    # Authenticate WebSocket with Auth0 support
-    user_info = await websocket_auth(websocket, token, authorization, cookie)
-    if not user_info:
-        await websocket.close(code=1008, reason="Authentication failed")
-        return
-    await handle_transcription_websocket(websocket, user_info)
 
 
 @app.websocket("/stt/transcribe/realtime")

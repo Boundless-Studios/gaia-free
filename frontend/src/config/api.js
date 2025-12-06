@@ -66,7 +66,8 @@ const getSttUrl = () => {
     return import.meta.env.VITE_STT_BASE_URL;
   }
   // Always use /stt prefix - backend or cloudflared handles routing
-  return isProduction ? '' : 'http://localhost:8001';
+  // Note: The /stt prefix is required for all endpoints
+  return isProduction ? '' : 'http://localhost:8001/stt';
 };
 
 export const API_CONFIG = {
@@ -103,24 +104,6 @@ export const API_CONFIG = {
   // WebSocket endpoints
   get WS_CHAT_STREAM() {
     return `${this.WS_BASE_URL}/api/chat/stream`;
-  },
-  
-  get WS_TRANSCRIBE() {
-    // Check for cloud STT service URL first
-    const cloudSttUrl = import.meta.env.VITE_CLOUD_STT_WS_URL;
-    if (cloudSttUrl) {
-      console.log('Using cloud STT service:', cloudSttUrl);
-      return cloudSttUrl;
-    }
-    
-    // STT WebSocket endpoint - always use /stt prefix
-    if (isProduction) {
-      // In production, cloudflared routes /stt/* to port 8001
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${wsProtocol}//${window.location.host}/stt/transcribe/continuous`;
-    }
-    // In development, connect directly to STT service
-    return 'ws://localhost:8001/stt/transcribe/continuous';
   },
   
   get VOICE_ACTIVITY_ENDPOINT() {
