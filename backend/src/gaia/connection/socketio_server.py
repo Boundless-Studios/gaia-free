@@ -322,12 +322,21 @@ async def connect(sid: str, environ: Dict, auth: Optional[Dict] = None):
     # Determine connection type (default to player)
     connection_type = (auth or {}).get("role", "player")
 
+    # Construct consistent player_id from email and connection type
+    # This ensures player_list has valid IDs even before register() is called
+    # Format matches frontend: ${email}:${role}
+    derived_player_id = None
+    if user_email:
+        derived_player_id = f"{user_email}:{connection_type}"
+
     # Store session data
     session_data = {
         "user_id": user_info.get("user_id") if user_info else None,
         "user_email": user_info.get("user_email") if user_info else None,
         "session_id": session_id,
         "connection_type": connection_type,
+        "player_id": derived_player_id,  # Pre-set player_id for consistent player_list
+        "player_name": "DM" if connection_type == "dm" else None,  # DM gets name, players wait for register
         "connected_at": datetime.now(timezone.utc).isoformat(),
     }
     await set_session_data(sid, session_data)
@@ -398,9 +407,38 @@ async def connect(sid: str, environ: Dict, auth: Optional[Dict] = None):
         namespace="/campaign",
     )
 
+    # Broadcast updated player_list to all clients including the new connection
+    # This ensures collaborative editor sections are updated immediately
+    users = await get_room_users(session_id)
+    player_list = []
+    for user in users:
+        registered_player_id = user.get("player_id")
+        u_email = user.get("user_email")
+        conn_type = user.get("connection_type", "player")
+
+        if registered_player_id:
+            effective_player_id = registered_player_id
+        elif u_email:
+            effective_player_id = f"{u_email}:{conn_type}"
+        else:
+            effective_player_id = f"anonymous:{user.get('sid', 'unknown')}:{conn_type}"
+
+        player_list.append({
+            "playerId": effective_player_id,
+            "playerName": user.get("player_name") or ("DM" if conn_type == "dm" else "Player"),
+            "isConnected": True,
+        })
+
+    await sio.emit(
+        "player_list",
+        {"sessionId": session_id, "players": player_list},
+        room=session_id,
+        namespace="/campaign",
+    )
+
     logger.info(
-        "[SocketIO] Connected | sid=%s session=%s users=%d",
-        sid, session_id, user_count
+        "[SocketIO] Connected | sid=%s session=%s users=%d players=%s",
+        sid, session_id, user_count, [p["playerId"] for p in player_list]
     )
 
 

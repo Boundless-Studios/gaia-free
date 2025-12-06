@@ -215,6 +215,8 @@ async def occupy_seat(
     new_owner = None
     previous_campaign_owner: Optional[str] = None
     previous_seat_owner: Optional[str] = None
+    dm_just_joined = False
+    dm_joined_at: Optional[str] = None
     try:
         with db_manager.get_sync_session() as sync_db:
             _ensure_room_access(sync_db, campaign_id, user_id)
@@ -228,10 +230,39 @@ async def occupy_seat(
                 new_owner = campaign.owner_user_id
                 owner_was_claimed = bool(not previous_campaign_owner and new_owner)
 
+            # Check if this is DM occupying their seat - update room_status to 'active'
+            # This ensures room_status is correct even before socket registration
+            if seat.seat_type == "dm" and campaign:
+                from datetime import datetime, timezone as tz
+                if campaign.room_status != "active":
+                    campaign.room_status = "active"
+                    campaign.dm_joined_at = datetime.now(tz.utc)
+                    sync_db.commit()
+                    dm_just_joined = True
+                    dm_joined_at = campaign.dm_joined_at.isoformat()
+                    logger.info(
+                        "[Room] DM occupied seat, room_status -> active | campaign=%s user=%s",
+                        campaign_id, user_id
+                    )
+
         await socketio_broadcaster.broadcast_seat_updated(
             campaign_id,
             seat_info.__dict__,
         )
+
+        # Broadcast room.dm_joined when DM occupies their seat
+        # This notifies all players that the DM is now present
+        if dm_just_joined:
+            await socketio_broadcaster.broadcast_dm_joined(
+                campaign_id,
+                user_id,
+                dm_joined_at=dm_joined_at,
+            )
+            logger.info(
+                "[Room] Broadcast room.dm_joined | campaign=%s user=%s",
+                campaign_id, user_id
+            )
+
         _sync_connection_seat(campaign_id, seat_info.owner_user_id, seat_info.seat_id)
         # Handle seat change via legacy broadcaster (connection registry updates)
         from gaia.connection.websocket.campaign_broadcaster import campaign_broadcaster

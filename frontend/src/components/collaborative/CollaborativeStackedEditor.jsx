@@ -145,23 +145,7 @@ const CollaborativeStackedEditor = forwardRef(({
       const labelIndex = text.indexOf(playerLabel);
 
       if (labelIndex === -1) {
-        // Special handling for DM - they don't have a label, extract from beginning
-        if (player.name === 'DM') {
-          const firstLabelMatch = text.match(/\[/);
-          const contentEnd = firstLabelMatch ? firstLabelMatch.index : text.length;
-          const content = text.slice(0, contentEnd);
-
-          playerSections.push({
-            playerId: player.id,
-            playerName: player.name,
-            content: content,
-            startPos: 0,
-            endPos: contentEnd
-          });
-          continue;
-        }
-
-        // Player not in document yet
+        // Player not in document yet - all players (including DM) use [Name]: label format
         playerSections.push({
           playerId: player.id,
           playerName: player.name,
@@ -337,22 +321,7 @@ const CollaborativeStackedEditor = forwardRef(({
         const playerLabel = `[${characterName}]:`;
         let labelIndex = fullText.indexOf(playerLabel);
 
-        // Special handling for DM - they don't have a label in the document
-        if (labelIndex === -1 && characterName === 'DM') {
-          // Insert at beginning of document for DM (before first player label)
-          const firstLabelMatch = fullText.match(/\[/);
-          const insertPosition = firstLabelMatch ? firstLabelMatch.index : fullText.length;
-          const spacer = insertPosition > 0 && fullText[insertPosition - 1] !== ' ' && fullText[insertPosition - 1] !== '\n' ? ' ' : '';
-
-          ydoc.transact(() => {
-            ytext.insert(insertPosition, spacer + text);
-          });
-
-          logDebug('Inserted voice text into DM section', { textLength: text.length });
-          return;
-        }
-
-        // If label doesn't exist, create it first
+        // If label doesn't exist, create it first (all players including DM use [Name]: format)
         if (labelIndex === -1) {
           ydoc.transact(() => {
             if (fullText.length === 0) {
@@ -602,24 +571,7 @@ const CollaborativeStackedEditor = forwardRef(({
     const playerLabel = `[${characterName}]:`;
     let labelIndex = fullText.indexOf(playerLabel);
 
-    // Special handling for DM - they don't have a label in the document
-    if (labelIndex === -1 && characterName === 'DM') {
-      // Insert at beginning of document for DM (before first player label)
-      const firstLabelMatch = fullText.match(/\[/);
-      const insertPosition = firstLabelMatch ? firstLabelMatch.index : fullText.length;
-
-      // Add spacing if inserting before content
-      const separator = insertPosition > 0 && fullText[insertPosition - 1] !== '\n' ? ' ' : '';
-
-      ydoc.transact(() => {
-        ytext.insert(insertPosition, separator + textToInsert);
-      });
-
-      logDebug('Inserted text into DM section (beginning)', { textLength: textToInsert.length });
-      return;
-    }
-
-    // If label doesn't exist for regular player, create it
+    // If label doesn't exist, create it (all players including DM use [Name]: format)
     if (labelIndex === -1) {
       logDebug('Player label not found during insertion, creating it', { characterName });
 
@@ -689,22 +641,7 @@ const CollaborativeStackedEditor = forwardRef(({
     const labelIndex = fullText.indexOf(playerLabel);
 
     if (labelIndex === -1) {
-      if (characterName === 'DM') {
-        // For DM, find content before first player label
-        const firstLabelMatch = fullText.match(/\[/);
-        const contentEnd = firstLabelMatch ? firstLabelMatch.index : fullText.length;
-
-        ydoc.transact(() => {
-          // Delete existing DM content and insert new
-          if (contentEnd > 0) {
-            ytext.delete(0, contentEnd);
-          }
-          ytext.insert(0, newText || '');
-        });
-
-        logDebug('Replaced DM section', { textLength: newText?.length || 0 });
-        return;
-      }
+      // All players (including DM) use [Name]: format - cannot replace if no label
       logWarn('Cannot replace text - player label not found', { characterName });
       return;
     }
