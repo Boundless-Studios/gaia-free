@@ -552,6 +552,41 @@ async def connect(sid: str, environ: Dict, auth: Optional[Dict] = None):
         namespace="/campaign",
     )
 
+    # If DM is connecting, emit room.dm_joined and update room_status
+    # This ensures room_status is set to 'active' immediately on DM connection
+    if connection_type == "dm":
+        logger.info(
+            "[SocketIO] DM connected to room | session=%s user=%s",
+            session_id, user_id
+        )
+
+        # Update database room_status to 'active'
+        try:
+            from db.src.connection import db_manager
+            from gaia_private.session.session_models import CampaignSession
+            with db_manager.get_sync_session() as db_session:
+                campaign = db_session.get(CampaignSession, session_id)
+                if campaign and campaign.room_status != "active":
+                    campaign.room_status = "active"
+                    campaign.dm_joined_at = datetime.now(timezone.utc)
+                    db_session.commit()
+                    logger.info("[SocketIO] Updated room_status to active on DM connect | session=%s", session_id)
+        except Exception as e:
+            logger.warning("[SocketIO] Failed to update room_status on DM connect: %s", e)
+
+        # Emit room.dm_joined to all clients
+        await sio.emit(
+            "room.dm_joined",
+            {
+                "dm_user_id": user_id,
+                "user_id": user_id,
+                "room_status": "active",
+                "dm_joined_at": datetime.now(timezone.utc).isoformat(),
+            },
+            room=session_id,
+            namespace="/campaign",
+        )
+
     logger.info(
         "[SocketIO] Connected | sid=%s session=%s users=%d players=%s",
         sid, session_id, user_count, [p["playerId"] for p in player_list]

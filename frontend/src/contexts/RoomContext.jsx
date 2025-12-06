@@ -270,6 +270,13 @@ export const RoomProvider = ({
     socket.on('room.player_vacated', onPlayerVacated);
     socket.on('room.campaign_started', onCampaignStarted);
 
+    // Refresh room state when socket becomes available
+    // This catches any events that fired before we subscribed (e.g., room.dm_joined on connect)
+    if (socket.connected) {
+      console.debug('[RoomContext] Socket connected, refreshing room state');
+      fetchRoomState();
+    }
+
     return () => {
       socket.off('room.seat_updated', onSeatUpdated);
       socket.off('room.dm_joined', onDMJoined);
@@ -283,7 +290,8 @@ export const RoomProvider = ({
     handleDMJoined,
     handleDMLeft,
     handlePlayerVacated,
-    handleCampaignStarted
+    handleCampaignStarted,
+    fetchRoomState
   ]);
 
   // Subscribe to WebSocket events (legacy fallback)
