@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Uvicorn runner script for Gaia FastAPI application.
-This script ensures proper environment setup and starts the FastAPI server.
+Uvicorn runner script for Gaia application.
+This script ensures proper environment setup and starts the Socket.IO-wrapped
+FastAPI server for real-time WebSocket communication support.
 """
 
 import os
@@ -10,8 +11,8 @@ import uvicorn
 from pathlib import Path
 
 def main():
-    """Start the FastAPI application with uvicorn."""
-    
+    """Start the Socket.IO-wrapped FastAPI application with uvicorn."""
+
     print("Starting uvicorn runner...")
     
     # Add the gaia root, project root and src directory to Python path
@@ -33,23 +34,23 @@ def main():
     
     print(f"Python path: {sys.path}")
     
-    # Import the FastAPI app
+    # Import the Socket.IO-wrapped FastAPI app
     try:
-        print("Importing FastAPI app...")
-        from gaia.api.app import app
-        print("FastAPI app imported successfully")
+        print("Importing Socket.IO app...")
+        from gaia.api.app import socket_app
+        print("Socket.IO app imported successfully")
     except ImportError as e:
-        print(f"Error importing FastAPI app: {e}")
+        print(f"Error importing Socket.IO app: {e}")
         print(f"Python path: {sys.path}")
         sys.exit(1)
-    
+
     print("Starting uvicorn server...")
-    
+
     # Start uvicorn server using import string for reload support
     port = int(os.getenv("PORT", "8000"))
 
     uvicorn.run(
-        "gaia.api.app:app",
+        "gaia.api.app:socket_app",
         host="0.0.0.0",
         port=port,
         reload=True,
