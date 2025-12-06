@@ -4,11 +4,9 @@
 from gaia_private.agents.scene import (
     ActivePlayerOptionsAgent,
     ObservingPlayerOptionsAgent,
-    PlayerOptionsAgent,  # Alias for ObservingPlayerOptionsAgent
 )
 
 __all__ = [
     "ActivePlayerOptionsAgent",
     "ObservingPlayerOptionsAgent",
-    "PlayerOptionsAgent",
 ]

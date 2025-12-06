@@ -127,11 +127,11 @@ async def test_character_extractor_mixin(mock_load_prompt_text):
 
 
 @pytest.mark.unit
-async def test_player_options_mixin(mock_load_prompt_text):
-    """Test PromptCacheMixin behavior for PlayerOptionsAgent."""
-    from gaia_private.agents.scene.player_options_agent import PlayerOptionsAgent
+async def test_observing_player_options_mixin(mock_load_prompt_text):
+    """Test PromptCacheMixin behavior for ObservingPlayerOptionsAgent."""
+    from gaia_private.agents.scene.observing_player_options_agent import ObservingPlayerOptionsAgent
 
-    agent = PlayerOptionsAgent()
+    agent = ObservingPlayerOptionsAgent()
 
     assert agent.agent_type == "player_options"
     assert agent.prompt_key == "system_prompt"
@@ -139,7 +139,7 @@ async def test_player_options_mixin(mock_load_prompt_text):
     prompt = await agent._get_system_prompt()
     assert "player_options:system_prompt" in prompt
 
-    logger.info("✅ PlayerOptionsAgent mixin behavior verified")
+    logger.info("✅ ObservingPlayerOptionsAgent mixin behavior verified")
 
 
 # =============================================================================
