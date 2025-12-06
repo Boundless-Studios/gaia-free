@@ -29,10 +29,19 @@ logger = logging.getLogger(__name__)
 # Socket.IO Server Configuration
 # =============================================================================
 
+# Get CORS origins from environment (same as FastAPI middleware)
+def _get_socketio_cors_origins():
+    """Get CORS origins for Socket.IO, defaulting to * for dev."""
+    origins = os.getenv("WS_ALLOWED_ORIGINS", "")
+    if not origins:
+        return "*"  # Dev mode - allow all
+    return [o.strip() for o in origins.split(",") if o.strip()]
+
+
 # Create async Socket.IO server
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins="*",  # Will be restricted in production via CORS middleware
+    cors_allowed_origins=_get_socketio_cors_origins(),
     ping_timeout=30,
     ping_interval=25,
     logger=False,  # Disable socket.io internal logging (too verbose)
@@ -339,6 +348,29 @@ async def connect(sid: str, environ: Dict, auth: Optional[Dict] = None):
         sid, session_id, session_data.get("user_id"), connection_type
     )
 
+    # Replay cached campaign state to late joiners (if available)
+    try:
+        from gaia.connection.socketio_broadcaster import socketio_broadcaster
+        cached_state = socketio_broadcaster.get_cached_campaign_state(session_id)
+        if cached_state:
+            await sio.emit(
+                "campaign_active",
+                {
+                    "type": "campaign_active",
+                    "campaign_id": session_id,
+                    "structured_data": cached_state,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+                to=sid,
+                namespace="/campaign",
+            )
+            logger.debug(
+                "[SocketIO] Replayed cached campaign state to late joiner | sid=%s session=%s",
+                sid, session_id
+            )
+    except Exception as e:
+        logger.debug("[SocketIO] No cached state to replay: %s", e)
+
     # Create registry entry for audit trail
     if connection_registry.db_enabled:
         try:
@@ -429,22 +461,37 @@ async def disconnect(sid: str):
 
     # Notify others (if we have session_id)
     if session_id:
-        # Check if user still has other sockets in the room
-        # (excluding the one that's disconnecting)
+        # Get connection_type early - needed for both user_still_connected check and DM leave
+        connection_type = session.get("connection_type")
+
+        # Check if user still has other sockets in the room OF THE SAME TYPE
+        # (e.g., DM closing DM tab while having player tab open should still emit dm_left)
         user_still_connected = False
+        other_sids = get_room_sids(session_id) - {sid}
         if user_id:
-            other_sids = get_room_sids(session_id) - {sid}
             for other_sid in other_sids:
                 other_session = await get_session_data(other_sid)
-                if other_session.get("user_id") == user_id:
+                # Must match BOTH user_id AND connection_type
+                if (other_session.get("user_id") == user_id and
+                        other_session.get("connection_type") == connection_type):
                     user_still_connected = True
                     break
 
-        # Only broadcast disconnect if user has no remaining sockets
+        # Only broadcast disconnect if user has no remaining sockets of this type
         if not user_still_connected:
-            user_count = await get_unique_user_count(session_id)
-            # Subtract 1 since we're still technically in the room at this point
-            user_count = max(0, user_count - 1)
+            # Count unique users from remaining sockets (excludes disconnecting socket)
+            # This avoids the race condition of get_unique_user_count() potentially
+            # including or excluding us depending on Socket.IO's internal state
+            remaining_user_ids = set()
+            anonymous_count = 0
+            for other_sid in other_sids:
+                other_session = await get_session_data(other_sid)
+                other_user_id = other_session.get("user_id")
+                if other_user_id:
+                    remaining_user_ids.add(other_user_id)
+                else:
+                    anonymous_count += 1
+            user_count = len(remaining_user_ids) + anonymous_count
 
             await sio.emit(
                 "player_disconnected",
@@ -458,7 +505,6 @@ async def disconnect(sid: str):
             )
 
             # Emit room.dm_left if disconnecting user was a DM
-            connection_type = session.get("connection_type")
             player_id = session.get("player_id", "")
             if connection_type == "dm" or (player_id and player_id.endswith(":dm")):
                 logger.info(

@@ -116,7 +116,8 @@ class SocketIOBroadcaster:
         """Broadcast to DM connections only.
 
         Note: With Socket.IO, we identify DMs by their connection_type
-        stored in the session data.
+        stored in the session data. Uses direct SID targeting to avoid
+        issues with null user_id matching all anonymous users.
         """
         message = {
             "type": event_type,
@@ -125,11 +126,18 @@ class SocketIOBroadcaster:
             **data,
         }
 
-        # Get all users and filter to DMs
+        # Get all users and filter to DMs - use SID targeting for safety
         users = await get_room_users(session_id)
         for user in users:
             if user.get("connection_type") == "dm":
-                await broadcast_to_user(session_id, user["user_id"], event_type, message)
+                # Use SID directly instead of user_id to avoid null user_id
+                # matching all anonymous users when DISABLE_AUTH=true
+                user_sid = user.get("sid")
+                if user_sid:
+                    await sio.emit(event_type, message, to=user_sid, namespace="/campaign")
+                elif user.get("user_id"):
+                    # Fallback to user_id targeting only if we have a real user_id
+                    await broadcast_to_user(session_id, user["user_id"], event_type, message)
 
     async def broadcast_narrative_chunk(
         self,
