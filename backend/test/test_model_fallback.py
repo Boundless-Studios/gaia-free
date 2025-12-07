@@ -24,8 +24,8 @@ async def verify_fallback_chain():
 
     # Test 1: DeepSeek -> Claude Sonnet 4
     print("\n1. Testing DeepSeek fallback chain:")
-    deepseek_fallbacks = get_fallback_models(ModelName.DEEPSEEK_3_2.value)
-    print(f"   Primary: {ModelName.DEEPSEEK_3_2.value}")
+    deepseek_fallbacks = get_fallback_models(ModelName.DEEPSEEK_3_1.value)
+    print(f"   Primary: {ModelName.DEEPSEEK_3_1.value}")
     print(f"   Fallbacks: {deepseek_fallbacks}")
     assert deepseek_fallbacks == [ModelName.CLAUDE_SONNET_4.value], "DeepSeek should fallback to Claude Sonnet 4"
     print("   ✅ PASS")
@@ -35,7 +35,7 @@ async def verify_fallback_chain():
     kimi_fallbacks = get_fallback_models(ModelName.PARASAIL_KIMI_K2_INSTRUCT_0905.value)
     print(f"   Primary: {ModelName.PARASAIL_KIMI_K2_INSTRUCT_0905.value}")
     print(f"   Fallbacks: {kimi_fallbacks}")
-    expected = [ModelName.DEEPSEEK_3_2.value, ModelName.CLAUDE_SONNET_4.value]
+    expected = [ModelName.DEEPSEEK_3_1.value, ModelName.CLAUDE_SONNET_4.value]
     assert kimi_fallbacks == expected, f"Kimi should fallback to DeepSeek then Claude, got {kimi_fallbacks}"
     print("   ✅ PASS")
 
