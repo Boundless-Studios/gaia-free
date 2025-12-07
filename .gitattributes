@@ -1,0 +1,10 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Force shell scripts to use LF line endings
+*.sh text eol=lf
+
+# Force other common scripts to use LF
+*.py text eol=lf
+Makefile text eol=lf
+Dockerfile text eol=lf
