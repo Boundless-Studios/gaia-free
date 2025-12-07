@@ -344,7 +344,7 @@ async def chat(
 
                 # Broadcast personalized options via WebSocket
                 if characters:
-                    await campaign_broadcaster.broadcast_campaign_update(
+                    await socketio_broadcaster.broadcast_campaign_update(
                         session_id,
                         "personalized_player_options",
                         {"personalized_player_options": personalized_options}

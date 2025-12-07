@@ -283,6 +283,7 @@ class PlayerOptionsService:
             logger.error("[PlayerOptionsService] No PCs present in scene")
             return list()
 
+        connected_players: List[ConnectedPlayer] = []
         try:
             char_storage = CharacterStorage(campaign_id)
 
@@ -293,7 +294,7 @@ class PlayerOptionsService:
                 # Get character name from storage
                 character_name = "Unknown"
                 try:
-                    char_data = char_storage.get_character_data(character_id)
+                    char_data = char_storage.load_character(character_id)
                     if char_data:
                         character_name = char_data.get("name", "Unknown")
                 except Exception as e:
