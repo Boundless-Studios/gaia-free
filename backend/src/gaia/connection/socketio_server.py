@@ -751,11 +751,63 @@ async def awareness_update(sid: str, data: Dict[str, Any]):
 
 @sio.event(namespace="/campaign")
 async def audio_played(sid: str, data: Dict[str, Any]):
-    """Handle audio playback acknowledgment."""
+    """Handle audio playback acknowledgment.
+
+    Supports two modes:
+    1. chunk_id mode: Legacy - marks AudioChunk as played (for synchronized streaming)
+    2. queue_id mode: User queue - marks UserAudioQueue entry as played
+
+    Sends confirmation back to frontend so it knows the acknowledgment succeeded.
+    """
     session = await get_session_data(sid)
     session_id = session.get("session_id")
     chunk_id = data.get("chunk_id")
+    queue_id = data.get("queue_id")
+    campaign_id = data.get("campaign_id") or session_id
 
+    # Handle user queue acknowledgment (queue_id mode)
+    if queue_id:
+        from gaia.infra.audio.audio_playback_service import audio_playback_service
+        try:
+            success = audio_playback_service.mark_chunk_played_by_user(queue_id)
+            # Send confirmation back to the specific client
+            await sio.emit(
+                "audio_played_confirmed",
+                {
+                    "queue_id": queue_id,
+                    "success": success,
+                    "campaign_id": campaign_id,
+                },
+                to=sid,
+                namespace="/campaign",
+            )
+            if success:
+                logger.debug(
+                    "[SocketIO] User queue chunk marked as played | sid=%s queue_id=%s",
+                    sid, queue_id
+                )
+            else:
+                logger.warning(
+                    "[SocketIO] Failed to mark user queue chunk as played | sid=%s queue_id=%s",
+                    sid, queue_id
+                )
+        except Exception as e:
+            logger.error("Failed to mark user queue chunk played: %s", e)
+            # Send failure confirmation
+            await sio.emit(
+                "audio_played_confirmed",
+                {
+                    "queue_id": queue_id,
+                    "success": False,
+                    "error": str(e),
+                    "campaign_id": campaign_id,
+                },
+                to=sid,
+                namespace="/campaign",
+            )
+        return
+
+    # Handle legacy chunk_id mode (for synchronized streaming)
     if not chunk_id:
         return
 

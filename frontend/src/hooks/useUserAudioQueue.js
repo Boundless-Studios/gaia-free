@@ -13,6 +13,46 @@ let globalIsProcessing = false;
 let globalQueuedChunkIds = new Set();
 let globalCurrentRequestId = null;
 
+// Track pending acknowledgment confirmations
+// Map of queue_id -> { resolve, reject, timeout }
+const pendingConfirmations = new Map();
+const CONFIRMATION_TIMEOUT_MS = 3000; // 3 second timeout for confirmation
+
+/**
+ * Handle confirmation of audio_played from backend via WebSocket.
+ * Call this when receiving 'audio_played_confirmed' event.
+ *
+ * @param {Object} data - Confirmation data { queue_id, success, error? }
+ */
+export function handleAudioPlayedConfirmation(data) {
+  const { queue_id: queueId, success, error } = data;
+  if (!queueId) {
+    console.warn('🎵 [USER_QUEUE] Received confirmation without queue_id');
+    return;
+  }
+
+  const pending = pendingConfirmations.get(queueId);
+  if (!pending) {
+    // Confirmation arrived but we weren't waiting for it (maybe timed out already)
+    console.debug('🎵 [USER_QUEUE] Received confirmation for unknown queue_id:', queueId);
+    return;
+  }
+
+  // Clear timeout
+  if (pending.timeout) {
+    clearTimeout(pending.timeout);
+  }
+  pendingConfirmations.delete(queueId);
+
+  if (success) {
+    console.log('🎵 [USER_QUEUE] Confirmed played:', queueId);
+    pending.resolve(true);
+  } else {
+    console.warn('🎵 [USER_QUEUE] Confirmation failed:', queueId, error);
+    pending.reject(new Error(error || 'Backend failed to mark as played'));
+  }
+}
+
 /**
  * Unlock audio playback by playing a silent audio on user interaction.
  * Call this on any user click/tap to ensure audio can play.
@@ -55,9 +95,11 @@ export function unlockAudio() {
  * @param {Object} params.user - Auth0 user object (must have email or sub)
  * @param {Object} params.audioStream - Audio stream context
  * @param {Object} params.apiService - API service instance
+ * @param {Function} params.socketEmit - Optional Socket.IO emit function for WebSocket acknowledgment
+ * @param {string} params.campaignId - Optional campaign ID for WebSocket acknowledgment
  * @returns {Object} Audio queue management interface
  */
-export function useUserAudioQueue({ user, audioStream, apiService }) {
+export function useUserAudioQueue({ user, audioStream, apiService, socketEmit, campaignId }) {
   // Use global singletons instead of instance-specific refs
   // This ensures all audio from any component goes through the same queue
 
@@ -201,14 +243,38 @@ export function useUserAudioQueue({ user, audioStream, apiService }) {
           });
         });
 
-        // Mark chunk as played
+        // Mark chunk as played via WebSocket (preferred) or HTTP (fallback)
         try {
-          await apiService.makeRequest(`/api/audio/user/played/${chunk.queue_id}`, {}, 'POST');
-          console.log(`🎵 [USER_QUEUE] Marked chunk ${i + 1}/${chunks.length} as played`);
-          releaseQueueId(queueId);
+          if (socketEmit && queueId) {
+            // Use WebSocket with confirmation
+            await new Promise((resolve, reject) => {
+              const timeoutId = setTimeout(() => {
+                pendingConfirmations.delete(queueId);
+                reject(new Error('Confirmation timeout'));
+              }, CONFIRMATION_TIMEOUT_MS);
+
+              pendingConfirmations.set(queueId, { resolve, reject, timeout: timeoutId });
+
+              // Send acknowledgment via WebSocket
+              socketEmit('audio_played', {
+                queue_id: queueId,
+                campaign_id: campaignId,
+              });
+              console.log(`🎵 [USER_QUEUE] Sent WebSocket ack for chunk ${i + 1}/${chunks.length}, waiting for confirmation...`);
+            });
+            console.log(`🎵 [USER_QUEUE] Confirmed chunk ${i + 1}/${chunks.length} as played`);
+            releaseQueueId(queueId);
+          } else {
+            // Fallback to HTTP (less reliable)
+            await apiService.makeRequest(`/api/audio/user/played/${chunk.queue_id}`, {}, 'POST');
+            console.log(`🎵 [USER_QUEUE] Marked chunk ${i + 1}/${chunks.length} as played (HTTP)`);
+            releaseQueueId(queueId);
+          }
         } catch (markError) {
           console.error(`🎵 [USER_QUEUE] Failed to mark chunk ${i + 1}/${chunks.length} as played:`, markError);
-          releaseQueueId(queueId);
+          // DON'T release queueId on failure - keep it in local set to prevent re-queueing
+          // The chunk will be retried on next fetch if not confirmed
+          console.warn(`🎵 [USER_QUEUE] Keeping chunk ${queueId} in local set to prevent duplicate playback`);
         }
       } catch (playbackError) {
         console.error(`🎵 [USER_QUEUE] Playback error for chunk ${i + 1}/${chunks.length}, continuing to next:`, playbackError);
