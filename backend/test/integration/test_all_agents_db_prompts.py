@@ -1,12 +1,13 @@
 """Integration tests for all agents' database-backed prompt loading.
 
-This test validates that all 26 agents that use PromptCacheMixin can:
+This test validates that all 27 agents that use PromptCacheMixin can:
 1. Load prompts from the database successfully
 2. Have properly structured prompt_text in the database
 3. Can fall back to hardcoded prompts if needed
 
-Agents tested (26 total):
-- Coordinator (4): campaign_persistence, scenario_analyzer, character_extractor, player_options
+Agents tested (27 total):
+- Coordinator (5): campaign_persistence, scenario_analyzer, character_extractor,
+                   observing_player_options, active_player_options
 - Dungeon Master (4): dungeon_master, streaming_dm (3 prompts)
 - Combat (3): combat_narrator, combat_action_selector, combat_initiator
 - Scene Analyzer (6): scene_categorizer, combat_exit_analyzer, complexity_analyzer,
@@ -45,12 +46,13 @@ async def db_session():
 
 # Organized by category matching the SQL file structure
 AGENT_PROMPTS = {
-    # Coordinator agents (4)
+    # Coordinator agents (5)
     "coordinator": [
         ("campaign_persistence_agent", "system_prompt"),
         ("scenario_analyzer", "system_prompt"),
         ("character_extractor", "system_prompt"),
-        ("player_options", "system_prompt"),
+        ("observing_player_options", "system_prompt"),  # ObservingPlayerOptionsAgent
+        ("active_player_options", "system_prompt"),  # ActivePlayerOptionsAgent
     ],
     # Dungeon Master agents (4 prompts, 1 agent + 3 streaming_dm)
     "dungeon_master": [
