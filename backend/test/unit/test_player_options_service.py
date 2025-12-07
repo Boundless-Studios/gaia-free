@@ -514,5 +514,108 @@ class TestObservationsManager:
         logger.info("✅ Global observations manager singleton works")
 
 
+class TestGenerateOptionsDict:
+    """Unit tests for generate_options_dict method."""
+
+    @pytest.mark.unit
+    async def test_generate_options_dict_returns_dict(
+        self,
+        mock_active_agent,
+        mock_passive_agent
+    ):
+        """Test that generate_options_dict returns a dict from PersonalizedPlayerOptions.to_dict()."""
+        # Mock get_connected_players_from_campaign
+        mock_players = [
+            ConnectedPlayer(
+                character_id="char_1",
+                character_name="Hero",
+                user_id="user_1",
+                seat_id="seat_1",
+                is_dm=False
+            )
+        ]
+
+        with patch.object(PlayerOptionsService, '__init__', lambda self: None):
+            service = PlayerOptionsService()
+            service._active_agent = mock_active_agent
+            service._passive_agent = mock_passive_agent
+            service.get_connected_players_from_campaign = MagicMock(return_value=mock_players)
+
+            structured_data = {
+                "narrative": "The adventure begins!",
+                "turn_info": {
+                    "active_character_id": "char_1",
+                    "previous_character_name": "Gandalf"
+                }
+            }
+
+            result = await service.generate_options_dict(
+                campaign_id="test_campaign",
+                structured_data=structured_data
+            )
+
+            assert result is not None
+            assert isinstance(result, dict)
+            assert result["active_character_id"] == "char_1"
+            assert "char_1" in result["characters"]
+            assert result["characters"]["char_1"]["is_active"] is True
+
+            logger.info("✅ generate_options_dict returns correct dict structure")
+
+    @pytest.mark.unit
+    async def test_generate_options_dict_no_players_returns_none(
+        self,
+        mock_active_agent,
+        mock_passive_agent
+    ):
+        """Test that generate_options_dict returns None when no players found."""
+        with patch.object(PlayerOptionsService, '__init__', lambda self: None):
+            service = PlayerOptionsService()
+            service._active_agent = mock_active_agent
+            service._passive_agent = mock_passive_agent
+            service.get_connected_players_from_campaign = MagicMock(return_value=[])
+
+            result = await service.generate_options_dict(
+                campaign_id="test_campaign",
+                structured_data={"narrative": "Test"}
+            )
+
+            assert result is None
+
+            logger.info("✅ generate_options_dict returns None for no players")
+
+    @pytest.mark.unit
+    async def test_generate_options_dict_no_narrative_returns_none(
+        self,
+        mock_active_agent,
+        mock_passive_agent
+    ):
+        """Test that generate_options_dict returns None when no narrative."""
+        mock_players = [
+            ConnectedPlayer(
+                character_id="char_1",
+                character_name="Hero",
+                user_id="user_1",
+                seat_id="seat_1",
+                is_dm=False
+            )
+        ]
+
+        with patch.object(PlayerOptionsService, '__init__', lambda self: None):
+            service = PlayerOptionsService()
+            service._active_agent = mock_active_agent
+            service._passive_agent = mock_passive_agent
+            service.get_connected_players_from_campaign = MagicMock(return_value=mock_players)
+
+            result = await service.generate_options_dict(
+                campaign_id="test_campaign",
+                structured_data={}  # No narrative
+            )
+
+            assert result is None
+
+            logger.info("✅ generate_options_dict returns None for no narrative")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-m", "unit"])

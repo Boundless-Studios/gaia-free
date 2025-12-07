@@ -14,6 +14,8 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 
+from sqlalchemy import select
+
 from gaia.models.player_options import (
     PersonalizedPlayerOptions,
     CharacterOptions,
@@ -110,6 +112,21 @@ class PlayerOptionsService:
             scene_narrative=scene_narrative,
             generated_at=datetime.now()
         )
+
+        # Fast path: single player gets only active options
+        if len(player_characters) == 1:
+            player = player_characters[0]
+            context = character_contexts.get(player.character_id, "")
+            char_options = await self._generate_single_player_options(
+                player=player,
+                is_active=True,  # Single player is always active
+                scene_narrative=scene_narrative,
+                previous_char_name=previous_char_name,
+                character_context=context,
+                model=model
+            )
+            result.characters[player.character_id] = char_options
+            return result
 
         if parallel:
             # Generate all options in parallel
@@ -278,6 +295,126 @@ class PlayerOptionsService:
             character_context=character_context,
             model=model
         )
+
+    def get_connected_players_from_campaign(self, campaign_id: str) -> List[ConnectedPlayer]:
+        """
+        Get list of connected players with their character info from room seats.
+
+        Args:
+            campaign_id: The campaign/session ID
+
+        Returns:
+            List of ConnectedPlayer objects for players with assigned characters
+        """
+        from db.src.connection import db_manager
+        from gaia.mechanics.character.character_storage import CharacterStorage
+        from gaia_private.session.session_models import RoomSeat
+
+        connected_players = []
+
+        try:
+            with db_manager.get_sync_session() as db:
+                # Get all player seats with characters
+                stmt = select(RoomSeat).where(
+                    RoomSeat.campaign_id == campaign_id,
+                    RoomSeat.seat_type == "player",
+                    RoomSeat.character_id.isnot(None)
+                )
+                seats = db.execute(stmt).scalars().all()
+
+                # Get character info for each seat
+                char_storage = CharacterStorage(campaign_id)
+
+                for seat in seats:
+                    if not seat.character_id:
+                        continue
+
+                    # Get character name from storage
+                    character_name = "Unknown"
+                    try:
+                        char_data = char_storage.get_character_data(seat.character_id)
+                        if char_data:
+                            character_name = char_data.get("name", "Unknown")
+                    except Exception as e:
+                        logger.warning(f"Failed to get character name for {seat.character_id}: {e}")
+
+                    connected_players.append(ConnectedPlayer(
+                        character_id=seat.character_id,
+                        character_name=character_name,
+                        user_id=seat.owner_user_id,
+                        seat_id=str(seat.seat_id) if seat.seat_id else None,
+                        is_dm=False
+                    ))
+
+        except Exception as e:
+            logger.error(f"Error getting connected players for campaign {campaign_id}: {e}")
+
+        return connected_players
+
+    async def generate_options_dict(
+        self,
+        campaign_id: str,
+        structured_data: dict,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Generate personalized player options and return as dict.
+
+        This is the main entry point for API routes to generate player options.
+
+        Args:
+            campaign_id: The campaign/session ID
+            structured_data: The structured data from the orchestrator response
+
+        Returns:
+            Dict from PersonalizedPlayerOptions.to_dict() or None if no options generated
+        """
+        import json
+
+        try:
+            # Get connected players
+            connected_players = self.get_connected_players_from_campaign(campaign_id)
+            if not connected_players:
+                logger.debug("[PlayerOptionsService] No connected players found for campaign %s", campaign_id)
+                return None
+
+            # Extract turn info to determine active character
+            turn_info = structured_data.get("turn_info", {})
+            if isinstance(turn_info, str):
+                try:
+                    turn_info = json.loads(turn_info)
+                except (json.JSONDecodeError, TypeError):
+                    turn_info = {}
+
+            active_character_id = turn_info.get("active_character_id") or turn_info.get("activeCharacterId")
+            previous_char_name = turn_info.get("previous_character_name") or turn_info.get("previousCharacterName") or "the previous player"
+
+            # If no active character specified, use the first connected player
+            if not active_character_id and connected_players:
+                active_character_id = connected_players[0].character_id
+                logger.debug("[PlayerOptionsService] No active character specified, using first player: %s", active_character_id)
+
+            # Get scene narrative
+            scene_narrative = structured_data.get("narrative", "") or structured_data.get("answer", "")
+            if not scene_narrative:
+                logger.debug("[PlayerOptionsService] No scene narrative available")
+                return None
+
+            # Generate options using existing method
+            options = await self.generate_all_player_options(
+                connected_players=connected_players,
+                active_character_id=active_character_id,
+                scene_narrative=scene_narrative,
+                previous_char_name=previous_char_name,
+            )
+
+            # Return as dict for API serialization
+            if options and options.characters:
+                return options.to_dict()
+
+        except Exception as e:
+            logger.error("[PlayerOptionsService] Error generating personalized options: %s", e, exc_info=True)
+
+        return None
 
 
 class ObservationsManager:

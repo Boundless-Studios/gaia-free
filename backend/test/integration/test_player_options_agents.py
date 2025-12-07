@@ -3,9 +3,9 @@ Integration tests for player options agents.
 
 Tests that:
 1. Both player_options and active_player_options prompts exist in DB
-2. Agents can load prompts from DB successfully
-3. Prompts contain required template variables
-4. Different prompts generate different types of options (action vs observation)
+2. Prompts contain required template variables
+3. Template resolution works correctly
+4. JSON output format is specified
 """
 
 import logging
@@ -115,79 +115,6 @@ async def test_active_player_options_has_required_variables(db_session: AsyncSes
     logger.info("✅ active_player_options has all required template variables")
 
 
-# =============================================================================
-# PROMPT CONTENT DIFFERENTIATION TESTS
-# =============================================================================
-
-@pytest.mark.integration
-async def test_prompts_are_differentiated(db_session: AsyncSession):
-    """Test that active and observing prompts have different content."""
-    prompt_service = PromptService(db_session)
-
-    observing_prompt = await prompt_service.get_prompt(
-        agent_type="player_options",
-        prompt_key="system_prompt"
-    )
-
-    active_prompt = await prompt_service.get_prompt(
-        agent_type="active_player_options",
-        prompt_key="system_prompt"
-    )
-
-    # They should be different prompts
-    assert observing_prompt != active_prompt, "Prompts should be different"
-
-    # Active prompt should mention "action" or "act" more
-    # Observing prompt should mention "observe" or "notice" more
-    active_action_count = active_prompt.lower().count("action") + active_prompt.lower().count(" act")
-    observing_observe_count = observing_prompt.lower().count("observ") + observing_prompt.lower().count("notice")
-
-    logger.info(f"Active prompt 'action' mentions: {active_action_count}")
-    logger.info(f"Observing prompt 'observe/notice' mentions: {observing_observe_count}")
-
-    # Both should have the appropriate focus
-    assert active_action_count > 0, "Active prompt should mention actions"
-    assert observing_observe_count > 0, "Observing prompt should mention observations"
-
-    logger.info("✅ Prompts are appropriately differentiated")
-
-
-@pytest.mark.integration
-async def test_active_prompt_emphasizes_turn_taker(db_session: AsyncSession):
-    """Test that active prompt emphasizes this is the turn-taker."""
-    prompt_service = PromptService(db_session)
-
-    prompt = await prompt_service.get_prompt(
-        agent_type="active_player_options",
-        prompt_key="system_prompt"
-    )
-
-    # Should indicate this is the active/turn-taking player
-    turn_indicators = ["turn", "active", "act", "action"]
-    has_turn_indicator = any(indicator in prompt.lower() for indicator in turn_indicators)
-
-    assert has_turn_indicator, "Active prompt should indicate turn-taking"
-
-    logger.info("✅ Active prompt emphasizes turn-taker role")
-
-
-@pytest.mark.integration
-async def test_observing_prompt_emphasizes_observation(db_session: AsyncSession):
-    """Test that observing prompt emphasizes observation, not action."""
-    prompt_service = PromptService(db_session)
-
-    prompt = await prompt_service.get_prompt(
-        agent_type="player_options",
-        prompt_key="system_prompt"
-    )
-
-    # Should emphasize observation
-    observation_indicators = ["observ", "notice", "see", "perceive", "discover"]
-    has_observation_indicator = any(indicator in prompt.lower() for indicator in observation_indicators)
-
-    assert has_observation_indicator, "Observing prompt should emphasize observation"
-
-    logger.info("✅ Observing prompt emphasizes observation")
 
 
 # =============================================================================

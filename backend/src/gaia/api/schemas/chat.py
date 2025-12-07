@@ -68,46 +68,8 @@ class PlayerCharacterContext(BaseModel):
         return not (self.character_id or self.character_name)
 
 
-class CharacterOptionsSchema(BaseModel):
-    """Options for a single character."""
-    character_id: str = Field(..., description="Character ID")
-    character_name: str = Field(..., description="Character display name")
-    options: List[str] = Field(default_factory=list, description="List of action options")
-    is_active: bool = Field(default=False, description="True if this character is the turn-taker")
-    generated_at: Optional[str] = Field(default=None, description="ISO timestamp when options were generated")
-
-
-class PersonalizedPlayerOptionsSchema(BaseModel):
-    """
-    Per-player options structure. Each connected player gets their own options.
-
-    - Active player (turn-taker): Gets action-oriented options
-    - Secondary players: Get discovery/observation-focused options
-    """
-    active_character_id: Optional[str] = Field(default=None, description="ID of the turn-taking character")
-    characters: Dict[str, CharacterOptionsSchema] = Field(
-        default_factory=dict,
-        description="Map of character_id to their personalized options"
-    )
-    scene_narrative: Optional[str] = Field(default="", description="Narrative that prompted these options")
-    generated_at: Optional[str] = Field(default=None, description="ISO timestamp when options were generated")
-
-
-class PlayerObservationSchema(BaseModel):
-    """An observation from a secondary player."""
-    character_id: str = Field(..., description="Observer's character ID")
-    character_name: str = Field(..., description="Observer's character name")
-    observation_text: str = Field(..., description="The observation text")
-    submitted_at: str = Field(..., description="ISO timestamp when submitted")
-    included_in_turn: bool = Field(default=False, description="Whether this was included in primary player's turn")
-
-
-class PendingObservationsSchema(BaseModel):
-    """Pending observations from secondary players for the primary player."""
-    session_id: str = Field(..., description="Session ID")
-    primary_character_id: str = Field(..., description="Primary (turn-taking) character ID")
-    primary_character_name: str = Field(..., description="Primary character name")
-    observations: List[PlayerObservationSchema] = Field(default_factory=list, description="List of observations")
+# Player options models are defined in gaia.models.player_options
+# Use .to_dict() for API serialization
 
 
 class StructuredGameData(BaseModel):
@@ -120,13 +82,13 @@ class StructuredGameData(BaseModel):
     status: Optional[Union[str, Dict]] = Field(default="", description="Current game status")
     characters: Optional[Union[str, Dict, List]] = Field(default="", description="Character information")
     player_options: Optional[Union[str, List[str]]] = Field(default="", description="Available player actions (legacy single-list format)")
-    personalized_player_options: Optional[PersonalizedPlayerOptionsSchema] = Field(
+    personalized_player_options: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Per-player options. Each character gets their own options based on their role (active vs observer)"
+        description="Per-player options. Each character gets their own options based on their role (active vs observer). Structure from PersonalizedPlayerOptions.to_dict()"
     )
-    pending_observations: Optional[PendingObservationsSchema] = Field(
+    pending_observations: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Observations from secondary players waiting to be included in primary player's turn"
+        description="Observations from secondary players waiting to be included in primary player's turn. Structure from PendingObservations.to_dict()"
     )
     combat_status: Optional[Dict[str, Any]] = Field(default=None, description="Per-combatant status used by combat dashboards")
     combat_state: Optional[Dict[str, Any]] = Field(default=None, description="Detailed combat persistence snapshot")
