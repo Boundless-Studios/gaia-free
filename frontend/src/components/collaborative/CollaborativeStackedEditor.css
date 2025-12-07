@@ -376,3 +376,31 @@
   align-self: stretch;
   flex: 0 0 auto;
 }
+
+/* Inline submit button - positioned in player's name container */
+.inline-submit-btn {
+  margin-left: auto;
+  background: rgba(59, 130, 246, 0.9);
+  border: none;
+  border-radius: 4px;
+  padding: 3px 10px;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inline-submit-btn:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 1);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.inline-submit-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.inline-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

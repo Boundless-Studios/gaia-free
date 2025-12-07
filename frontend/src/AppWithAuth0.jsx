@@ -21,15 +21,20 @@ import CollaborativeEditorTest from './pages/CollaborativeEditorTest.jsx';
 // This component just shows a loading state while Auth0 processes the callback
 const Auth0Callback = () => {
   const { isAuthenticated, isLoading, error, user } = useAuth0();
+  const navigate = useNavigate();
 
   React.useEffect(() => {
     if (!isLoading) {
       console.log('[AUTH0_DEBUG] Callback processed, isAuthenticated:', isAuthenticated);
       console.log('[AUTH0_DEBUG] User info:', user);
-      // Note: Navigation is handled by onRedirectCallback in Auth0Provider
-      // which receives appState.returnTo and navigates there
+      // If authenticated and not loading, navigate to home
+      // This handles cases where onRedirectCallback doesn't fire (e.g., cached tokens)
+      if (isAuthenticated) {
+        console.log('[AUTH0_DEBUG] Navigating to home after auth');
+        navigate('/');
+      }
     }
-  }, [isAuthenticated, isLoading, user]);
+  }, [isAuthenticated, isLoading, user, navigate]);
   
   if (error) {
     console.error('[AUTH0_DEBUG] Callback error:', error);

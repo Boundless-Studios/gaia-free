@@ -27,6 +27,8 @@ const TurnView = ({
   // Player submissions (from players clicking "Submit Action")
   playerSubmissions = [],
   onCopyPlayerSubmission,
+  // DM mode - only show player submissions, no player options
+  isDMView = false,
 }) => {
   // Debug: Log what TurnView receives
   console.log('📋 TurnView render:', {
@@ -98,13 +100,24 @@ const TurnView = ({
     return pendingObservations.filter(obs => !obs.included_in_turn);
   }, [pendingObservations, isActive]);
 
-  // Don't render if no options, no observations, and no player submissions
-  if ((!turnLines || turnLines.length === 0) && unincludedObservations.length === 0 && (!playerSubmissions || playerSubmissions.length === 0)) {
-    return null;
+  // Don't render if no content to show
+  // DM mode: only needs player submissions
+  // Player mode: needs options, observations, or submissions
+  if (isDMView) {
+    if (!playerSubmissions || playerSubmissions.length === 0) {
+      return null;
+    }
+  } else {
+    if ((!turnLines || turnLines.length === 0) && unincludedObservations.length === 0 && (!playerSubmissions || playerSubmissions.length === 0)) {
+      return null;
+    }
   }
 
   // Determine header text
   const getHeaderText = () => {
+    if (isDMView) {
+      return 'Player Submissions';
+    }
     if (personalizedPlayerOptions && currentCharacterId) {
       if (isActive) {
         return characterName ? `${characterName}'s Turn` : 'Your Turn';
@@ -173,8 +186,8 @@ const TurnView = ({
           </div>
         )}
 
-        {/* Player options */}
-        {turnLines.length > 0 && (
+        {/* Player options - hidden in DM view */}
+        {!isDMView && turnLines.length > 0 && (
           <div className="turn-text base-text">
             {turnLines.map((line, index) => (
               <div

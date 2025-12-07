@@ -46,27 +46,7 @@ const PlayerControls = ({
     hasOnCopyObservation: !!onCopyObservation
   });
 
-  // Ctrl+Enter keyboard shortcut to submit (needs handleCollabSubmit, defined later via hoisting)
-  useEffect(() => {
-    if (!isActivePlayer) return;
-
-    const handleKeyDown = (e) => {
-      if (e.ctrlKey && e.key === 'Enter') {
-        e.preventDefault();
-        if (collabEditorRef?.current?.getMyContent) {
-          const content = collabEditorRef.current.getMyContent();
-          if (content && content.trim()) {
-            // Trigger submit button click
-            const submitBtn = document.querySelector('.player-submit-btn-compact');
-            if (submitBtn) submitBtn.click();
-          }
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isActivePlayer, collabEditorRef]);
+  // Note: Ctrl+Enter is handled by CollaborativeStackedEditor directly
 
   // Handle voice input
   const handleVoiceSubmit = (text) => {
@@ -265,23 +245,6 @@ const PlayerControls = ({
           {collabWebSocket ? (
             <>
               <div className="collab-editor-wrapper">
-                {/* Submit button - compact, top-right of editor */}
-                {isActivePlayer && (
-                  <button
-                    className="player-submit-btn-compact"
-                    onClick={() => {
-                      if (collabEditorRef?.current?.getMyContent) {
-                        const content = collabEditorRef.current.getMyContent();
-                        if (content && content.trim()) {
-                          handleCollabSubmit(content);
-                        }
-                      }
-                    }}
-                    title="Submit (Ctrl+Enter)"
-                  >
-                    Submit
-                  </button>
-                )}
                 <div className="collab-editor-with-indicator">
                   <span
                     className={`connection-dot-player ${collabEditorConnected ? 'connected' : 'disconnected'}`}
@@ -303,6 +266,7 @@ const PlayerControls = ({
                     onToggleTranscription={onToggleTranscription}
                     showMicButton={audioPermissionState === 'granted'}
                     voiceLevel={voiceActivityLevel}
+                    showInlineSubmit={isActivePlayer}
                   />
                 </div>
               </div>

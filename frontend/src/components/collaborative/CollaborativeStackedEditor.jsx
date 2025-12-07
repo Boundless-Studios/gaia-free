@@ -40,7 +40,9 @@ const CollaborativeStackedEditor = forwardRef(({
   isTranscribing = false,
   onToggleTranscription = null,
   showMicButton = false,
-  voiceLevel = 0
+  voiceLevel = 0,
+  // Show inline submit button in player's own section
+  showInlineSubmit = false,
 }, ref) => {
   const [isConnected, setIsConnected] = useState(false);
   // playerContents: { [playerId]: string } - each player's text content
@@ -499,11 +501,10 @@ const CollaborativeStackedEditor = forwardRef(({
 
     // Final sort: my section first, then alphabetical
     return withoutHidden.sort((a, b) => {
-      if (myRole === 'dm') {
-        return a.playerName.localeCompare(b.playerName);
-      }
+      // Always put own section first
       if (a.playerId === playerId) return -1;
       if (b.playerId === playerId) return 1;
+      // Then alphabetical for the rest
       return a.playerName.localeCompare(b.playerName);
     });
   }, [allPlayers, playerContents, playerId]);
@@ -561,6 +562,16 @@ const CollaborativeStackedEditor = forwardRef(({
               <div className="player-name-container">
                 <span className="player-name">[{section.playerName}]:</span>
                 {isMySection && <span className="you-indicator">(you)</span>}
+                {isMySection && showInlineSubmit && onSubmit && (
+                  <button
+                    className="inline-submit-btn"
+                    onClick={handleSubmitMyInput}
+                    disabled={!(section.content || '').trim()}
+                    title="Submit (Ctrl+Enter)"
+                  >
+                    Submit
+                  </button>
+                )}
                 {isMySection && showMicButton && onToggleTranscription && (() => {
                   const isTooLow = voiceLevel < 0;
                   const absLevel = Math.abs(voiceLevel);
@@ -653,6 +664,7 @@ CollaborativeStackedEditor.propTypes = {
   onToggleTranscription: PropTypes.func,
   showMicButton: PropTypes.bool,
   voiceLevel: PropTypes.number,
+  showInlineSubmit: PropTypes.bool,
 };
 
 CollaborativeStackedEditor.defaultProps = {
@@ -667,6 +679,7 @@ CollaborativeStackedEditor.defaultProps = {
   onToggleTranscription: null,
   showMicButton: false,
   voiceLevel: 0,
+  showInlineSubmit: false,
 };
 
 export default CollaborativeStackedEditor;

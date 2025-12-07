@@ -407,6 +407,7 @@ const GameDashboard = forwardRef(
                 turnInfo={latestStructuredData.turn_info}
                 playerSubmissions={playerSubmissions}
                 onCopyPlayerSubmission={handleCopyPlayerSubmission}
+                isDMView={true}
               />
             ) : (
               <div className="dashboard-player-options-empty">
