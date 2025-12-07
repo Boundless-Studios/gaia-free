@@ -411,11 +411,31 @@ const CollaborativeStackedEditor = forwardRef(({
     logDebug('Replaced my section', { textLength: newText?.length || 0 });
   }, [playerId, logDebug]);
 
+  // Get current player's text content
+  const getMyContent = useCallback(() => {
+    return playerContents[playerId] || '';
+  }, [playerContents, playerId]);
+
+  // Clear current player's section
+  const clearMySection = useCallback(() => {
+    const yMap = yMapRef.current;
+    const ydoc = ydocRef.current;
+    if (!yMap || !ydoc) return;
+
+    ydoc.transact(() => {
+      yMap.set(playerId, '');
+    });
+
+    logDebug('Cleared my section');
+  }, [playerId, logDebug]);
+
   useImperativeHandle(ref, () => ({
     submitMyInput: handleSubmitMyInput,
     insertText: insertTextIntoMySection,
     replaceText: replaceMySection,
-  }), [handleSubmitMyInput, insertTextIntoMySection, replaceMySection]);
+    getMyContent,
+    clearMySection,
+  }), [handleSubmitMyInput, insertTextIntoMySection, replaceMySection, getMyContent, clearMySection]);
 
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback((e) => {

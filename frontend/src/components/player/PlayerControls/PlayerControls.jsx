@@ -26,11 +26,47 @@ const PlayerControls = ({
   currentCharacterId = null,
   isActivePlayer = true,
   pendingObservations = [],
-  onCopyObservation = null
+  onCopyObservation = null,
+  // Secondary player observation submission
+  onSubmitObservation = null
 }) => {
   const [activeTab, setActiveTab] = useState('voice');
   const [recentMedia, setRecentMedia] = useState([]);
   const [collabEditorConnected, setCollabEditorConnected] = useState(false);
+  // Brief confirmation popup for observation submission
+  const [submissionConfirmation, setSubmissionConfirmation] = useState(null);
+  // Track selected observations (for active player to include in submission)
+  const [selectedObservationIds, setSelectedObservationIds] = useState(new Set());
+
+  // Debug: Log observations props
+  console.log('👁️ PlayerControls render:', {
+    isActivePlayer,
+    pendingObservationsCount: pendingObservations?.length,
+    pendingObservations,
+    hasOnCopyObservation: !!onCopyObservation
+  });
+
+  // Ctrl+Enter keyboard shortcut to submit (needs handleCollabSubmit, defined later via hoisting)
+  useEffect(() => {
+    if (!isActivePlayer) return;
+
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        if (collabEditorRef?.current?.getMyContent) {
+          const content = collabEditorRef.current.getMyContent();
+          if (content && content.trim()) {
+            // Trigger submit button click
+            const submitBtn = document.querySelector('.player-submit-btn-compact');
+            if (submitBtn) submitBtn.click();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isActivePlayer, collabEditorRef]);
 
   // Handle voice input
   const handleVoiceSubmit = (text) => {
@@ -64,24 +100,114 @@ const PlayerControls = ({
     ]);
   }, [campaignId]);
 
+  // Toggle observation selection (for active player)
+  const toggleObservationSelection = useCallback((observationId) => {
+    setSelectedObservationIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(observationId)) {
+        newSet.delete(observationId);
+      } else {
+        newSet.add(observationId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Get selected observations formatted for submission
+  const getSelectedObservationsText = useCallback(() => {
+    if (!pendingObservations || selectedObservationIds.size === 0) return '';
+
+    const selected = pendingObservations
+      .filter(obs => !obs.included_in_turn)
+      .filter(obs => selectedObservationIds.has(`${obs.character_id}-${obs.observation_text}`));
+
+    if (selected.length === 0) return '';
+
+    return selected
+      .map(obs => `[${obs.character_name} observes]: ${obs.observation_text}`)
+      .join('\n');
+  }, [pendingObservations, selectedObservationIds]);
+
   // Handle player option selection
-  const handlePlayerOption = (option) => {
-    if (collabEditorRef.current) {
+  const handlePlayerOption = useCallback((option) => {
+    // Secondary players: clicking an option directly submits it as an observation
+    if (!isActivePlayer && onSubmitObservation) {
+      console.log('👁️ Secondary player clicked option, submitting as observation:', option);
+      onSubmitObservation(option.trim());
+      // Show brief confirmation popup
+      setSubmissionConfirmation({
+        text: option.length > 50 ? option.substring(0, 50) + '...' : option,
+        timestamp: Date.now()
+      });
+      // Auto-hide after 2 seconds
+      setTimeout(() => setSubmissionConfirmation(null), 2000);
+      return;
+    }
+
+    // Active player: insert into editor (existing behavior)
+    if (collabEditorRef?.current) {
       collabEditorRef.current.insertText(option);
     } else {
       console.warn('Collaborative editor not ready');
     }
-  };
+  }, [isActivePlayer, onSubmitObservation, collabEditorRef]);
 
   // Handle collaborative text submission
-  const handleCollabSubmit = useCallback((text) => {
-    if (onPlayerAction) {
-      onPlayerAction({
-        type: 'player_message',
-        message: text
-      });
+  const handleCollabSubmit = useCallback(async (text) => {
+    console.log('🎯 handleCollabSubmit called', {
+      textLength: text?.length,
+      isActivePlayer,
+      hasOnSubmitObservation: !!onSubmitObservation,
+      hasOnPlayerAction: !!onPlayerAction
+    });
+
+    if (!text || !text.trim()) {
+      console.log('🎯 handleCollabSubmit: empty text, returning');
+      return;
     }
-  }, [onPlayerAction]);
+
+    // Secondary players submit observations instead of direct messages
+    if (!isActivePlayer && onSubmitObservation) {
+      console.log('🎯 Submitting as observation (secondary player)');
+      onSubmitObservation(text.trim());
+      // Clear the editor after submission
+      if (collabEditorRef?.current?.clearMySection) {
+        collabEditorRef.current.clearMySection();
+      }
+      return;
+    }
+
+    // Active player submits normally
+    if (onPlayerAction) {
+      console.log('🎯 Submitting as player action (active player)');
+
+      // Include selected observations in the submission
+      const observationsText = getSelectedObservationsText();
+      let finalMessage = text.trim();
+      if (observationsText) {
+        finalMessage = `${finalMessage}\n\n${observationsText}`;
+        console.log('🎯 Including selected observations in submission');
+      }
+
+      try {
+        await onPlayerAction({
+          type: 'player_message',
+          message: finalMessage
+        });
+        // Clear the editor after successful submission
+        if (collabEditorRef?.current?.clearMySection) {
+          collabEditorRef.current.clearMySection();
+        }
+        // Clear selected observations after successful submission
+        setSelectedObservationIds(new Set());
+        console.log('🎯 Player action submitted and editor cleared');
+      } catch (err) {
+        console.error('🎯 Failed to submit player action:', err);
+      }
+    } else {
+      console.log('🎯 No onPlayerAction handler available');
+    }
+  }, [onPlayerAction, isActivePlayer, onSubmitObservation, collabEditorRef, getSelectedObservationsText]);
 
   // Determine if it's this player's turn (for now, always true since we don't have turn info)
   // TODO: Wire up to actual turn info from structuredData.turn_info
@@ -94,10 +220,19 @@ const PlayerControls = ({
 
     // Check for personalized options first (if we have a character ID)
     const personalizedOptions = structuredData.personalized_player_options;
-    if (personalizedOptions && currentCharacterId) {
-      const charOptions = personalizedOptions.characters?.[currentCharacterId];
-      if (charOptions?.options && Array.isArray(charOptions.options)) {
-        return charOptions.options.filter(option => option && option.trim().length > 0);
+    if (personalizedOptions && personalizedOptions.characters) {
+      const candidateIds = [
+        currentCharacterId,
+        personalizedOptions.active_character_id,
+        ...Object.keys(personalizedOptions.characters || {})
+      ].filter(Boolean);
+
+      const resolvedId = candidateIds.find(id => personalizedOptions.characters[id]);
+      if (resolvedId) {
+        const charOptions = personalizedOptions.characters[resolvedId];
+        if (charOptions?.options && Array.isArray(charOptions.options)) {
+          return charOptions.options.filter(option => option && option.trim().length > 0);
+        }
       }
     }
 
@@ -129,29 +264,58 @@ const PlayerControls = ({
         <div className="interact-tab-content">
           {collabWebSocket ? (
             <>
-              <div className="collab-editor-with-indicator">
-                <span
-                  className={`connection-dot-player ${collabEditorConnected ? 'connected' : 'disconnected'}`}
-                  title={collabEditorConnected ? 'Connected' : 'Disconnected'}
-                />
-                <CollaborativeStackedEditor
-                  ref={collabEditorRef}
-                  sessionId={campaignId}
-                  playerId={collabPlayerId}
-                  characterName={collabPlayerName}
-                  allPlayers={collabAllPlayers}
-                  isMyTurn={isMyTurn}
-                  websocket={collabWebSocket}
-                  onSubmit={handleCollabSubmit}
-                  showHeader={false}
-                  onConnectionChange={setCollabEditorConnected}
-                  layout="grid"
-                  isTranscribing={isTranscribing}
-                  onToggleTranscription={onToggleTranscription}
-                  showMicButton={audioPermissionState === 'granted'}
-                  voiceLevel={voiceActivityLevel}
-                />
+              <div className="collab-editor-wrapper">
+                {/* Submit button - compact, top-right of editor */}
+                {isActivePlayer && (
+                  <button
+                    className="player-submit-btn-compact"
+                    onClick={() => {
+                      if (collabEditorRef?.current?.getMyContent) {
+                        const content = collabEditorRef.current.getMyContent();
+                        if (content && content.trim()) {
+                          handleCollabSubmit(content);
+                        }
+                      }
+                    }}
+                    title="Submit (Ctrl+Enter)"
+                  >
+                    Submit
+                  </button>
+                )}
+                <div className="collab-editor-with-indicator">
+                  <span
+                    className={`connection-dot-player ${collabEditorConnected ? 'connected' : 'disconnected'}`}
+                    title={collabEditorConnected ? 'Connected' : 'Disconnected'}
+                  />
+                  <CollaborativeStackedEditor
+                    ref={collabEditorRef}
+                    sessionId={campaignId}
+                    playerId={collabPlayerId}
+                    characterName={collabPlayerName}
+                    allPlayers={collabAllPlayers}
+                    isMyTurn={isMyTurn}
+                    websocket={collabWebSocket}
+                    onSubmit={handleCollabSubmit}
+                    showHeader={false}
+                    onConnectionChange={setCollabEditorConnected}
+                    layout="grid"
+                    isTranscribing={isTranscribing}
+                    onToggleTranscription={onToggleTranscription}
+                    showMicButton={audioPermissionState === 'granted'}
+                    voiceLevel={voiceActivityLevel}
+                  />
+                </div>
               </div>
+
+              {/* Observation submission confirmation popup */}
+              {submissionConfirmation && (
+                <div className="observation-confirmation-popup">
+                  <span className="observation-confirmation-icon">✓</span>
+                  <span className="observation-confirmation-text">
+                    Shared with active player
+                  </span>
+                </div>
+              )}
             </>
           ) : (
             <div className="collab-waiting">
@@ -159,46 +323,85 @@ const PlayerControls = ({
             </div>
           )}
 
-          {/* Pending Observations (shown to active player) */}
-          {isActivePlayer && pendingObservations && pendingObservations.length > 0 && (
-            <div className="pending-observations-section">
-              <div className="observations-header">
-                <span className="observations-icon">👁️</span>
-                <span className="observations-title">Party Observations</span>
-                <span className="observations-count">{pendingObservations.length}</span>
+          {/* Pending Observations (shown to active player as checkboxes) */}
+          {isActivePlayer && pendingObservations && pendingObservations.length > 0 && (() => {
+            // Deduplicate observations by character_id + observation_text
+            const seen = new Set();
+            const uniqueObservations = pendingObservations
+              .filter(obs => !obs.included_in_turn)
+              .filter(obs => {
+                const key = `${obs.character_id}-${obs.observation_text}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+              });
+
+            if (uniqueObservations.length === 0) return null;
+
+            return (
+              <div className="pending-observations-section">
+                <div className="observations-header">
+                  <span className="observations-icon">👁️</span>
+                  <span className="observations-title">Party Observations</span>
+                  <span className="observations-count">{uniqueObservations.length}</span>
+                  {selectedObservationIds.size > 0 && (
+                    <span className="observations-selected-badge">
+                      {selectedObservationIds.size} selected
+                    </span>
+                  )}
+                </div>
+                <div className="observations-hint">Select observations to include with your action</div>
+                <div className="observations-list">
+                  {uniqueObservations.map((observation, index) => {
+                    const obsId = `${observation.character_id}-${observation.observation_text}`;
+                    const isSelected = selectedObservationIds.has(obsId);
+                    return (
+                      <label
+                        key={obsId}
+                        className={`observation-item observation-item-selectable ${isSelected ? 'observation-item-selected' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="observation-checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleObservationSelection(obsId)}
+                        />
+                        <span className="observation-content">
+                          <span className="observation-author">{observation.character_name}:</span>
+                          <span className="observation-text">{observation.observation_text}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="observations-list">
-                {pendingObservations.filter(obs => !obs.included_in_turn).map((observation, index) => (
-                  <div
-                    key={`obs-${observation.character_id}-${index}`}
-                    className="observation-item"
-                    onClick={() => onCopyObservation && onCopyObservation(observation)}
-                    style={onCopyObservation ? { cursor: 'pointer' } : {}}
-                    title={onCopyObservation ? "Click to add to your turn" : ""}
-                  >
-                    <span className="observation-author">{observation.character_name}:</span>
-                    <span className="observation-text">{observation.observation_text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Player Options */}
           <div className="quick-actions-sidebar">
+            {/* Section header for secondary players */}
+            {!isActivePlayer && playerOptions.length > 0 && (
+              <div className="options-section-header">
+                <span className="options-section-icon">👁️</span>
+                <span className="options-section-title">Observe & Discover</span>
+                <span className="options-section-hint">Click to share with active player</span>
+              </div>
+            )}
             {playerOptions.length > 0 ? (
               playerOptions.map((option, index) => (
                 <button
                   key={index}
-                  className="quick-action-btn"
+                  className={`quick-action-btn ${!isActivePlayer ? 'observation-option' : ''}`}
                   onClick={() => handlePlayerOption(option)}
+                  title={!isActivePlayer ? 'Click to share this observation with the active player' : 'Click to add to your action'}
                 >
                   {option}
                 </button>
               ))
             ) : (
               <div className="no-options-message">
-                {isActivePlayer ? 'Waiting for options...' : 'Observe & Discover'}
+                {isActivePlayer ? 'Waiting for options...' : 'Observe & Discover - waiting for options...'}
               </div>
             )}
           </div>
@@ -217,7 +420,7 @@ const PlayerControls = ({
         />
       )
     }
-  ], [campaignId, collabWebSocket, collabPlayerId, collabPlayerName, collabAllPlayers, isMyTurn, handleCollabSubmit, handlePlayerOption, recentMedia, imageRefreshTrigger, collabEditorConnected, playerOptions]);
+  ], [campaignId, collabWebSocket, collabPlayerId, collabPlayerName, collabAllPlayers, isMyTurn, handleCollabSubmit, handlePlayerOption, recentMedia, imageRefreshTrigger, collabEditorConnected, playerOptions, isActivePlayer, pendingObservations, selectedObservationIds, toggleObservationSelection, submissionConfirmation, isTranscribing, onToggleTranscription, audioPermissionState, voiceActivityLevel, collabEditorRef]);
 
   return (
     <div className="player-controls" data-testid="player-controls">

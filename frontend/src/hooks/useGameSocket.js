@@ -192,16 +192,21 @@ export function useGameSocket({
         'room.player_vacated',
         'room.dm_joined',
         'room.dm_left',
+        // Player action submission (notifies DM when player submits)
+        'player_action_submitted',
       ];
 
       gameEvents.forEach((event) => {
         socket.on(event, (data) => {
           if (!mounted) return;
+          console.log(`[SOCKET.IO] Received game event: ${event}`, data);
           // Try exact match first, then camelCase conversion
           const handler = handlersRef.current[event] ||
             handlersRef.current[toCamelCase(event)];
           if (handler) {
             handler(data, campaignId);
+          } else {
+            console.warn(`[SOCKET.IO] No handler for event: ${event}`);
           }
         });
       });

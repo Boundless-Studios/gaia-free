@@ -23,8 +23,18 @@ const TurnView = ({
   onPlayStop,
   isPlaying,
   onCopyToChat,
-  turnInfo
+  turnInfo,
+  // Player submissions (from players clicking "Submit Action")
+  playerSubmissions = [],
+  onCopyPlayerSubmission,
 }) => {
+  // Debug: Log what TurnView receives
+  console.log('📋 TurnView render:', {
+    playerSubmissionsCount: playerSubmissions?.length,
+    playerSubmissions,
+    pendingObservationsCount: pendingObservations?.length,
+    isActivePlayer
+  });
   // Determine which options to display and whether user is active
   const { turnLines, isActive, characterName } = useMemo(() => {
     // If personalized options are available and we have a character ID, use those
@@ -88,8 +98,8 @@ const TurnView = ({
     return pendingObservations.filter(obs => !obs.included_in_turn);
   }, [pendingObservations, isActive]);
 
-  // Don't render if no options and no observations
-  if ((!turnLines || turnLines.length === 0) && unincludedObservations.length === 0) {
+  // Don't render if no options, no observations, and no player submissions
+  if ((!turnLines || turnLines.length === 0) && unincludedObservations.length === 0 && (!playerSubmissions || playerSubmissions.length === 0)) {
     return null;
   }
 
@@ -113,6 +123,31 @@ const TurnView = ({
         </div>
       )}
       <div className="turn-content base-content">
+        {/* Player submissions (from players clicking "Submit Action") */}
+        {playerSubmissions.length > 0 && (
+          <div className="turn-submissions-section">
+            <div className="turn-submissions-header">
+              <span className="turn-submissions-icon">📝</span>
+              <span className="turn-submissions-title">Player Submissions</span>
+              <span className="turn-submissions-count">{playerSubmissions.length}</span>
+            </div>
+            <div className="turn-submissions-list">
+              {playerSubmissions.map((submission) => (
+                <div
+                  key={submission.id}
+                  className="turn-submission-item"
+                  onClick={() => onCopyPlayerSubmission && onCopyPlayerSubmission(submission)}
+                  style={onCopyPlayerSubmission ? { cursor: 'pointer' } : {}}
+                  title={onCopyPlayerSubmission ? "Click to copy to input" : ""}
+                >
+                  <span className="turn-submission-author">{submission.characterName}:</span>
+                  <span className="turn-submission-text">{submission.actionText}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Pending observations from other players (shown to active player) */}
         {unincludedObservations.length > 0 && (
           <div className="turn-observations-section">

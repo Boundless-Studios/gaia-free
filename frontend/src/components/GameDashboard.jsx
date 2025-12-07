@@ -45,7 +45,19 @@ const GameDashboard = forwardRef(
     pendingObservations = [], // Observations from other players
     onSubmitObservation = null, // Callback for secondary players to submit observations
     onCopyObservation = null, // Callback for primary player to copy an observation
+    // Player submissions (from player action submissions)
+    playerSubmissions = [],
+    onCopyPlayerSubmission = null,
   }, ref) => {
+  // Debug: Log player submissions received by GameDashboard
+  console.log('📋 GameDashboard render:', {
+    playerSubmissionsCount: playerSubmissions?.length,
+    playerSubmissions,
+    hasPlayerOptions: !!(latestStructuredData?.player_options || latestStructuredData?.turn),
+    isActivePlayer,
+    pendingObservationsCount: pendingObservations?.length
+  });
+
   // Audio now handled by synchronized streaming via WebSocket
   const sessionForRequest = campaignId || 'default-session';
 
@@ -191,6 +203,28 @@ const GameDashboard = forwardRef(
       onInputChange({ target: { value: inputMessage + separator + formattedObservation } });
     }
   }, [collabWebSocket, onInputChange, inputMessage]);
+
+  // Handle copying a player submission to the DM's input
+  const handleCopyPlayerSubmission = useCallback((submission) => {
+    if (!submission) return;
+
+    // Format: "[CharacterName]: action text"
+    const formattedAction = `[${submission.characterName}]: ${submission.actionText}`;
+
+    if (collabWebSocket && collabEditorRef.current?.insertText) {
+      // Using collaborative editor - insert via ref
+      collabEditorRef.current.insertText(formattedAction);
+    } else if (onInputChange) {
+      // Fallback to regular input - append to existing message
+      const separator = inputMessage.trim() ? '\n\n' : '';
+      onInputChange({ target: { value: inputMessage + separator + formattedAction } });
+    }
+
+    // Remove the submission after copying
+    if (onCopyPlayerSubmission) {
+      onCopyPlayerSubmission(submission);
+    }
+  }, [collabWebSocket, onInputChange, inputMessage, onCopyPlayerSubmission]);
 
   const streamingPanel = (
     <div className="dashboard-streaming-panel">
@@ -358,7 +392,7 @@ const GameDashboard = forwardRef(
         {/* Player Options + Input - Right side 25% */}
         <div className="dashboard-player-options-section">
           <div className="dashboard-player-options-list">
-            {hasPlayerOptions || (isActivePlayer && pendingObservations.length > 0) ? (
+            {hasPlayerOptions || (isActivePlayer && pendingObservations.length > 0) || playerSubmissions.length > 0 ? (
               <TurnView
                 turn={latestStructuredData.player_options || latestStructuredData.turn}
                 personalizedPlayerOptions={latestStructuredData.personalized_player_options}
@@ -371,6 +405,8 @@ const GameDashboard = forwardRef(
                 isPlaying={false}
                 onCopyToChat={handleCopyPlayerOptionToChat}
                 turnInfo={latestStructuredData.turn_info}
+                playerSubmissions={playerSubmissions}
+                onCopyPlayerSubmission={handleCopyPlayerSubmission}
               />
             ) : (
               <div className="dashboard-player-options-empty">

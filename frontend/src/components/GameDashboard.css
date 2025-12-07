@@ -1039,3 +1039,91 @@
   gap: var(--spacing-lg);
   overflow-y: auto;
 }
+
+/* Player Action Notification Popup */
+.player-action-notification {
+  position: fixed;
+  bottom: 100px;
+  right: 24px;
+  z-index: 1000;
+  max-width: 400px;
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.player-action-notification-content {
+  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: var(--border-radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(99, 102, 241, 0.2);
+  overflow: hidden;
+}
+
+.player-action-notification-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(99, 102, 241, 0.15);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.player-action-notification-icon {
+  font-size: 1.25rem;
+}
+
+.player-action-notification-title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #e2e8f0;
+}
+
+.player-action-notification-dismiss {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.player-action-notification-dismiss:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.player-action-notification-body {
+  padding: 16px;
+}
+
+.player-action-notification-text {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #cbd5e0;
+  font-style: italic;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 3px solid rgba(99, 102, 241, 0.5);
+}
+
+.player-action-notification-actions {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.1);
+}

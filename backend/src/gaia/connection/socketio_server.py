@@ -1030,6 +1030,129 @@ async def voice_transcription(sid: str, data: Dict[str, Any]):
         )
 
 
+@sio.event(namespace="/campaign")
+async def submit_observation(sid: str, data: Dict[str, Any]):
+    """Handle observation submission from secondary (non-active) players.
+
+    Secondary players can submit observations that the primary (active) player
+    can choose to include in their turn. This enables collaborative storytelling
+    where all party members can contribute.
+    """
+    session = await get_session_data(sid)
+    session_id = session.get("session_id")
+
+    if not session_id:
+        logger.warning("[SocketIO] submit_observation without session_id | sid=%s", sid)
+        return
+
+    character_id = data.get("character_id")
+    character_name = data.get("character_name")
+    observation_text = data.get("observation_text", "").strip()
+
+    if not observation_text:
+        logger.warning("[SocketIO] submit_observation with empty text | sid=%s", sid)
+        return
+
+    if not character_id or not character_name:
+        logger.warning(
+            "[SocketIO] submit_observation missing character info | sid=%s character_id=%s",
+            sid, character_id
+        )
+        return
+
+    logger.info(
+        "[SocketIO] Observation submitted | session=%s character=%s text_len=%d",
+        session_id, character_name, len(observation_text)
+    )
+
+    try:
+        from gaia.services.observations_manager import get_observations_manager
+
+        # Add observation to the manager
+        # We use placeholder values for primary character - the frontend determines
+        # who is the active player and shows observations accordingly
+        obs_manager = get_observations_manager()
+        obs_manager.add_observation(
+            session_id=session_id,
+            primary_character_id="pending",  # Will be resolved when primary player submits
+            primary_character_name="Pending",
+            observer_character_id=character_id,
+            observer_character_name=character_name,
+            observation_text=observation_text
+        )
+
+        # Get all pending observations
+        pending = obs_manager.get_pending_observations(session_id)
+        pending_data = pending.to_dict() if pending else {"observations": []}
+
+        # Broadcast updated pending observations to the room
+        await broadcast_to_room(
+            session_id,
+            "pending_observations",
+            {
+                "type": "pending_observations",
+                "campaign_id": session_id,
+                "pending_observations": pending_data,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+        logger.info(
+            "[SocketIO] Broadcast pending_observations | session=%s count=%d",
+            session_id, len(pending_data.get("observations", []))
+        )
+
+    except Exception as e:
+        logger.error("[SocketIO] Failed to process observation: %s", e, exc_info=True)
+
+
+@sio.event(namespace="/campaign")
+async def player_action_submitted(sid: str, data: Dict[str, Any]):
+    """Handle player action submission - notifies DM that a player has submitted their action.
+
+    Players don't submit directly to the backend. Instead, they notify the DM
+    who can then incorporate the player's input into their own submission.
+    """
+    session = await get_session_data(sid)
+    session_id = session.get("session_id")
+
+    if not session_id:
+        logger.warning("[SocketIO] player_action_submitted without session_id | sid=%s", sid)
+        return
+
+    character_id = data.get("character_id")
+    character_name = data.get("character_name", "Player")
+    action_text = data.get("action_text", "").strip()
+
+    if not action_text:
+        logger.warning("[SocketIO] player_action_submitted with empty text | sid=%s", sid)
+        return
+
+    logger.info(
+        "[SocketIO] Player action submitted | session=%s character=%s text_len=%d",
+        session_id, character_name, len(action_text)
+    )
+
+    # Broadcast to the room - DM will receive this and can show a popup
+    await broadcast_to_room(
+        session_id,
+        "player_action_submitted",
+        {
+            "type": "player_action_submitted",
+            "campaign_id": session_id,
+            "character_id": character_id,
+            "character_name": character_name,
+            "action_text": action_text,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+
+    logger.info(
+        "[SocketIO] Broadcast player_action_submitted | session=%s character=%s",
+        session_id, character_name
+    )
+
+
 # =============================================================================
 # Broadcast Helpers (for use by other modules)
 # =============================================================================

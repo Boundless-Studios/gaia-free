@@ -24,7 +24,18 @@ class PendingObservations:
         character_name: str,
         observation_text: str
     ) -> PlayerObservation:
-        """Add a new observation from a secondary player."""
+        """Add a new observation from a secondary player.
+
+        Deduplicates by character_id + observation_text to prevent duplicates.
+        """
+        # Check for duplicate (same character, same text, not yet included)
+        for existing in self.observations:
+            if (existing.character_id == character_id and
+                existing.observation_text == observation_text and
+                not existing.included_in_turn):
+                # Already exists, return existing instead of adding duplicate
+                return existing
+
         obs = PlayerObservation(
             character_id=character_id,
             character_name=character_name,

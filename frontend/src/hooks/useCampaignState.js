@@ -22,6 +22,8 @@ function transformStructuredData(structuredData, { needsResponse = false, sessio
   ) || [];
   const observations = parseField(structuredData.observations) || [];
   const summary = structuredData.summary || '';
+  const personalizedPlayerOptions = parseField(structuredData.personalized_player_options) || null;
+  const pendingObservations = parseField(structuredData.pending_observations) || null;
   const rawPlayerOptions =
     structuredData.player_options ??
     structuredData.turn ??
@@ -58,6 +60,8 @@ function transformStructuredData(structuredData, { needsResponse = false, sessio
       parseField(structuredData.metadata?.perception_checks) ||
       parseField(structuredData.perception_checks) ||
       observations,
+    personalized_player_options: personalizedPlayerOptions,
+    pending_observations: pendingObservations,
   };
 
   if (structuredData.audio) {

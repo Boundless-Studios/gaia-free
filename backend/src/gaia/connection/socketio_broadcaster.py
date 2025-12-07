@@ -96,6 +96,18 @@ class SocketIOBroadcaster:
         if event_type in {"campaign_loaded", "campaign_updated", "campaign_active"}:
             if "structured_data" in data:
                 self._campaign_states[session_id] = data["structured_data"]
+        elif event_type == "personalized_player_options":
+            # Merge personalized options into cached state for late joiners
+            if "personalized_player_options" in data:
+                cached = self._campaign_states.get(session_id, {}) or {}
+                cached["personalized_player_options"] = data["personalized_player_options"]
+                self._campaign_states[session_id] = cached
+        elif event_type == "pending_observations":
+            # Merge pending observations into cached state for late joiners
+            if "pending_observations" in data:
+                cached = self._campaign_states.get(session_id, {}) or {}
+                cached["pending_observations"] = data["pending_observations"]
+                self._campaign_states[session_id] = cached
         elif event_type == "campaign_deactivated":
             self._campaign_states.pop(session_id, None)
 

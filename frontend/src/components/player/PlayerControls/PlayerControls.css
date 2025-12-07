@@ -1505,8 +1505,8 @@
    ============================================ */
 
 .pending-observations-section {
-  margin-bottom: 12px;
-  padding-bottom: 12px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
   border-bottom: 1px solid rgba(245, 158, 11, 0.2);
   width: 100%;
   flex-basis: 100%;
@@ -1575,4 +1575,238 @@
 
 .observation-text {
   color: #e5e7eb;
+}
+
+/* Selectable observation items (checkbox-based) */
+.observations-hint {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.observations-selected-badge {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-left: 6px;
+}
+
+.observation-item-selectable {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.observation-item-selectable:hover {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.observation-item-selected {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.observation-item-selected:hover {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.5);
+}
+
+.observation-checkbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #22c55e;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.observation-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ============================================
+   Player Submit Section
+   Submit button for players to submit actions/observations
+   ============================================ */
+
+/* Wrapper for editor + submit button positioning */
+.collab-editor-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Compact submit button - positioned top-right of editor */
+.player-submit-btn-compact {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 10;
+  background: rgba(59, 130, 246, 0.9);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.player-submit-btn-compact:hover {
+  background: rgba(37, 99, 235, 1);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.player-submit-btn-compact:active {
+  transform: scale(0.95);
+}
+
+.player-submit-section {
+  width: 100%;
+  flex-basis: 100%;
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.player-submit-btn {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.player-submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.player-submit-btn:active {
+  transform: translateY(0);
+}
+
+.player-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ============================================
+   Observation Confirmation Popup
+   Brief popup shown when secondary player
+   shares an observation with active player
+   ============================================ */
+
+.observation-confirmation-popup {
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.95), rgba(22, 163, 74, 0.95));
+  border: 1px solid rgba(34, 197, 94, 0.6);
+  border-radius: 12px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 10000;
+  animation: popupSlideIn 0.3s ease-out;
+}
+
+@keyframes popupSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.observation-confirmation-icon {
+  font-size: 1.2rem;
+  color: white;
+  font-weight: bold;
+}
+
+.observation-confirmation-text {
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ============================================
+   Options Section Header
+   Header shown for secondary players above
+   their observation options
+   ============================================ */
+
+.options-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.options-section-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.options-section-title {
+  color: #f59e0b;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.options-section-hint {
+  color: rgba(245, 158, 11, 0.7);
+  font-size: 0.75rem;
+  font-style: italic;
+  margin-left: auto;
+}
+
+/* ============================================
+   Observation Option Button Style
+   Gold-themed style for secondary player options
+   ============================================ */
+
+.quick-action-btn.observation-option {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
+.quick-action-btn.observation-option:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.quick-action-btn.observation-option:active {
+  transform: translateY(0);
+  background: rgba(245, 158, 11, 0.3);
 }

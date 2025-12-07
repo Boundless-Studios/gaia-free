@@ -36,8 +36,17 @@ const PlayerView = ({
   currentCharacterId = null,
   isActivePlayer = true,
   pendingObservations = [],
-  onCopyObservation = null
+  onCopyObservation = null,
+  // Secondary player observation submission
+  onSubmitObservation = null
 }) => {
+  // Debug: Log observations props received by PlayerView
+  console.log('👁️ PlayerView render:', {
+    isActivePlayer,
+    pendingObservationsCount: pendingObservations?.length,
+    hasOnCopyObservation: !!onCopyObservation
+  });
+
   const [error, setError] = useState(null);
   const [currentCharacter] = useState(characterData);
   const [gameState, setGameState] = useState(latestStructuredData);
@@ -246,6 +255,8 @@ const PlayerView = ({
             isActivePlayer={isActivePlayer}
             pendingObservations={pendingObservations}
             onCopyObservation={onCopyObservation}
+            // Secondary player observation submission
+            onSubmitObservation={onSubmitObservation}
           />
         </div>
       </div>

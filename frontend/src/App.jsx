@@ -145,6 +145,9 @@ function App() {
   const [isClearingAudioQueue, setIsClearingAudioQueue] = useState(false);
   const [playbackQueueInfo, setPlaybackQueueInfo] = useState(null);
 
+  // Player action submissions (shown in DM's player options section)
+  const [playerSubmissions, setPlayerSubmissions] = useState([]);
+
   // Collaborative editing state (now managed via Socket.IO)
   const [collabIsConnected, setCollabIsConnected] = useState(false);
   const [collabPlayers, setCollabPlayers] = useState([]);
@@ -879,6 +882,23 @@ function App() {
         console.log('[Collab] DM registered via Socket.IO:', data);
         setCollabIsConnected(true);
       },
+      // Player action submission - add to DM's player options section
+      player_action_submitted: (data) => {
+        console.log('[DM] Received player action submission:', data);
+        const { character_name, action_text, character_id, timestamp } = data;
+        if (action_text && action_text.trim()) {
+          setPlayerSubmissions(prev => [
+            ...prev,
+            {
+              id: `${character_id}-${Date.now()}`,
+              characterName: character_name || 'Player',
+              characterId: character_id,
+              actionText: action_text.trim(),
+              timestamp: timestamp || new Date().toISOString(),
+            }
+          ]);
+        }
+      },
     },
   });
 
@@ -1503,6 +1523,12 @@ function App() {
                 collabPlayerName={collabPlayerName}
                 collabAllPlayers={collabPlayers}
                 collabIsConnected={collabIsConnected}
+                // Player submissions (from player action submissions)
+                playerSubmissions={playerSubmissions}
+                onCopyPlayerSubmission={(submission) => {
+                  // Remove the submission after copying
+                  setPlayerSubmissions(prev => prev.filter(s => s.id !== submission.id));
+                }}
                 />
               </RoomProvider>
             </div>

@@ -615,7 +615,14 @@ const PlayerPage = () => {
 
         if (sessionId && update.structured_data) {
           const transformedData = transformStructuredData(update.structured_data);
-          setSessionStructuredData(sessionId, transformedData);
+          setSessionStructuredData(sessionId, (prev) => ({
+            ...(prev || {}),
+            ...transformedData,
+            personalized_player_options:
+              transformedData?.personalized_player_options ?? prev?.personalized_player_options ?? null,
+            pending_observations:
+              transformedData?.pending_observations ?? prev?.pending_observations ?? null,
+          }));
           console.log('🎮 Updated structured data from WebSocket');
         }
 
@@ -637,7 +644,14 @@ const PlayerPage = () => {
           }
           const transformedData = transformStructuredData(update.structured_data);
           if (sessionId) {
-            setSessionStructuredData(sessionId, transformedData);
+            setSessionStructuredData(sessionId, (prev) => ({
+              ...(prev || {}),
+              ...transformedData,
+              personalized_player_options:
+                transformedData?.personalized_player_options ?? prev?.personalized_player_options ?? null,
+              pending_observations:
+                transformedData?.pending_observations ?? prev?.pending_observations ?? null,
+            }));
           }
           console.log('🎮 Updated structured data from campaign update');
 
@@ -900,6 +914,8 @@ const PlayerPage = () => {
     narrative_chunk: (data) => handleCampaignUpdate({ ...data, type: 'narrative_chunk' }),
     player_response_chunk: (data) => handleCampaignUpdate({ ...data, type: 'player_response_chunk' }),
     player_options: (data) => handleCampaignUpdate({ ...data, type: 'player_options' }),
+    personalized_player_options: (data) => handleCampaignUpdate({ ...data, type: 'personalized_player_options' }),
+    pending_observations: (data) => handleCampaignUpdate({ ...data, type: 'pending_observations' }),
     metadata_update: (data) => handleCampaignUpdate({ ...data, type: 'metadata_update' }),
     campaign_updated: (data) => handleCampaignUpdate({ ...data, type: 'campaign_updated' }),
     campaign_loaded: (data) => handleCampaignUpdate({ ...data, type: 'campaign_loaded' }),
@@ -1122,16 +1138,43 @@ const PlayerPage = () => {
     };
   }, [currentCampaignId, sioIsConnected, sioEmit]);
 
-  // Handle player actions
-  const handlePlayerAction = (action) => {
+  // Handle player actions - notifies DM via Socket.IO (doesn't send to backend directly)
+  // The DM sees player submissions and can incorporate them into their own submission
+  const handlePlayerAction = useCallback((action) => {
     if (!currentCampaignId) {
       setError('No campaign selected');
       return;
     }
 
-    // The current behavior (filling text box) is already handled elsewhere
-    // No replacement needed - just removed the sendPlayerSuggestion call
-  };
+    // Extract message from action
+    const message = action?.message || action?.text || (typeof action === 'string' ? action : null);
+    if (!message) {
+      console.warn('🎯 handlePlayerAction: No message in action', action);
+      return;
+    }
+
+    if (!sioIsConnected || !sioSocket) {
+      console.warn('🎯 Cannot submit player action - socket not connected');
+      return;
+    }
+
+    // Get character info for the submission
+    // Note: currentUserPlayerSeat is only available in PlayerRoomShell, so we use collabPlayerId/assignedPlayerName here
+    const characterId = collabPlayerId || 'unknown';
+    const characterName = assignedPlayerName || 'Player';
+
+    console.log('🎯 Player submitted action (notifying DM):', { characterName, message });
+
+    // Send player submission to DM via Socket.IO
+    // The DM will see a popup with the player's input and can copy it
+    sioEmit('player_action_submitted', {
+      character_id: characterId,
+      character_name: characterName,
+      action_text: message.trim()
+    });
+
+    console.log('🎯 Player action sent to DM via Socket.IO');
+  }, [currentCampaignId, setError, sioIsConnected, sioSocket, sioEmit, collabPlayerId, assignedPlayerName]);
 
   // Demo character data
   const demoCharacter = {
@@ -1398,6 +1441,71 @@ const PlayerRoomShell = ({
 
   // Collaborative editing is now handled via Socket.IO (useGameSocket hook)
   // See handlers: player_list, initial_state, registered in socketHandlers
+
+  // Handle observation submission from secondary players
+  const handleSubmitObservation = useCallback((observationText) => {
+    if (!sioIsConnected || !sioSocket) {
+      console.warn('👁️ Cannot submit observation - socket not connected');
+      return;
+    }
+
+    const characterId = currentUserPlayerSeat?.character_id || collabPlayerId;
+    const characterName = currentUserPlayerSeat?.character_name || assignedPlayerName;
+
+    console.log('👁️ Submitting observation:', { characterId, characterName, observationText });
+
+    sioEmit('submit_observation', {
+      character_id: characterId,
+      character_name: characterName,
+      observation_text: observationText
+    });
+
+    console.log('👁️ Observation submitted via Socket.IO');
+  }, [sioIsConnected, sioSocket, sioEmit, currentUserPlayerSeat, collabPlayerId, assignedPlayerName]);
+
+  // Handle copying an observation to the chat input
+  const handleCopyObservation = useCallback((observation) => {
+    if (collabEditorRef?.current?.insertText) {
+      const formattedObservation = `[${observation.character_name} observes]: ${observation.observation_text}`;
+      collabEditorRef.current.insertText(formattedObservation);
+    }
+  }, [collabEditorRef]);
+
+  // Determine if current player is the active (turn-taking) player
+  const { currentCharacterId, isActivePlayer, pendingObservations } = useMemo(() => {
+    const charId = currentUserPlayerSeat?.character_id || null;
+    const personalizedOptions = latestStructuredData?.personalized_player_options;
+    const pending = latestStructuredData?.pending_observations?.observations || [];
+    const characters = personalizedOptions?.characters || {};
+    const fallbackActiveId = personalizedOptions?.active_character_id || Object.keys(characters)[0] || null;
+    const resolvedCharId = charId || fallbackActiveId;
+
+    // Debug: Log what we're computing
+    console.log('👁️ PlayerPage useMemo computing:', {
+      charId,
+      resolvedCharId,
+      pendingObsRaw: latestStructuredData?.pending_observations,
+      pendingCount: pending?.length,
+      hasPersonalizedOptions: !!personalizedOptions,
+      activeCharacterId: personalizedOptions?.active_character_id
+    });
+
+    if (personalizedOptions && resolvedCharId) {
+      const charOptions = characters?.[resolvedCharId];
+      return {
+        currentCharacterId: resolvedCharId,
+        isActivePlayer: charOptions?.is_active ?? resolvedCharId === personalizedOptions?.active_character_id,
+        pendingObservations: pending
+      };
+    }
+
+    // Default to active if no personalized options
+    return {
+      currentCharacterId: resolvedCharId,
+      isActivePlayer: true,
+      pendingObservations: pending
+    };
+  }, [currentUserPlayerSeat?.character_id, latestStructuredData]);
 
   const [seatModalOpen, setSeatModalOpen] = useState(false);
   const [seatError, setSeatError] = useState(null);
@@ -1731,6 +1839,12 @@ const PlayerRoomShell = ({
               onToggleTranscription={toggleVoiceTranscription}
               voiceActivityLevel={voiceActivityLevel}
               collabEditorRef={collabEditorRef}
+              // Personalized player options props
+              currentCharacterId={currentCharacterId}
+              isActivePlayer={isActivePlayer}
+              pendingObservations={pendingObservations}
+              onCopyObservation={handleCopyObservation}
+              onSubmitObservation={handleSubmitObservation}
             />
           </div>
         )}
