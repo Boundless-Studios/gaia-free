@@ -12,31 +12,19 @@ import logging
 import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
 
 from sqlalchemy import select
 
-from gaia.models.player_options import (
-    PersonalizedPlayerOptions,
-    CharacterOptions,
-    PendingObservations,
-    PlayerObservation
-)
+from gaia.models.character_options import CharacterOptions
+from gaia.models.personalized_player_options import PersonalizedPlayerOptions
+from gaia.models.player_observation import PlayerObservation
+from gaia.models.pending_observations import PendingObservations
+from gaia.models.connected_player import ConnectedPlayer
 
 # Import both agents from gaia_private
 from gaia_private.agents.scene import ActivePlayerOptionsAgent, ObservingPlayerOptionsAgent
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ConnectedPlayer:
-    """Represents a player connected to the session."""
-    character_id: str
-    character_name: str
-    user_id: Optional[str] = None
-    seat_id: Optional[str] = None
-    is_dm: bool = False
 
 
 class PlayerOptionsService:
@@ -69,7 +57,6 @@ class PlayerOptionsService:
         previous_char_name: str = "the previous player",
         character_contexts: Optional[Dict[str, str]] = None,
         model: Optional[str] = None,
-        parallel: bool = True
     ) -> PersonalizedPlayerOptions:
         """
         Generate personalized options for all connected players.
@@ -81,7 +68,6 @@ class PlayerOptionsService:
             previous_char_name: Name of the character who just acted
             character_contexts: Optional map of char_id to context string
             model: Optional model override
-            parallel: Whether to generate options in parallel (default True)
 
         Returns:
             PersonalizedPlayerOptions with options for each player
@@ -128,66 +114,40 @@ class PlayerOptionsService:
             result.characters[player.character_id] = char_options
             return result
 
-        if parallel:
-            # Generate all options in parallel
-            tasks = []
-            for player in player_characters:
-                is_active = player.character_id == active_character_id
-                context = character_contexts.get(player.character_id, "")
-                tasks.append(
-                    self._generate_single_player_options(
-                        player=player,
-                        is_active=is_active,
-                        scene_narrative=scene_narrative,
-                        previous_char_name=previous_char_name,
-                        character_context=context,
-                        model=model
-                    )
+        # Generate all options in parallel
+        tasks = []
+        for player in player_characters:
+            is_active = player.character_id == active_character_id
+            context = character_contexts.get(player.character_id, "")
+            tasks.append(
+                self._generate_single_player_options(
+                    player=player,
+                    is_active=is_active,
+                    scene_narrative=scene_narrative,
+                    previous_char_name=previous_char_name,
+                    character_context=context,
+                    model=model
                 )
+            )
 
-            # Wait for all options to be generated
-            options_results = await asyncio.gather(*tasks, return_exceptions=True)
+        # Wait for all options to be generated
+        options_results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            # Process results
-            for player, opts_result in zip(player_characters, options_results):
-                if isinstance(opts_result, Exception):
-                    logger.error(
-                        f"[PlayerOptionsService] Error generating options for {player.character_name}: {opts_result}"
-                    )
-                    # Add empty options on error
-                    result.add_character_options(
-                        character_id=player.character_id,
-                        character_name=player.character_name,
-                        options=[],
-                        is_active=(player.character_id == active_character_id)
-                    )
-                elif isinstance(opts_result, CharacterOptions):
-                    result.characters[player.character_id] = opts_result
-        else:
-            # Generate sequentially
-            for player in player_characters:
-                is_active = player.character_id == active_character_id
-                context = character_contexts.get(player.character_id, "")
-                try:
-                    char_options = await self._generate_single_player_options(
-                        player=player,
-                        is_active=is_active,
-                        scene_narrative=scene_narrative,
-                        previous_char_name=previous_char_name,
-                        character_context=context,
-                        model=model
-                    )
-                    result.characters[player.character_id] = char_options
-                except Exception as e:
-                    logger.error(
-                        f"[PlayerOptionsService] Error generating options for {player.character_name}: {e}"
-                    )
-                    result.add_character_options(
-                        character_id=player.character_id,
-                        character_name=player.character_name,
-                        options=[],
-                        is_active=is_active
-                    )
+        # Process results
+        for player, opts_result in zip(player_characters, options_results):
+            if isinstance(opts_result, Exception):
+                logger.error(
+                    f"[PlayerOptionsService] Error generating options for {player.character_name}: {opts_result}"
+                )
+                # Add empty options on error
+                result.add_character_options(
+                    character_id=player.character_id,
+                    character_name=player.character_name,
+                    options=[],
+                    is_active=(player.character_id == active_character_id)
+                )
+            elif isinstance(opts_result, CharacterOptions):
+                result.characters[player.character_id] = opts_result
 
         return result
 
@@ -296,18 +256,71 @@ class PlayerOptionsService:
             model=model
         )
 
+    def get_scene_player_characters(
+        self,
+        campaign_id: str,
+        scene_info: Any,
+    ) -> List[ConnectedPlayer]:
+        """
+        Get player characters present in the current scene.
+
+        This is the preferred method - uses scene_info.pcs_present to get
+        only the characters actually in the scene.
+
+        Args:
+            campaign_id: The campaign/session ID
+            scene_info: The current SceneInfo object
+
+        Returns:
+            List of ConnectedPlayer objects for players in the scene
+        """
+        from gaia.mechanics.character.character_storage import CharacterStorage
+
+        connected_players = []
+
+        if not scene_info:
+            logger.warning("[PlayerOptionsService] No scene_info provided")
+            return connected_players
+
+        # Get PCs present in scene
+        pcs_present = getattr(scene_info, 'pcs_present', None) or []
+        if not pcs_present:
+            logger.debug("[PlayerOptionsService] No PCs present in scene")
+            return connected_players
+
+        try:
+            char_storage = CharacterStorage(campaign_id)
+
+            for character_id in pcs_present:
+                if not character_id:
+                    continue
+
+                # Get character name from storage
+                character_name = "Unknown"
+                try:
+                    char_data = char_storage.get_character_data(character_id)
+                    if char_data:
+                        character_name = char_data.get("name", "Unknown")
+                except Exception as e:
+                    logger.warning(f"Failed to get character name for {character_id}: {e}")
+
+                connected_players.append(ConnectedPlayer(
+                    character_id=character_id,
+                    character_name=character_name,
+                    is_dm=False
+                ))
+
+        except Exception as e:
+            logger.error(f"Error getting scene player characters: {e}")
+
+        return connected_players
+
     def get_seated_player_characters(self, campaign_id: str) -> List[ConnectedPlayer]:
         """
-        Get player characters with seats in the campaign.
+        DEPRECATED: Get player characters with seats in the campaign.
 
-        NOTE: This queries RoomSeats (campaign membership), not scene presence.
-        For proper implementation, options should be generated for characters
-        IN THE CURRENT SCENE (from scene_info.pcs_present), not just anyone
-        with a campaign seat.
-
-        TODO: Refactor to accept scene_info and use scene_info.pcs_present
-        or scene_info.participants to determine which characters to generate
-        options for. This requires passing scene context from the chat route.
+        This queries RoomSeats (campaign membership), not scene presence.
+        Use get_scene_player_characters() with scene_info instead.
 
         Args:
             campaign_id: The campaign/session ID
@@ -364,6 +377,7 @@ class PlayerOptionsService:
         self,
         campaign_id: str,
         structured_data: dict,
+        scene_info: Optional[Any] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Generate personalized player options and return as dict.
@@ -373,6 +387,7 @@ class PlayerOptionsService:
         Args:
             campaign_id: The campaign/session ID
             structured_data: The structured data from the orchestrator response
+            scene_info: Optional SceneInfo - if provided, uses scene roster (preferred)
 
         Returns:
             Dict from PersonalizedPlayerOptions.to_dict() or None if no options generated
@@ -380,8 +395,12 @@ class PlayerOptionsService:
         import json
 
         try:
-            # Get seated player characters (TODO: should use scene's pcs_present instead)
-            connected_players = self.get_seated_player_characters(campaign_id)
+            # Prefer scene roster when scene_info is provided
+            if scene_info:
+                connected_players = self.get_scene_player_characters(campaign_id, scene_info)
+            else:
+                # Fallback to deprecated RoomSeats method
+                connected_players = self.get_seated_player_characters(campaign_id)
             if not connected_players:
                 logger.debug("[PlayerOptionsService] No connected players found for campaign %s", campaign_id)
                 return None

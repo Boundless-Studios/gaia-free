@@ -14,6 +14,11 @@ from gaia.models.item import Item
 from gaia.models.scene_participant import SceneParticipant
 from gaia.models.turn import Turn
 from gaia.models.combat import CombatSession, CombatantState
+from gaia.models.character_options import CharacterOptions
+from gaia.models.personalized_player_options import PersonalizedPlayerOptions
+from gaia.models.player_observation import PlayerObservation
+from gaia.models.pending_observations import PendingObservations
+from gaia.models.connected_player import ConnectedPlayer
 
 __all__ = [
     # Enums
@@ -32,4 +37,10 @@ __all__ = [
     "Turn",
     "CombatSession",
     "CombatantState",
+    # Player options
+    "CharacterOptions",
+    "PersonalizedPlayerOptions",
+    "PlayerObservation",
+    "PendingObservations",
+    "ConnectedPlayer",
 ]

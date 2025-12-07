@@ -4,8 +4,7 @@ Unit tests for PlayerOptionsService and player options flow.
 Tests:
 1. Service generates different options for active vs passive players
 2. Options are correctly returned with proper structure
-3. Parallel generation works correctly
-4. Error handling for individual player failures
+3. Error handling for individual player failures
 """
 
 import pytest
@@ -16,16 +15,14 @@ from datetime import datetime
 
 from gaia.services.player_options_service import (
     PlayerOptionsService,
-    ConnectedPlayer,
     ObservationsManager,
     get_observations_manager,
 )
-from gaia.models.player_options import (
-    PersonalizedPlayerOptions,
-    CharacterOptions,
-    PendingObservations,
-    PlayerObservation,
-)
+from gaia.models.connected_player import ConnectedPlayer
+from gaia.models.character_options import CharacterOptions
+from gaia.models.personalized_player_options import PersonalizedPlayerOptions
+from gaia.models.player_observation import PlayerObservation
+from gaia.models.pending_observations import PendingObservations
 
 logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.asyncio
@@ -127,7 +124,6 @@ class TestPlayerOptionsService:
                 active_character_id="char_active",
                 scene_narrative="The goblin charges forward!",
                 previous_char_name="Gandalf",
-                parallel=True
             )
 
             # Verify structure
@@ -211,58 +207,6 @@ class TestPlayerOptionsService:
             logger.info("✅ DM correctly filtered from options generation")
 
     @pytest.mark.unit
-    async def test_parallel_generation(
-        self,
-        mock_active_agent,
-        mock_passive_agent,
-        connected_players
-    ):
-        """Test that parallel generation works correctly."""
-        with patch.object(PlayerOptionsService, '__init__', lambda self: None):
-            service = PlayerOptionsService()
-            service._active_agent = mock_active_agent
-            service._passive_agent = mock_passive_agent
-
-            # Add delay to simulate real agent calls
-            async def slow_generate(*args, **kwargs):
-                import asyncio
-                await asyncio.sleep(0.01)
-                return {"player_options": ["Option 1", "Option 2"]}
-
-            mock_active_agent.generate_options = AsyncMock(side_effect=slow_generate)
-            mock_passive_agent.generate_options = AsyncMock(side_effect=slow_generate)
-
-            import time
-            start = time.time()
-            result = await service.generate_all_player_options(
-                connected_players=connected_players,
-                active_character_id="char_active",
-                scene_narrative="Test parallel",
-                previous_char_name="Gandalf",
-                parallel=True
-            )
-            parallel_time = time.time() - start
-
-            # Reset mocks
-            mock_active_agent.generate_options = AsyncMock(side_effect=slow_generate)
-            mock_passive_agent.generate_options = AsyncMock(side_effect=slow_generate)
-
-            start = time.time()
-            result = await service.generate_all_player_options(
-                connected_players=connected_players,
-                active_character_id="char_active",
-                scene_narrative="Test sequential",
-                previous_char_name="Gandalf",
-                parallel=False
-            )
-            sequential_time = time.time() - start
-
-            # Parallel should be faster (or at least not slower)
-            assert parallel_time <= sequential_time * 1.5  # Allow some variance
-
-            logger.info(f"✅ Parallel generation works (parallel: {parallel_time:.3f}s, sequential: {sequential_time:.3f}s)")
-
-    @pytest.mark.unit
     async def test_handles_individual_player_failure(
         self,
         mock_active_agent,
@@ -290,7 +234,6 @@ class TestPlayerOptionsService:
                 active_character_id="char_active",
                 scene_narrative="Test failure handling",
                 previous_char_name="Gandalf",
-                parallel=True
             )
 
             # Should still have results for all players
