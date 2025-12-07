@@ -2,7 +2,7 @@
 Integration tests for player options agents.
 
 Tests that:
-1. Both player_options and active_player_options prompts exist in DB
+1. Both observing_player_options and active_player_options prompts exist in DB
 2. Prompts contain required template variables
 3. Template resolution works correctly
 4. JSON output format is specified
@@ -35,18 +35,18 @@ async def db_session():
 
 @pytest.mark.integration
 async def test_player_options_prompt_exists(db_session: AsyncSession):
-    """Test that player_options (observing) prompt exists in database."""
+    """Test that observing_player_options prompt exists in database."""
     prompt_service = PromptService(db_session)
 
     prompt = await prompt_service.get_prompt(
-        agent_type="player_options",
+        agent_type="observing_player_options",
         prompt_key="system_prompt"
     )
 
-    assert prompt is not None, "player_options prompt should exist"
+    assert prompt is not None, "observing_player_options prompt should exist"
     assert len(prompt) > 100, "Prompt should have substantial content"
 
-    logger.info(f"✅ player_options prompt loaded ({len(prompt)} chars)")
+    logger.info(f"✅ observing_player_options prompt loaded ({len(prompt)} chars)")
 
 
 @pytest.mark.integration
@@ -71,11 +71,11 @@ async def test_active_player_options_prompt_exists(db_session: AsyncSession):
 
 @pytest.mark.integration
 async def test_player_options_has_required_variables(db_session: AsyncSession):
-    """Test that player_options prompt has required template variables."""
+    """Test that observing_player_options prompt has required template variables."""
     prompt_service = PromptService(db_session)
 
     prompt = await prompt_service.get_prompt(
-        agent_type="player_options",
+        agent_type="observing_player_options",
         prompt_key="system_prompt"
     )
 
@@ -87,9 +87,9 @@ async def test_player_options_has_required_variables(db_session: AsyncSession):
     ]
 
     for var in required_vars:
-        assert var in prompt, f"player_options should have {var}"
+        assert var in prompt, f"observing_player_options should have {var}"
 
-    logger.info("✅ player_options has all required template variables")
+    logger.info("✅ observing_player_options has all required template variables")
 
 
 @pytest.mark.integration
@@ -160,7 +160,7 @@ async def test_json_output_format_specified(db_session: AsyncSession):
     """Test that both prompts specify JSON output format."""
     prompt_service = PromptService(db_session)
 
-    for agent_type in ["player_options", "active_player_options"]:
+    for agent_type in ["observing_player_options", "active_player_options"]:
         prompt = await prompt_service.get_prompt(
             agent_type=agent_type,
             prompt_key="system_prompt"

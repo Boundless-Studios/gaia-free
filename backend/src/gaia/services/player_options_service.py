@@ -342,8 +342,8 @@ class PlayerOptionsService:
                     scene_info = recent_scenes[0]
                     logger.debug("[PlayerOptionsService] Fetched current scene: %s", scene_info.scene_id)
                 else:
-                    logger.error("[PlayerOptionsService] No scenes found for campaign %s", campaign_id)
-                    return None
+                    # Allow generation to proceed with minimal context (e.g., during tests or new campaigns)
+                    logger.warning("[PlayerOptionsService] No scenes found for campaign %s - proceeding without scene context", campaign_id)
 
             connected_players = self.get_scene_player_characters(campaign_id, scene_info)
             if not connected_players:

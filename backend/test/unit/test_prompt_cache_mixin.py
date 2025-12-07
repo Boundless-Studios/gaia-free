@@ -133,11 +133,11 @@ async def test_observing_player_options_mixin(mock_load_prompt_text):
 
     agent = ObservingPlayerOptionsAgent()
 
-    assert agent.agent_type == "player_options"
+    assert agent.agent_type == "observing_player_options"
     assert agent.prompt_key == "system_prompt"
 
     prompt = await agent._get_system_prompt()
-    assert "player_options:system_prompt" in prompt
+    assert "observing_player_options:system_prompt" in prompt
 
     logger.info("✅ ObservingPlayerOptionsAgent mixin behavior verified")
 

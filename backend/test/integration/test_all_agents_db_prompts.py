@@ -7,7 +7,7 @@ This test validates that all 27 agents that use PromptCacheMixin can:
 
 Agents tested (27 total):
 - Coordinator (5): campaign_persistence, scenario_analyzer, character_extractor,
-                   player_options (observing), active_player_options
+                   observing_player_options, active_player_options
 - Dungeon Master (4): dungeon_master, streaming_dm (3 prompts)
 - Combat (3): combat_narrator, combat_action_selector, combat_initiator
 - Scene Analyzer (6): scene_categorizer, combat_exit_analyzer, complexity_analyzer,
@@ -51,7 +51,7 @@ AGENT_PROMPTS = {
         ("campaign_persistence_agent", "system_prompt"),
         ("scenario_analyzer", "system_prompt"),
         ("character_extractor", "system_prompt"),
-        ("player_options", "system_prompt"),  # ObservingPlayerOptionsAgent
+        ("observing_player_options", "system_prompt"),  # ObservingPlayerOptionsAgent
         ("active_player_options", "system_prompt"),  # ActivePlayerOptionsAgent
     ],
     # Dungeon Master agents (4 prompts, 1 agent + 3 streaming_dm)

@@ -287,7 +287,10 @@ class TestSceneUpdater(unittest.TestCase):
 
         scene = self._create_scene(analysis, structured_data)
 
-        self.assertEqual(scene.metadata.get("location"), "Dockside")
+        location_meta = scene.metadata.get("location") if scene.metadata else None
+        location_value = location_meta.get("id") if isinstance(location_meta, dict) else location_meta
+
+        self.assertEqual(location_value, "Dockside")
         self.assertIn("Goblin Lookout", scene.npcs_involved)
         self.assertIn("Captain Mira Quickspark", scene.npcs_involved)
         self.assertIn("Dockworker Rynn", scene.npcs_involved)
