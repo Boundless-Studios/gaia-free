@@ -13,6 +13,7 @@ from gaia.models.character import CharacterInfo
 from gaia.mechanics.campaign.simple_campaign_manager import SimpleCampaignManager
 from gaia.api.routes.campaign_generation import PreGeneratedContent, CampaignInitializer
 from gaia.api.routes.arena import create_arena_characters, create_arena_scene, build_arena_prompt
+from gaia.infra.storage.scene_repository import SceneRepository
 from gaia.api.schemas.campaign import (
     ActiveCampaignResponse,
     PlayerCampaignResponse,
@@ -830,25 +831,30 @@ class CampaignService:
             # Create arena scene with proper character roster
             arena_scene = create_arena_scene(campaign_id, combatant_infos, request.difficulty or "medium")
 
-            # Save scene and set as current scene
+            # Save scene to database (source of truth)
+            import uuid
+            scene_repo = SceneRepository()
+            try:
+                campaign_uuid = uuid.UUID(campaign_id) if isinstance(campaign_id, str) else campaign_id
+                await scene_repo.create_scene(arena_scene, campaign_uuid)
+                logger.info(f"Created arena scene in database: {arena_scene.scene_id}")
+            except Exception as e:
+                logger.error(f"Failed to save arena scene to database: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to create arena scene: {e}")
+
+            # Set as current scene in runtime cache (for session state)
             if hasattr(self.orchestrator, 'campaign_runner') and hasattr(self.orchestrator.campaign_runner, 'scene_integration'):
-                scene_manager = self.orchestrator.campaign_runner.scene_integration.get_scene_manager(campaign_id)
-                scene_manager._store_scene_internal(arena_scene)
-                # Use get_scene_summary to ensure all fields (including participants) are included
-                scene_summary = scene_manager.get_scene_summary(arena_scene.scene_id)
-                if scene_summary:
-                    self.orchestrator.campaign_runner.scene_integration.current_scenes[campaign_id] = scene_summary
-                    logger.info(f"Created arena scene: {arena_scene.scene_id} with {len(scene_summary.get('participants', []))} participants")
-                else:
-                    logger.warning(f"Failed to get scene summary for {arena_scene.scene_id}, using fallback")
-                    self.orchestrator.campaign_runner.scene_integration.current_scenes[campaign_id] = {
-                        'scene_id': arena_scene.scene_id,
-                        'title': arena_scene.title,
-                        'description': arena_scene.description,
-                        'scene_type': arena_scene.scene_type,
-                        'pcs_present': arena_scene.pcs_present,
-                        'npcs_present': arena_scene.npcs_present
-                    }
+                scene_summary = {
+                    'scene_id': arena_scene.scene_id,
+                    'title': arena_scene.title,
+                    'description': arena_scene.description,
+                    'scene_type': arena_scene.scene_type,
+                    'pcs_present': arena_scene.pcs_present,
+                    'npcs_present': arena_scene.npcs_present,
+                    'participants': [p.model_dump() if hasattr(p, 'model_dump') else vars(p) for p in arena_scene.participants],
+                }
+                self.orchestrator.campaign_runner.scene_integration.current_scenes[campaign_id] = scene_summary
+                logger.info(f"Created arena scene: {arena_scene.scene_id} with {len(arena_scene.participants)} participants")
 
             # Build arena combat prompt
             arena_prompt = build_arena_prompt(request.difficulty or "medium")
