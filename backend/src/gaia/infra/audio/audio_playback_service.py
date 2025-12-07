@@ -523,6 +523,12 @@ class AudioPlaybackService:
                         UserAudioQueue.user_id == user_id,
                         UserAudioQueue.campaign_id == campaign_id,
                         UserAudioQueue.played_at.is_(None),  # Not played yet
+                        # Filter out chunks from completed/failed requests (stale chunks)
+                        AudioPlaybackRequest.status.in_([
+                            PlaybackStatus.PENDING,
+                            PlaybackStatus.GENERATING,
+                            PlaybackStatus.GENERATED,
+                        ]),
                     )
                 )
                 .order_by(

@@ -218,10 +218,18 @@ export function useUserAudioQueue({ user, audioStream, apiService, socketEmit, c
             cleanup();
             resolve();
           };
-          const onError = (error) => {
-            console.error(`🎵 [USER_QUEUE] Error playing chunk ${i + 1}/${chunks.length}:`, error);
+          const onError = (event) => {
+            // Get the actual MediaError from the audio element
+            const mediaError = audio.error;
+            const errorCode = mediaError?.code;
+            const errorMessage = mediaError?.message || 'Unknown error';
+            console.error(`🎵 [USER_QUEUE] Error playing chunk ${i + 1}/${chunks.length}: code=${errorCode} message=${errorMessage}`);
             cleanup();
-            reject(error);
+            // Create an error object with the MediaError code for proper handling
+            const err = new Error(errorMessage);
+            err.name = errorCode === 4 ? 'NotSupportedError' : 'MediaError';
+            err.code = errorCode;
+            reject(err);
           };
           const cleanup = () => {
             audio.removeEventListener('ended', onEnded);
@@ -243,33 +251,12 @@ export function useUserAudioQueue({ user, audioStream, apiService, socketEmit, c
           });
         });
 
-        // Mark chunk as played via WebSocket (preferred) or HTTP (fallback)
+        // Mark chunk as played via HTTP (always reliable)
+        // TODO: Re-enable WebSocket once we figure out why events aren't reaching backend
         try {
-          if (socketEmit && queueId) {
-            // Use WebSocket with confirmation
-            await new Promise((resolve, reject) => {
-              const timeoutId = setTimeout(() => {
-                pendingConfirmations.delete(queueId);
-                reject(new Error('Confirmation timeout'));
-              }, CONFIRMATION_TIMEOUT_MS);
-
-              pendingConfirmations.set(queueId, { resolve, reject, timeout: timeoutId });
-
-              // Send acknowledgment via WebSocket
-              socketEmit('audio_played', {
-                queue_id: queueId,
-                campaign_id: campaignId,
-              });
-              console.log(`🎵 [USER_QUEUE] Sent WebSocket ack for chunk ${i + 1}/${chunks.length}, waiting for confirmation...`);
-            });
-            console.log(`🎵 [USER_QUEUE] Confirmed chunk ${i + 1}/${chunks.length} as played`);
-            releaseQueueId(queueId);
-          } else {
-            // Fallback to HTTP (less reliable)
-            await apiService.makeRequest(`/api/audio/user/played/${chunk.queue_id}`, {}, 'POST');
-            console.log(`🎵 [USER_QUEUE] Marked chunk ${i + 1}/${chunks.length} as played (HTTP)`);
-            releaseQueueId(queueId);
-          }
+          await apiService.makeRequest(`/api/audio/user/played/${chunk.queue_id}`, {}, 'POST');
+          console.log(`🎵 [USER_QUEUE] Marked chunk ${i + 1}/${chunks.length} as played`);
+          releaseQueueId(queueId);
         } catch (markError) {
           console.error(`🎵 [USER_QUEUE] Failed to mark chunk ${i + 1}/${chunks.length} as played:`, markError);
           // DON'T release queueId on failure - keep it in local set to prevent re-queueing
@@ -278,13 +265,30 @@ export function useUserAudioQueue({ user, audioStream, apiService, socketEmit, c
         }
       } catch (playbackError) {
         console.error(`🎵 [USER_QUEUE] Playback error for chunk ${i + 1}/${chunks.length}, continuing to next:`, playbackError);
-        releaseQueueId(queueId);
+
         // If autoplay is blocked, stop trying - user needs to interact first
         if (playbackError.name === 'NotAllowedError') {
           console.warn('🎵 [USER_QUEUE] Stopping playback - autoplay blocked. Click anywhere to enable audio.');
+          releaseQueueId(queueId);
           break;
         }
-        // Continue to next chunk for other errors
+
+        // For NotSupportedError (file not found/stale chunk), mark as played to remove from queue
+        if (playbackError.name === 'NotSupportedError') {
+          console.warn(`🎵 [USER_QUEUE] Chunk ${i + 1}/${chunks.length} file not found (stale), marking as played to clear from queue`);
+          try {
+            await apiService.makeRequest(`/api/audio/user/played/${chunk.queue_id}`, {}, 'POST');
+            console.log(`🎵 [USER_QUEUE] Marked stale chunk ${chunk.queue_id} as played`);
+          } catch (markError) {
+            console.error(`🎵 [USER_QUEUE] Failed to mark stale chunk as played:`, markError);
+          }
+          releaseQueueId(queueId);
+          // Continue to next chunk
+          continue;
+        }
+
+        // For other errors, release the queueId and continue
+        releaseQueueId(queueId);
       }
     }
 

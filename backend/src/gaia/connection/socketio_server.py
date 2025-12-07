@@ -759,6 +759,7 @@ async def audio_played(sid: str, data: Dict[str, Any]):
 
     Sends confirmation back to frontend so it knows the acknowledgment succeeded.
     """
+    logger.info("[SocketIO] audio_played received | sid=%s data=%s", sid, data)
     session = await get_session_data(sid)
     session_id = session.get("session_id")
     chunk_id = data.get("chunk_id")
@@ -767,6 +768,7 @@ async def audio_played(sid: str, data: Dict[str, Any]):
 
     # Handle user queue acknowledgment (queue_id mode)
     if queue_id:
+        logger.info("[SocketIO] Processing queue_id acknowledgment | queue_id=%s", queue_id)
         from gaia.infra.audio.audio_playback_service import audio_playback_service
         try:
             success = audio_playback_service.mark_chunk_played_by_user(queue_id)
