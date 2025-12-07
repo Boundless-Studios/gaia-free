@@ -21,7 +21,7 @@ class ModelName(Enum):
 
     # Parasail models
     KIMI_K2_THINKING = "parasail-kimi-k2-instruct-low-latency"
-    DEEPSEEK_3_2 = "deepseek-ai/DeepSeek-V3.2"
+    DEEPSEEK_3_1 = "deepseek-ai/DeepSeek-V3.1"
     QWEN_NEXT = "Qwen/Qwen3-Next-80B-A3B-Instruct"
     ANUBIS = "TheDrummer/Anubis-70B"
     SKYFALL = "TheDrummer/Skyfall-36B-v2"
@@ -41,7 +41,7 @@ class PreferredModels(Enum):
     #KIMI = ModelName.ANUBIS.value
     #DEEPSEEK=ModelName.SKYFALL.value
     KIMI = ModelName.KIMI_K2_THINKING.value
-    DEEPSEEK = ModelName.DEEPSEEK_3_2.value
+    DEEPSEEK = ModelName.DEEPSEEK_3_1.value
     QWEN = ModelName.QWEN_NEXT.value
     SONNET = ModelName.CLAUDE_SONNET_4.value
     
@@ -54,7 +54,7 @@ MODEL_PROVIDER_MAP = {
 
     # Parasail models
     ModelName.KIMI_K2_THINKING.value: "parasail",
-    ModelName.DEEPSEEK_3_2.value: "parasail",
+    ModelName.DEEPSEEK_3_1.value: "parasail",
     ModelName.ANUBIS.value: "parasail",
     ModelName.SKYFALL.value: "parasail",
     ModelName.QWEN_NEXT.value: "parasail",
@@ -71,21 +71,21 @@ DEFAULT_PARASAIL_MODEL = ModelName.KIMI_K2_THINKING.value
 # Each entry maps a model to its ordered list of fallback models
 MODEL_FALLBACK_CHAIN: Dict[str, list[str]] = {
     # DeepSeek falls back to Claude Sonnet 4
-    ModelName.DEEPSEEK_3_2.value: [
+    ModelName.DEEPSEEK_3_1.value: [
         ModelName.CLAUDE_SONNET_4.value
     ],
     # Kimi falls back to DeepSeek, then Claude
     ModelName.KIMI_K2_THINKING.value: [
-        ModelName.DEEPSEEK_3_2.value,
+        ModelName.DEEPSEEK_3_1.value,
         ModelName.CLAUDE_SONNET_4.value
     ],
     # Anubis and Skyfall fall back to DeepSeek, then Claude
     ModelName.ANUBIS.value: [
-        ModelName.DEEPSEEK_3_2.value,
+        ModelName.DEEPSEEK_3_1.value,
         ModelName.CLAUDE_SONNET_4.value
     ],
     ModelName.SKYFALL.value: [
-        ModelName.DEEPSEEK_3_2.value,
+        ModelName.DEEPSEEK_3_1.value,
         ModelName.CLAUDE_SONNET_4.value
     ],
     # Claude models don't have fallbacks (they are the fallback)
