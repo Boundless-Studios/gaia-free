@@ -64,24 +64,19 @@ class TestSceneImprovements(unittest.TestCase):
             scene_id="test_001",
             title="Test Scene",
             description="A test scene",
-            location_id="tavern",
-            location_description="A cozy tavern with warm firelight",
             scene_type="social",
             objectives=["Talk to the barkeep", "Gather information"],
-            npcs_involved=["Barkeep", "Mysterious Stranger"]
+            npcs_involved=["Barkeep", "Mysterious Stranger"],
+            metadata={"location": "tavern"}
         )
         
         # Check creation fields exist
-        self.assertEqual(scene.location_description, "A cozy tavern with warm firelight")
         self.assertIsNotNone(scene.metadata)
+        self.assertEqual(scene.metadata.get("location"), "tavern")
         
         # Check update fields exist with defaults
-        self.assertEqual(scene.objectives_completed, [])
-        self.assertEqual(scene.objectives_added, [])
         self.assertEqual(scene.npcs_added, [])
         self.assertEqual(scene.npcs_removed, [])
-        self.assertEqual(scene.description_updates, [])
-        self.assertEqual(scene.completion_status, None)
         self.assertEqual(scene.duration_turns, 0)
         self.assertIsNone(scene.last_updated)
     
@@ -131,11 +126,10 @@ class TestSceneImprovements(unittest.TestCase):
             scene_id="test_002",
             title="Combat Scene",
             description="A fierce battle",
-            location_id="dungeon",
-            location_description="A dark dungeon corridor",
             scene_type="combat",
             objectives=["Defeat the enemies"],
-            npcs_involved=["Goblin Leader"]
+            npcs_involved=["Goblin Leader"],
+            metadata={"location": "dungeon"}
         )
         
         # Create the scene
@@ -152,7 +146,6 @@ class TestSceneImprovements(unittest.TestCase):
             scene_id,
             {
                 "outcomes": ["Player defeated 2 goblins"],
-                "objectives_completed": ["Defeat the enemies"],
                 "duration_turns": 5
             }
         )
@@ -162,13 +155,12 @@ class TestSceneImprovements(unittest.TestCase):
         updated_scene = self.scene_manager.get_scene(scene_id)
         self.assertEqual(len(updated_scene.outcomes), 1)
         self.assertEqual(updated_scene.outcomes[0], "Player defeated 2 goblins")
-        self.assertEqual(len(updated_scene.objectives_completed), 1)
         self.assertEqual(updated_scene.duration_turns, 5)
         self.assertIsNotNone(updated_scene.last_updated)
         
         # Verify creation fields weren't changed
         self.assertEqual(updated_scene.title, "Combat Scene")
-        self.assertEqual(updated_scene.location_id, "dungeon")
+        self.assertEqual(updated_scene.metadata.get("location"), "dungeon")
     
     def test_scene_updater_with_extractor(self):
         """Test that scene updater uses the objectives extractor."""
@@ -193,8 +185,7 @@ class TestSceneImprovements(unittest.TestCase):
 
         # Check scene was created with proper fields
         self.assertIsNotNone(scene.scene_id)
-        self.assertEqual(scene.location_id, "Town Square")
-        self.assertIsNotNone(scene.location_description)
+        self.assertEqual(scene.metadata.get("location", {}).get("id") or scene.metadata.get("location"), "Town Square")
 
         # Check objectives are sensible
         for obj in scene.objectives:
@@ -208,9 +199,8 @@ class TestSceneImprovements(unittest.TestCase):
             scene_id="test_003",
             title="Original Title",
             description="Original Description",
-            location_id="original_location",
-            location_description="Original location description",
-            scene_type="social"
+            scene_type="social",
+            metadata={"location": "original_location"}
         )
         
         scene_id = self.scene_manager.create_scene(scene)
@@ -220,9 +210,8 @@ class TestSceneImprovements(unittest.TestCase):
             scene_id,
             {
                 "title": "New Title",  # Not allowed
-                "location_id": "new_location",  # Not allowed
                 "outcomes": ["Something happened"],  # Allowed
-                "completion_status": "completed"  # Allowed
+                "metadata": {"location": "updated_location"},  # Allowed
             }
         )
         
@@ -232,9 +221,8 @@ class TestSceneImprovements(unittest.TestCase):
         # Verify only allowed fields were updated
         updated_scene = self.scene_manager.get_scene(scene_id)
         self.assertEqual(updated_scene.title, "Original Title")  # Unchanged
-        self.assertEqual(updated_scene.location_id, "original_location")  # Unchanged
+        self.assertEqual(updated_scene.metadata.get("location"), "updated_location")  # Updated
         self.assertEqual(len(updated_scene.outcomes), 1)  # Updated
-        self.assertEqual(updated_scene.completion_status, "completed")  # Updated
 
 
 if __name__ == '__main__':

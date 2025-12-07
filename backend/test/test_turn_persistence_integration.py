@@ -55,10 +55,9 @@ class TestTurnPersistenceIntegration:
             scene_id=scene_id,
             title="The Rusty Dragon Tavern",
             scene_type="exploration",
-            location_id="rusty_dragon",
-            location_description="A cozy tavern",
             description="A warm tavern",
-            pcs_present=["alice", "bob", "charlie"]
+            pcs_present=["alice", "bob", "charlie"],
+            metadata={"location": "rusty_dragon"},
         )
 
         created_scene_id = scene_manager.create_scene(scene_info)
@@ -141,10 +140,9 @@ class TestTurnPersistenceIntegration:
             scene_id=scene_id,
             title="Test Scene",
             scene_type="exploration",
-            location_id="test_loc",
-            location_description="Test location",
             description="Test",
-            pcs_present=["alice", "bob"]
+            pcs_present=["alice", "bob"],
+            metadata={"location": "test_loc"},
         )
 
         created_scene_id = scene_manager_1.create_scene(scene_info)
@@ -209,10 +207,9 @@ class TestTurnPersistenceIntegration:
             scene_id=scene_id,
             title="Test Scene",
             scene_type="exploration",
-            location_id="test_loc",
-            location_description="Test location",
             description="Test",
-            pcs_present=["alice", "bob"]
+            pcs_present=["alice", "bob"],
+            metadata={"location": "test_loc"},
         )
 
         created_scene_id = scene_manager.create_scene(scene_info)

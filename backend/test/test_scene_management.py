@@ -233,6 +233,12 @@ class TestSceneUpdater(unittest.TestCase):
 
         self.assertIsNotNone(scene)
         self.assertEqual(scene.scene_type, "combat")
+        location_meta = scene.metadata.get("location") if scene.metadata else None
+        if isinstance(location_meta, dict):
+            location_value = location_meta.get("id") or location_meta.get("description")
+        else:
+            location_value = location_meta
+        self.assertEqual(location_value, "Dungeon Room 5")
         self.assertIn("Goblin", scene.npcs_involved)
         self.assertIn("Orc", scene.npcs_involved)
         self.assertTrue(len(scene.objectives) > 0)

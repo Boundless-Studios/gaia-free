@@ -49,8 +49,6 @@ class TestSceneDBIntegration:
             scene_id=scene_id,
             title="Tavern Encounter",
             description="The party enters a bustling tavern",
-            location_id="tavern_001",
-            location_description="A cozy tavern with a roaring fireplace",
             scene_type="social",
             objectives=["Meet the contact", "Gather information"],
             participants=[
@@ -71,6 +69,7 @@ class TestSceneDBIntegration:
                     joined_at=datetime.now(timezone.utc),
                 ),
             ],
+            metadata={"location": "tavern_001"},
             timestamp=datetime.now(timezone.utc),
         )
 
@@ -102,8 +101,6 @@ class TestSceneDBIntegration:
             scene_id=scene_id,
             title="Forest Clearing",
             description="A peaceful clearing in the forest",
-            location_id="forest_001",
-            location_description="Sunlight filters through the canopy",
             scene_type="exploration",
             objectives=["Find the hidden path"],
             participants=[
@@ -116,6 +113,7 @@ class TestSceneDBIntegration:
                     joined_at=datetime.now(timezone.utc),
                 ),
             ],
+            metadata={"location": "forest_001"},
             timestamp=datetime.now(timezone.utc),
         )
 
@@ -141,8 +139,6 @@ class TestSceneDBIntegration:
             scene_id=scene_id,
             title="Mixed Party Scene",
             description="A scene with NPCs and PCs",
-            location_id="location_001",
-            location_description="Test location",
             scene_type="social",
             participants=[
                 SceneParticipant(
@@ -171,6 +167,7 @@ class TestSceneDBIntegration:
                     joined_at=datetime.now(timezone.utc),
                 ),
             ],
+            metadata={"location": "location_001"},
             timestamp=datetime.now(timezone.utc),
         )
 

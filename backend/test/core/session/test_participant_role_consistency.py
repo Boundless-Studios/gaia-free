@@ -303,11 +303,10 @@ class TestParticipantRoleConsistency:
             scene_id="scene_001",
             title="Test Scene",
             description="A test scene",
-            location_id="test_location",
-            location_description="Test location desc",
             scene_type="combat",
             pcs_present=["pc:aragorn", "pc:legolas"],
-            npcs_involved=["npc:orc_warrior"]
+            npcs_involved=["npc:orc_warrior"],
+            metadata={"location": "test_location"},
         )
 
         # Bootstrap roster from scene

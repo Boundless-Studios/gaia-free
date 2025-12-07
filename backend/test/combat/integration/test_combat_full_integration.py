@@ -205,7 +205,13 @@ class CombatIntegrationTestHarness:
         # Setup initial scene with hostile NPCs
         scene_data = await self._setup_combat_scene()
         print(f"✅ Scene created: {scene_data['title']}")
-        print(f"   - Location: {scene_data['location_description']}")
+        location_meta = scene_data.get("metadata", {}).get("location", {})
+        location_display = None
+        if isinstance(location_meta, dict):
+            location_display = location_meta.get("description") or location_meta.get("id")
+        elif isinstance(location_meta, str):
+            location_display = location_meta
+        print(f"   - Location: {location_display}")
         print(f"   - Hostiles: {len(scene_data.get('hostiles', []))} enemies")
 
         return campaign_data, scene_data
@@ -279,12 +285,16 @@ class CombatIntegrationTestHarness:
             "title": "Goblin Ambush at the Crossroads",
             "description": "As you travel along the forest path, you reach a crossroads. "
                           "Suddenly, goblins emerge from the underbrush with weapons drawn!",
-            "location_id": "forest_crossroads",
-            "location_description": "A muddy crossroads in the forest with trees providing partial cover",
             "scene_type": "combat",
             "in_combat": False,
             "pcs_present": [f"char_{self.campaign_id}_thorin"],  # Include the player character
             "npcs_present": ["Goblin Scout", "Goblin Warrior", "Goblin Archer"],
+            "metadata": {
+                "location": {
+                    "id": "forest_crossroads",
+                    "description": "A muddy crossroads in the forest with trees providing partial cover",
+                }
+            },
             "hostiles": [
                 {
                     "name": "Goblin Scout",
@@ -324,11 +334,18 @@ class CombatIntegrationTestHarness:
             scene_manager.create_scene(scene_info)
 
             # Put scene in current_scenes like process_scene_transition would do
+            location_meta = None
+            if scene_info.metadata:
+                loc_meta = scene_info.metadata.get("location")
+                if isinstance(loc_meta, dict):
+                    location_meta = loc_meta.get("description") or loc_meta.get("id")
+                elif isinstance(loc_meta, str):
+                    location_meta = loc_meta
             self.campaign_runner.scene_integration.current_scenes[self.campaign_id] = {
                 'scene_id': scene_info.scene_id,
                 'title': scene_info.title,
                 'scene_type': scene_info.scene_type,
-                'location': scene_info.location_description,
+                'location': location_meta,
                 'in_combat': scene_info.in_combat,
                 'npcs_present': scene_info.npcs_present
             }

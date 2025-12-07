@@ -23,14 +23,11 @@ def make_scene_info(
         scene_id=scene_id,
         title="Test Scene",
         description="Test description",
-        location_id="test_location",
-        location_description="Test location",
         scene_type="narrative",
         participants=participants or [],
         pcs_present=pcs_present or [],
         npcs_present=npcs_present or [],
         objectives=[],
-        narrative_notes=[],
         metadata={},
     )
 

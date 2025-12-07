@@ -584,6 +584,15 @@ class EnhancedSceneManager:
         for i, scene in enumerate(recent_scenes, 1):
             context_parts.append(f"\n--- Scene {i} ({scene.scene_type}) ---")
             context_parts.append(f"Title: {scene.title}")
+            location_text = None
+            if getattr(scene, "metadata", None):
+                loc_meta = scene.metadata.get("location")
+                if isinstance(loc_meta, dict):
+                    location_text = loc_meta.get("description") or loc_meta.get("id")
+                elif isinstance(loc_meta, str):
+                    location_text = loc_meta
+            if location_text:
+                context_parts.append(f"Location: {location_text}")
 
             if scene.description:
                 context_parts.append(f"Description: {scene.description}")
@@ -651,6 +660,13 @@ class EnhancedSceneManager:
         metadata_display = {}
         if getattr(scene, "metadata", None):
             metadata_display = scene.metadata.get("npc_display_names", {}) or {}
+        location_value = None
+        if getattr(scene, "metadata", None):
+            loc_meta = scene.metadata.get("location")
+            if isinstance(loc_meta, dict):
+                location_value = loc_meta.get("description") or loc_meta.get("id")
+            elif isinstance(loc_meta, str):
+                location_value = loc_meta
 
         def friendly_name(identifier: str) -> str:
             if not identifier:
@@ -676,6 +692,7 @@ class EnhancedSceneManager:
             "scene_id": scene.scene_id,
             "title": scene.title,
             "scene_type": scene.scene_type,
+            "location": location_value,
             "npcs_present": npcs_present,
             "npcs_present_display": npcs_display,
             "npc_display_names": npc_display_map,

@@ -108,12 +108,15 @@ async def test_dm_creates_scene_when_missing():
         new_scene = final_scenes[0]
         logger.info(f"   Scene ID: {new_scene.scene_id}")
         logger.info(f"   Title: {new_scene.title}")
-        logger.info(f"   Location: {new_scene.location_id}")
+        location_meta = None
+        if new_scene.metadata:
+            location_meta = new_scene.metadata.get("location")
+        logger.info(f"   Location: {location_meta}")
         logger.info(f"   Type: {new_scene.scene_type}")
 
         # Verify scene has reasonable content
         assert new_scene.title, "Scene should have a title"
-        assert new_scene.location_id, "Scene should have a location"
+        assert location_meta is not None, "Scene should have a location"
     else:
         logger.warning("⚠️ No new scene detected - LLM may not have called scene_creator tool")
         logger.warning("   This could mean:")

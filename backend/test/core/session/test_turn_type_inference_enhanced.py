@@ -18,12 +18,9 @@ def make_scene_info(scene_id: str, participants: List[SceneParticipant]) -> Scen
         scene_id=scene_id,
         title="Turn Type Test",
         description="",
-        location_id="loc",
-        location_description="loc",
         scene_type="narrative",
         participants=participants,
         objectives=[],
-        narrative_notes=[],
         metadata={},
     )
 

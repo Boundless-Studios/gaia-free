@@ -92,6 +92,8 @@ class SceneInfo:
         
         # Ensure all required fields have defaults
         data.setdefault("metadata", {})
+        if not isinstance(data["metadata"], dict):
+            data["metadata"] = {}
         data.setdefault("npcs_added", [])
         data.setdefault("npcs_removed", [])
         data.setdefault("duration_turns", 0)
@@ -107,9 +109,22 @@ class SceneInfo:
         data.pop("description_updates", None)
         data.pop("completion_status", None)
         data.pop("entity_display_names", None)
-        data.pop("location_id", None)
-        data.pop("location_description", None)
-        data.pop("narrative_notes", None)
+        legacy_location_id = data.pop("location_id", None)
+        legacy_location_description = data.pop("location_description", None)
+        legacy_notes = data.pop("narrative_notes", None)
+
+        # Preserve legacy location/notes data inside metadata if present
+        if legacy_location_id:
+            location_meta = data["metadata"].get("location")
+            if not location_meta:
+                location_meta = {}
+                data["metadata"]["location"] = location_meta
+            if isinstance(location_meta, dict):
+                location_meta.setdefault("id", legacy_location_id)
+                if legacy_location_description and "description" not in location_meta:
+                    location_meta["description"] = legacy_location_description
+        if legacy_notes and "narrative_notes" not in data["metadata"]:
+            data["metadata"]["narrative_notes"] = legacy_notes
         participants_raw = data.get("participants", []) or []
         if participants_raw and isinstance(participants_raw, list):
             parsed_participants = []
@@ -176,7 +191,7 @@ class SceneInfo:
         """Generate concise scene representation for agent context.
 
         Returns a formatted string with key scene information for LLM agents,
-        including title, location, objectives, combat status, and participants.
+        including title, objectives, combat status, and participants.
 
         Returns:
             Formatted scene context string
@@ -191,6 +206,17 @@ class SceneInfo:
         # Current objectives
         if self.objectives:
             context_parts.append(f"Objectives: {'; '.join(self.objectives)}")
+
+        # Location (from metadata)
+        location_meta = self.metadata.get("location") if isinstance(self.metadata, dict) else None
+        if location_meta:
+            location_text = None
+            if isinstance(location_meta, dict):
+                location_text = location_meta.get("description") or location_meta.get("id")
+            else:
+                location_text = str(location_meta)
+            if location_text:
+                context_parts.append(f"Location: {location_text}")
 
         # Combat status
         if self.in_combat:

@@ -2,6 +2,7 @@
 
 import pytest
 import asyncio
+from datetime import datetime
 from unittest.mock import MagicMock, AsyncMock, patch
 
 from gaia_private.orchestration.combat_orchestrator import CombatOrchestrator
@@ -85,7 +86,8 @@ class TestCombatSceneAssociation:
             scene_id="forest_encounter_002",
             title="Dark Forest Path",
             description="A dark path through the forest",
-            updated_at="2024-01-01T12:00:00"
+            scene_type="exploration",
+            timestamp=datetime.now()
         )
         scene_manager._store_scene_internal(fallback_scene)
 

@@ -146,6 +146,24 @@ const SceneInspector = () => {
     }, {});
   }, [filteredScenes]);
 
+  const scenesByType = useMemo(() => stats?.scenes_by_type ?? {}, [stats]);
+  const scenesByStatus = useMemo(() => {
+    if (!stats) return {};
+    const baseStatuses = {
+      active: stats.active_scenes ?? 0,
+      deleted: stats.deleted_scenes ?? 0,
+    };
+    if (stats.scenes_by_status) {
+      return { ...baseStatuses, ...stats.scenes_by_status };
+    }
+    return baseStatuses;
+  }, [stats]);
+
+  const sceneEntities = selectedScene?.entities ?? [];
+  const hasEntityMetadata = sceneEntities.some(
+    (entity) => entity.entity_metadata && Object.keys(entity.entity_metadata).length > 0
+  );
+
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
     return new Date(dateStr).toLocaleString();
@@ -455,27 +473,36 @@ const SceneInspector = () => {
                 )}
 
                 {/* Entities */}
-                {selectedScene.entities?.length > 0 && (
+                {sceneEntities.length > 0 && (
                   <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
                     <h3 className="text-base font-medium mb-3 text-gray-700">
-                      Entities ({selectedScene.entities.length})
+                      Scene Entities ({sceneEntities.length})
                     </h3>
                     <div className="overflow-x-auto">
                       <table className="min-w-full text-sm">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name / IDs</th>
                             <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                             <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
                             <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Present</th>
                             <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Left</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                          {selectedScene.entities.map((entity) => (
+                          {sceneEntities.map((entity) => (
                             <tr key={entity.scene_entity_id} className={!entity.is_present ? 'opacity-50' : ''}>
                               <td className="px-3 py-2 font-mono text-gray-900">
-                                {selectedScene.entity_display_names?.[entity.entity_id] || entity.entity_id}
+                                <div className="text-gray-900">
+                                  {selectedScene.entity_display_names?.[entity.entity_id] || entity.entity_id}
+                                </div>
+                                <div className="text-[11px] text-gray-500">
+                                  Entity: {entity.entity_id}
+                                </div>
+                                <div className="text-[11px] text-gray-400">
+                                  Scene Entity: {entity.scene_entity_id}
+                                </div>
                               </td>
                               <td className="px-3 py-2 text-gray-600">{entity.entity_type}</td>
                               <td className="px-3 py-2 text-gray-600">{entity.role || '-'}</td>
@@ -489,11 +516,44 @@ const SceneInspector = () => {
                               <td className="px-3 py-2 text-gray-500 text-xs">
                                 {formatDate(entity.joined_at)}
                               </td>
+                              <td className="px-3 py-2 text-gray-500 text-xs">
+                                {formatDate(entity.left_at)}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
+
+                    {hasEntityMetadata && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Entity Metadata (per association)</h4>
+                        <div className="space-y-2">
+                          {sceneEntities.map((entity) => (
+                            <details
+                              key={`${entity.scene_entity_id}-metadata`}
+                              className="bg-gray-50 rounded-md border border-gray-200 px-3 py-2"
+                            >
+                              <summary className="cursor-pointer text-sm text-gray-800">
+                                {selectedScene.entity_display_names?.[entity.entity_id] || entity.entity_id} ({entity.entity_type})
+                              </summary>
+                              <div className="mt-2">
+                                <div className="grid grid-cols-2 gap-2 text-xs text-gray-700 mb-2">
+                                  <div><span className="font-medium">Scene Entity ID:</span> {entity.scene_entity_id}</div>
+                                  <div><span className="font-medium">Present:</span> {entity.is_present ? 'Yes' : 'No'}</div>
+                                  <div><span className="font-medium">Joined:</span> {formatDate(entity.joined_at)}</div>
+                                  <div><span className="font-medium">Left:</span> {formatDate(entity.left_at)}</div>
+                                  <div className="col-span-2"><span className="font-medium">Role:</span> {entity.role || '-'}</div>
+                                </div>
+                                <pre className="bg-white border border-gray-200 rounded p-3 text-xs text-gray-900 overflow-x-auto">
+                                  {JSON.stringify(entity.entity_metadata ?? {}, null, 2)}
+                                </pre>
+                              </div>
+                            </details>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -554,19 +614,23 @@ const SceneInspector = () => {
             <div className="p-4 space-y-4 text-sm">
               <div>
                 <h4 className="font-medium text-gray-700 mb-2">By Scene Type</h4>
-                <div className="space-y-1">
-                  {Object.entries(stats.scenes_by_type).map(([type, count]) => (
-                    <div key={type} className="flex justify-between">
-                      <span className="text-gray-600 capitalize">{type}</span>
-                      <span className="font-medium text-gray-900">{count}</span>
-                    </div>
-                  ))}
-                </div>
+                {Object.keys(scenesByType).length === 0 ? (
+                  <div className="text-gray-500">No type data</div>
+                ) : (
+                  <div className="space-y-1">
+                    {Object.entries(scenesByType).map(([type, count]) => (
+                      <div key={type} className="flex justify-between">
+                        <span className="text-gray-600 capitalize">{type}</span>
+                        <span className="font-medium text-gray-900">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <h4 className="font-medium text-gray-700 mb-2">By Status</h4>
                 <div className="space-y-1">
-                  {Object.entries(stats.scenes_by_status).map(([status, count]) => (
+                  {Object.entries(scenesByStatus).map(([status, count]) => (
                     <div key={status} className="flex justify-between">
                       <span className="text-gray-600 capitalize">{status}</span>
                       <span className="font-medium text-gray-900">{count}</span>
