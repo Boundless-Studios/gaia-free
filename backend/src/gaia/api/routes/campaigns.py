@@ -801,6 +801,12 @@ class CampaignService:
                 game_theme=GameTheme.FANTASY
             )
 
+            # Set scene storage mode to database and generate UUID for scene storage
+            import uuid as uuid_module
+            campaign_data.set_scene_storage_mode("database")
+            campaign_uuid = uuid_module.uuid4()
+            campaign_data.custom_data["campaign_uuid"] = str(campaign_uuid)
+
             # Create arena characters using dedicated arena setup module
             arena_characters, arena_npcs = create_arena_characters()
 
@@ -831,11 +837,9 @@ class CampaignService:
             # Create arena scene with proper character roster
             arena_scene = create_arena_scene(campaign_id, combatant_infos, request.difficulty or "medium")
 
-            # Save scene to database (source of truth)
-            import uuid
+            # Save scene to database (source of truth) - use the campaign_uuid we generated earlier
             scene_repo = SceneRepository()
             try:
-                campaign_uuid = uuid.UUID(campaign_id) if isinstance(campaign_id, str) else campaign_id
                 await scene_repo.create_scene(arena_scene, campaign_uuid)
                 logger.info(f"Created arena scene in database: {arena_scene.scene_id}")
             except Exception as e:
