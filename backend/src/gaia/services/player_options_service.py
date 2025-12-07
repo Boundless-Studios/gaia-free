@@ -296,15 +296,24 @@ class PlayerOptionsService:
             model=model
         )
 
-    def get_connected_players_from_campaign(self, campaign_id: str) -> List[ConnectedPlayer]:
+    def get_seated_player_characters(self, campaign_id: str) -> List[ConnectedPlayer]:
         """
-        Get list of connected players with their character info from room seats.
+        Get player characters with seats in the campaign.
+
+        NOTE: This queries RoomSeats (campaign membership), not scene presence.
+        For proper implementation, options should be generated for characters
+        IN THE CURRENT SCENE (from scene_info.pcs_present), not just anyone
+        with a campaign seat.
+
+        TODO: Refactor to accept scene_info and use scene_info.pcs_present
+        or scene_info.participants to determine which characters to generate
+        options for. This requires passing scene context from the chat route.
 
         Args:
             campaign_id: The campaign/session ID
 
         Returns:
-            List of ConnectedPlayer objects for players with assigned characters
+            List of ConnectedPlayer objects for players with assigned seats
         """
         from db.src.connection import db_manager
         from gaia.mechanics.character.character_storage import CharacterStorage
@@ -371,8 +380,8 @@ class PlayerOptionsService:
         import json
 
         try:
-            # Get connected players
-            connected_players = self.get_connected_players_from_campaign(campaign_id)
+            # Get seated player characters (TODO: should use scene's pcs_present instead)
+            connected_players = self.get_seated_player_characters(campaign_id)
             if not connected_players:
                 logger.debug("[PlayerOptionsService] No connected players found for campaign %s", campaign_id)
                 return None
@@ -392,6 +401,11 @@ class PlayerOptionsService:
             if not active_character_id and connected_players:
                 active_character_id = connected_players[0].character_id
                 logger.debug("[PlayerOptionsService] No active character specified, using first player: %s", active_character_id)
+
+            # Must have an active character to generate options
+            if not active_character_id:
+                logger.debug("[PlayerOptionsService] No active character could be determined")
+                return None
 
             # Get scene narrative
             scene_narrative = structured_data.get("narrative", "") or structured_data.get("answer", "")

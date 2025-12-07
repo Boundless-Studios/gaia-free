@@ -539,7 +539,7 @@ class TestGenerateOptionsDict:
             service = PlayerOptionsService()
             service._active_agent = mock_active_agent
             service._passive_agent = mock_passive_agent
-            service.get_connected_players_from_campaign = MagicMock(return_value=mock_players)
+            service.get_seated_player_characters = MagicMock(return_value=mock_players)
 
             structured_data = {
                 "narrative": "The adventure begins!",
@@ -573,7 +573,7 @@ class TestGenerateOptionsDict:
             service = PlayerOptionsService()
             service._active_agent = mock_active_agent
             service._passive_agent = mock_passive_agent
-            service.get_connected_players_from_campaign = MagicMock(return_value=[])
+            service.get_seated_player_characters = MagicMock(return_value=[])
 
             result = await service.generate_options_dict(
                 campaign_id="test_campaign",
@@ -605,7 +605,7 @@ class TestGenerateOptionsDict:
             service = PlayerOptionsService()
             service._active_agent = mock_active_agent
             service._passive_agent = mock_passive_agent
-            service.get_connected_players_from_campaign = MagicMock(return_value=mock_players)
+            service.get_seated_player_characters = MagicMock(return_value=mock_players)
 
             result = await service.generate_options_dict(
                 campaign_id="test_campaign",
