@@ -79,7 +79,7 @@ ci-local: ## Runs CI checks locally (mirrors GitHub action workflow)
 		echo "  still waiting for gaia-backend ..."; \
 		sleep 1; \
 	done;
-	./backend/src/gaia_private/prompts/run_migration.sh --purge
+	./backend/src/gaia_private/prompts/write_prompts_to_db.sh --purge
 	python3 gaia_launcher.py test
 
 
@@ -146,3 +146,54 @@ check-private: ## Check if private setup is complete
 		echo "✗ Private code not set up. Run 'make setup-private' if you have access."; \
 		exit 1; \
 	fi
+
+# =============================================================================
+# Database Management (staging and prod share the same database)
+# =============================================================================
+
+# Migration number is required: make db-migrate MIGRATION=19
+MIGRATION ?=
+
+.PHONY: db-migrate
+db-migrate: ## Run a database migration locally (requires MIGRATION=N)
+	@if [ -z "$(MIGRATION)" ]; then \
+		echo "Error: MIGRATION number required. Usage: make db-migrate MIGRATION=19"; \
+		exit 1; \
+	fi
+	./scripts/private/backend/run_migration.sh $(MIGRATION)
+
+.PHONY: db-migrate-prod
+db-migrate-prod: ## Run a database migration on production (requires MIGRATION=N)
+	@if [ -z "$(MIGRATION)" ]; then \
+		echo "Error: MIGRATION number required. Usage: make db-migrate-prod MIGRATION=19"; \
+		exit 1; \
+	fi
+	./scripts/private/backend/run_migration.sh $(MIGRATION) --prod
+
+.PHONY: db-migrate-prod-dry
+db-migrate-prod-dry: ## Dry-run: show migration that would run on production (requires MIGRATION=N)
+	@if [ -z "$(MIGRATION)" ]; then \
+		echo "Error: MIGRATION number required. Usage: make db-migrate-prod-dry MIGRATION=19"; \
+		exit 1; \
+	fi
+	./scripts/private/backend/run_migration.sh $(MIGRATION) --prod --dry-run
+
+# =============================================================================
+# Prompt Management (staging and prod share the same database)
+# =============================================================================
+
+.PHONY: write-prompts
+write-prompts: ## Write prompts to local database
+	./backend/src/gaia_private/prompts/write_prompts_to_db.sh
+
+.PHONY: write-prompts-purge
+write-prompts-purge: ## Purge and rewrite all prompts to local database
+	./backend/src/gaia_private/prompts/write_prompts_to_db.sh --purge
+
+.PHONY: write-prompts-prod
+write-prompts-prod: ## Write prompts to production database
+	./backend/src/gaia_private/prompts/write_prompts_to_db.sh --prod
+
+.PHONY: write-prompts-prod-dry
+write-prompts-prod-dry: ## Dry-run: show prompts that would be written to production
+	./backend/src/gaia_private/prompts/write_prompts_to_db.sh --prod --dry-run

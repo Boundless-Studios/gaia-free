@@ -127,7 +127,7 @@ jobs:
 
       - name: Run tests
         run: |
-          ./backend/src/gaia_private/prompts/run_migration.sh
+          ./backend/src/gaia_private/prompts/write_prompts_to_db.sh
            python3 gaia_launcher.py test
 
       - name: backend log
