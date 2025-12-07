@@ -11,7 +11,7 @@ class TestModelManager:
     def test_get_provider_for_parasail_model(self):
         """Test getting provider for Parasail models."""
 
-        provider_type = get_provider_for_model(ModelName.DEEPSEEK_3_1.value)
+        provider_type = get_provider_for_model(ModelName.DEEPSEEK_3_2.value)
 
         assert provider_type == "parasail"
     
@@ -56,9 +56,9 @@ class TestModelManager:
     def test_model_provider_creation(self):
         """Test creating model providers."""
         # Test Parasail provider creation
-        provider, model_name = create_model_provider_for_model(ModelName.DEEPSEEK_3_1.value)
+        provider, model_name = create_model_provider_for_model(ModelName.DEEPSEEK_3_2.value)
         assert provider is not None
-        assert model_name == ModelName.DEEPSEEK_3_1.value
+        assert model_name == ModelName.DEEPSEEK_3_2.value
 
         # Test Claude provider creation
         provider, model_name = create_model_provider_for_model("claude-3-5-sonnet-20241022")
@@ -83,7 +83,7 @@ class TestModelSelection:
 
         # Test that we can get appropriate models for different agent types
         dm_model = "claude-3-5-sonnet-20241022"  # High-quality model for DM
-        analyzer_model = ModelName.DEEPSEEK_3_1.value  # Fast model for analyzer
+        analyzer_model = ModelName.DEEPSEEK_3_2.value  # Fast model for analyzer
 
         # DM should prefer high-quality models
         dm_provider = get_provider_for_model(dm_model)
@@ -101,8 +101,8 @@ class TestModelSelection:
         """Test model resolution with fallback logic."""
 
         # Test resolution of known model
-        resolved = resolve_model(ModelName.DEEPSEEK_3_1.value)
-        assert resolved == ModelName.DEEPSEEK_3_1.value
+        resolved = resolve_model(ModelName.DEEPSEEK_3_2.value)
+        assert resolved == ModelName.DEEPSEEK_3_2.value
 
         # Test resolution of unknown model (should fallback)
         resolved = resolve_model("unknown-model")
@@ -129,6 +129,6 @@ class TestModelSelection:
         """Test getting provider for resolved model."""
 
         # Test with Parasail model
-        provider = get_model_provider_for_resolved_model(ModelName.DEEPSEEK_3_1.value)
+        provider = get_model_provider_for_resolved_model(ModelName.DEEPSEEK_3_2.value)
         assert provider is not None
         assert hasattr(provider, 'get_model')

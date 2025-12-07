@@ -917,6 +917,9 @@ function App() {
           ]);
         }
       },
+      // Room events - DM view doesn't need these but useGameSocket registers them
+      'room.dm_joined': () => {}, // No-op: DM doesn't need to handle their own join event
+      'room.dm_left': () => {},   // No-op: DM doesn't need to handle their own leave event
     },
   });
 
