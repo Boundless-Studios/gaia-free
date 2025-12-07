@@ -41,7 +41,7 @@ import { useCampaignOperations } from './hooks/useCampaignOperations.js';
 import { useShareInvite } from './hooks/useShareInvite.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
 import { useGlobalErrorHandler } from './hooks/useGlobalErrorHandler.js';
-import { useUserAudioQueue } from './hooks/useUserAudioQueue.js';
+import { useUserAudioQueue, handleAudioPlayedConfirmation } from './hooks/useUserAudioQueue.js';
 
 const CAMPAIGN_START_TRACE = '[CAMPAIGN_START_FLOW]';
 
@@ -568,8 +568,24 @@ function App() {
 
   // Old queue-based handlers removed - using synchronized streaming instead
 
-  // User audio queue playback (shared hook)
-  const { fetchUserAudioQueue } = useUserAudioQueue({ user, audioStream, apiService });
+  // Ref for socket emit - allows useUserAudioQueue to use socket before useGameSocket is called
+  const socketEmitRef = useRef(null);
+  const socketEmitWrapper = useCallback((...args) => {
+    if (socketEmitRef.current) {
+      socketEmitRef.current(...args);
+    } else {
+      console.warn('🎵 [USER_QUEUE] Socket emit not available yet, skipping:', args[0]);
+    }
+  }, []);
+
+  // User audio queue playback (shared hook) - uses WebSocket for reliable acknowledgment
+  const { fetchUserAudioQueue } = useUserAudioQueue({
+    user,
+    audioStream,
+    apiService,
+    socketEmit: socketEmitWrapper,
+    campaignId: currentCampaignId,
+  });
 
   // Handle audio_available notifications (user queue playback)
   const handleAudioAvailable = useCallback((data, sessionId) => {
@@ -837,6 +853,8 @@ function App() {
       audio_queue_cleared: handleAudioQueueCleared,
       playback_queue_updated: handlePlaybackQueueUpdated,
       sfx_available: sfx.handleSfxAvailable,
+      // Audio acknowledgment confirmation (for reliable user queue playback)
+      audio_played_confirmed: handleAudioPlayedConfirmation,
       // Collaborative editing events (replacing old collab WebSocket)
       player_list: (data) => {
         console.log('[Collab] player_list RAW data:', JSON.stringify(data, null, 2));
@@ -899,6 +917,9 @@ function App() {
           ]);
         }
       },
+      // Room events - DM view doesn't need these but useGameSocket registers them
+      'room.dm_joined': () => {}, // No-op: DM doesn't need to handle their own join event
+      'room.dm_left': () => {},   // No-op: DM doesn't need to handle their own leave event
     },
   });
 
@@ -909,6 +930,11 @@ function App() {
       setDmSocketVersion((v) => v + 1);
     }
   }, [dmSocket]);
+
+  // Update socketEmitRef so useUserAudioQueue can use it for reliable acknowledgments
+  useEffect(() => {
+    socketEmitRef.current = dmEmit;
+  }, [dmEmit]);
 
   // Sync collab connection state with Socket.IO connection
   useEffect(() => {

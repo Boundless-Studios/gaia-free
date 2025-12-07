@@ -10,7 +10,7 @@ import apiService from '../../services/apiService.js';
 import { AudioStreamProvider, useAudioStream, AUDIO_STREAM_COMPLETED_EVENT } from '../../context/audioStreamContext.jsx';
 import { API_CONFIG } from '../../config/api.js';
 import { generateUniqueId } from '../../utils/idGenerator.js';
-import { useUserAudioQueue } from '../../hooks/useUserAudioQueue.js';
+import { useUserAudioQueue, handleAudioPlayedConfirmation } from '../../hooks/useUserAudioQueue.js';
 import { RoomProvider, useRoom } from '../../contexts/RoomContext.jsx';
 import SeatSelectionModal from './SeatSelectionModal.jsx';
 import CharacterAssignmentModal from './CharacterAssignmentModal.jsx';
@@ -459,8 +459,24 @@ const PlayerPage = () => {
     }
   }, [setSessionMessages, setSessionStructuredData, transformStructuredData, setCampaignName]);
 
-  // User audio queue playback (shared hook)
-  const { fetchUserAudioQueue } = useUserAudioQueue({ user, audioStream, apiService });
+  // Ref for socket emit - allows useUserAudioQueue to use socket before useGameSocket is called
+  const socketEmitRef = useRef(null);
+  const socketEmitWrapper = useCallback((...args) => {
+    if (socketEmitRef.current) {
+      socketEmitRef.current(...args);
+    } else {
+      console.warn('🎵 [USER_QUEUE] Socket emit not available yet, skipping:', args[0]);
+    }
+  }, []);
+
+  // User audio queue playback (shared hook) - uses WebSocket for reliable acknowledgment
+  const { fetchUserAudioQueue } = useUserAudioQueue({
+    user,
+    audioStream,
+    apiService,
+    socketEmit: socketEmitWrapper,
+    campaignId: currentCampaignId,
+  });
 
   // Load campaign from URL session ID
   useEffect(() => {
@@ -928,6 +944,8 @@ const PlayerPage = () => {
     audio_stream_started: (data) => handleCampaignUpdate({ ...data, type: 'audio_stream_started' }),
     audio_stream_stopped: (data) => handleCampaignUpdate({ ...data, type: 'audio_stream_stopped' }),
     playback_queue_updated: (data) => handleCampaignUpdate({ ...data, type: 'playback_queue_updated' }),
+    // Audio acknowledgment confirmation (for reliable user queue playback)
+    audio_played_confirmed: handleAudioPlayedConfirmation,
     // Room events - handle both dot notation and direct names
     'room.seat_updated': (data) => handleCampaignUpdate({ ...data, type: 'room.seat_updated' }),
     'room.seat_character_updated': (data) => handleCampaignUpdate({ ...data, type: 'room.seat_character_updated' }),
@@ -980,6 +998,11 @@ const PlayerPage = () => {
     role: 'player',
     handlers: socketHandlers,
   });
+
+  // Update socketEmitRef so useUserAudioQueue can use it for reliable acknowledgments
+  useEffect(() => {
+    socketEmitRef.current = sioEmit;
+  }, [sioEmit]);
 
   // Sync Socket.IO connection state to component state
   useEffect(() => {

@@ -220,6 +220,7 @@ export function useGameSocket({
         'audio_queue_cleared',
         'playback_queue_updated',
         'sfx_available',
+        'audio_played_confirmed',  // Acknowledgment confirmation for reliable playback
       ];
 
       audioEvents.forEach((event) => {

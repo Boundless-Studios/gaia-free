@@ -564,8 +564,11 @@ async def proxy_audio_artifact(
                                 select(User).where(User.user_id == oauth_account.user_id)
                             )
                             user_from_token = result.scalar_one_or_none()
-        except Exception:
-            pass  # Token verification failed, continue without user
+        except Exception as e:
+            logger.warning(
+                "[AUDIO][media] Token verification failed: %s",
+                str(e)[:200]
+            )
 
     # Use whichever auth method succeeded
     effective_user = current_user or user_from_token
@@ -688,8 +691,11 @@ async def proxy_image_artifact(
                                 select(User).where(User.user_id == oauth_account.user_id)
                             )
                             user_from_token = result.scalar_one_or_none()
-        except Exception:
-            pass  # Token verification failed, continue without user
+        except Exception as e:
+            logger.warning(
+                "[AUDIO][media] Token verification failed: %s",
+                str(e)[:200]
+            )
 
     # Use whichever auth method succeeded
     effective_user = current_user or user_from_token

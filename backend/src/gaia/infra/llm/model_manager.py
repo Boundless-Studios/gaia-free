@@ -20,7 +20,7 @@ class ModelName(Enum):
     CLAUDE_SONNET_4 = "claude-sonnet-4-20250514"
 
     # Parasail models
-    KIMI_K2_THINKING = "moonshotai/Kimi-K2-Thinking"
+    KIMI_K2_THINKING = "parasail-kimi-k2-instruct-low-latency"
     DEEPSEEK_3_1 = "deepseek-ai/DeepSeek-V3.1"
     QWEN_NEXT = "Qwen/Qwen3-Next-80B-A3B-Instruct"
     ANUBIS = "TheDrummer/Anubis-70B"
