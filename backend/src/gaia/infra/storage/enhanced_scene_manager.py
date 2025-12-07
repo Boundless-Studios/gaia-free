@@ -185,18 +185,25 @@ class EnhancedSceneManager:
 
         Note:
             Only the following fields can be updated:
-            - outcomes, objectives_completed, objectives_added
-            - npcs_added, npcs_removed, description_updates
-            - completion_status, duration_turns, last_updated
+            - outcomes, npcs_added, npcs_removed
+            - duration_turns, last_updated
             - npcs_present (snapshot), in_combat (bool), combat_data (dict)
+            - turn order fields and npc display metadata
         """
         # Define allowed update fields
         allowed_fields = {
-            'outcomes', 'objectives_completed', 'objectives_added',
-            'npcs_added', 'npcs_removed', 'description_updates',
-            'completion_status', 'duration_turns', 'npcs_present',
-            'in_combat', 'combat_data', 'turn_order', 'current_turn_index',
-            'npc_display_names', 'entity_display_names'
+            'outcomes',
+            'npcs_added',
+            'npcs_removed',
+            'duration_turns',
+            'npcs_present',
+            'in_combat',
+            'combat_data',
+            'turn_order',
+            'current_turn_index',
+            'npc_display_names',
+            'metadata',
+            'scene_metadata',
         }
 
         # Filter updates to only allowed fields
@@ -214,12 +221,26 @@ class EnhancedSceneManager:
                 npcs_to_add = db_updates.pop('npcs_added', None)
                 npcs_present = db_updates.pop('npcs_present', None)
                 display_names = db_updates.pop('npc_display_names', {}) or {}
+                metadata_updates = db_updates.pop('metadata', {}) or {}
+                scene_metadata = db_updates.pop('scene_metadata', {}) or {}
 
-                # Also map npc_display_names to entity_display_names for database
-                if display_names:
-                    existing_names = db_updates.get('entity_display_names', {}) or {}
-                    existing_names.update(display_names)
-                    db_updates['entity_display_names'] = existing_names
+                if display_names or metadata_updates or scene_metadata:
+                    # merge display names into metadata blob for persistence
+                    merged_metadata = {}
+                    # Try cache for existing metadata to avoid dropping keys
+                    cached_scene = self._scene_cache.get(scene_id)
+                    if not merged_metadata and cached_scene and getattr(cached_scene, "metadata", None):
+                        merged_metadata.update(cached_scene.metadata)
+                    if scene_metadata:
+                        merged_metadata.update(scene_metadata)
+                    if metadata_updates:
+                        merged_metadata.update(metadata_updates)
+                    if display_names:
+                        existing_map = merged_metadata.get('npc_display_names', {}) or {}
+                        existing_map.update(display_names)
+                        merged_metadata['npc_display_names'] = existing_map
+                    if merged_metadata:
+                        db_updates['scene_metadata'] = merged_metadata
 
                 # Add participants via SceneEntity records
                 if npcs_to_add:
@@ -272,8 +293,7 @@ class EnhancedSceneManager:
         # Apply updates
         for field, value in filtered_updates.items():
             if hasattr(scene, field):
-                if field in ['outcomes', 'objectives_completed', 'objectives_added',
-                           'npcs_added', 'npcs_removed', 'description_updates']:
+                if field in ['outcomes', 'npcs_added', 'npcs_removed']:
                     # For list fields, extend rather than replace
                     current_list = getattr(scene, field)
                     if isinstance(value, list):
@@ -288,8 +308,15 @@ class EnhancedSceneManager:
                         existing_map.update(value)
                     elif isinstance(value, dict):
                         scene.metadata['npc_display_names'] = dict(value)
-                elif field in ['npcs_present', 'in_combat', 'combat_data', 'completion_status',
-                             'duration_turns', 'turn_order', 'current_turn_index', 'entity_display_names']:
+                elif field in ['metadata', 'scene_metadata']:
+                    if value is None:
+                        continue
+                    if scene.metadata is None:
+                        scene.metadata = {}
+                    if isinstance(value, dict):
+                        scene.metadata.update(value)
+                elif field in ['npcs_present', 'in_combat', 'combat_data',
+                             'duration_turns', 'turn_order', 'current_turn_index']:
                     # Replace snapshot/flags directly
                     setattr(scene, field, value)
                 else:
@@ -538,74 +565,6 @@ class EnhancedSceneManager:
             logger.error(f"Error retrieving recent scenes: {e}")
             return []
 
-    def get_scenes_by_location(self, location_id: str, limit: int = 10) -> List[SceneInfo]:
-        """Get all scenes that occurred at a specific location.
-
-        Args:
-            location_id: Location identifier
-            limit: Maximum number of scenes to return
-
-        Returns:
-            List of SceneInfo objects at the specified location
-        """
-        # Try database first if configured (using sync methods to avoid event loop issues)
-        if self._storage_mode == "database" and self._repository and self._campaign_uuid:
-            try:
-                scenes = self._repository.get_scenes_by_location_sync(
-                    self._campaign_uuid, location_id, limit
-                )
-                if scenes:
-                    return scenes
-                # Empty result, try filesystem as fallback
-            except Exception as e:
-                logger.debug(f"Database get_scenes_by_location failed, trying filesystem: {e}")
-
-        # Filesystem fallback
-        return self._get_scenes_by_location_filesystem(location_id, limit)
-
-    def _get_scenes_by_location_filesystem(
-        self, location_id: str, limit: int = 10
-    ) -> List[SceneInfo]:
-        """Get scenes by location from filesystem storage.
-
-        Args:
-            location_id: Location identifier
-            limit: Maximum number of scenes to return
-
-        Returns:
-            List of SceneInfo objects at the specified location
-        """
-        matching_scenes = []
-
-        try:
-            if not os.path.exists(self.scenes_dir):
-                return []
-
-            for filename in os.listdir(self.scenes_dir):
-                if filename.endswith('.json'):
-                    filepath = os.path.join(self.scenes_dir, filename)
-
-                    with open(filepath, 'r') as f:
-                        scene_data = json.load(f)
-
-                    # Check if location matches
-                    if scene_data.get("location_id") == location_id:
-                        scene_data.pop("_metadata", None)
-                        scene_info = SceneInfo.from_dict(scene_data)
-                        matching_scenes.append(scene_info)
-
-                        if len(matching_scenes) >= limit:
-                            break
-
-            # Sort by timestamp (most recent first)
-            matching_scenes.sort(key=lambda x: x.timestamp, reverse=True)
-
-            return matching_scenes
-
-        except Exception as e:
-            logger.error(f"Error retrieving scenes by location: {e}")
-            return []
-
     def get_scene_context_for_agents(self, num_scenes: int = 3) -> str:
         """Get formatted scene context for agent consumption.
 
@@ -625,7 +584,6 @@ class EnhancedSceneManager:
         for i, scene in enumerate(recent_scenes, 1):
             context_parts.append(f"\n--- Scene {i} ({scene.scene_type}) ---")
             context_parts.append(f"Title: {scene.title}")
-            context_parts.append(f"Location: {scene.location_id}")
 
             if scene.description:
                 context_parts.append(f"Description: {scene.description}")
@@ -718,7 +676,6 @@ class EnhancedSceneManager:
             "scene_id": scene.scene_id,
             "title": scene.title,
             "scene_type": scene.scene_type,
-            "location": scene.location_id,
             "npcs_present": npcs_present,
             "npcs_present_display": npcs_display,
             "npc_display_names": npc_display_map,

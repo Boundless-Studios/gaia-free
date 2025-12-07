@@ -39,8 +39,6 @@ class TestSceneRepositorySync:
             scene_id=scene_id,
             title="Test Tavern Scene",
             description="The party enters a dimly lit tavern",
-            location_id="tavern_001",
-            location_description="A cozy tavern with a roaring fireplace",
             scene_type="social",
             objectives=["Meet the contact", "Gather information"],
             participants=[
@@ -64,6 +62,12 @@ class TestSceneRepositorySync:
             npcs_involved=["npc_bartender"],
             npcs_present=["npc_bartender"],
             pcs_present=["pc_hero"],
+            metadata={
+                "location": {
+                    "id": "tavern_001",
+                    "description": "A cozy tavern with a roaring fireplace",
+                }
+            },
             timestamp=datetime.now(timezone.utc),
         )
 
@@ -174,8 +178,6 @@ class TestSceneRepositorySync:
                 scene_id=f"test_recent_{uuid.uuid4().hex[:8]}",
                 title=f"Test Scene {i}",
                 description=f"Description {i}",
-                location_id=f"location_{i}",
-                location_description="Test location",
                 scene_type="exploration",
                 timestamp=datetime.now(timezone.utc),
             )
@@ -209,8 +211,6 @@ class TestSceneRepositorySync:
             scene_id=generated_id,  # This would be assigned by EnhancedSceneManager
             title="Generated Scene",
             description="A scene with auto-generated ID",
-            location_id="test_location",
-            location_description="Test location description",
             scene_type="exploration",
             timestamp=datetime.now(timezone.utc),
         )

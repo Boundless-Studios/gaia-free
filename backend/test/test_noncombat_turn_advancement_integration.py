@@ -68,11 +68,10 @@ class TestNonCombatTurnAdvancement:
             scene_id=scene_id,
             title="The Rusty Dragon Tavern",
             scene_type="exploration",
-            location_id="rusty_dragon",
-            location_description="A cozy tavern with warm lighting and wooden furnishings",
             description="A warm tavern filled with adventurers",
             pcs_present=["silas_grimwood", "tink_gearspark"],
-            npcs_present=["bartender"]
+            npcs_present=["bartender"],
+            metadata={"location": "rusty_dragon"},
         )
 
         # Initialize scene manager and set character order
@@ -240,11 +239,10 @@ class TestNonCombatTurnAdvancement:
             scene_id=test_scene_id,
             title="Test Scene",
             scene_type="exploration",
-            location_id="test_location",
-            location_description="A generic test location",
             description="A test location",
             pcs_present=["silas_grimwood", "tink_gearspark", "lyra_moonwhisper"],
-            npcs_present=[]
+            npcs_present=[],
+            metadata={"location": "test_location"},
         )
 
         scene_manager = scene_integration.get_scene_manager(campaign_id)
@@ -372,11 +370,10 @@ class TestNonCombatCharacterAssignment:
             scene_id="scene_001",
             title="Mystic Archive",
             description="Shelves of ancient tomes line the walls.",
-            location_id="mystic_archive",
-            location_description="Dusty library infused with arcane energy.",
             scene_type="exploration",
             pcs_present=[],
             npcs_present=["Theron the Mystic"],
+            metadata={"location": "mystic_archive"},
         )
 
         roster_manager = SceneRosterManager(

@@ -45,8 +45,6 @@ class SceneSummary(BaseModel):
     campaign_id: str
     title: str
     scene_type: str
-    location_id: Optional[str]
-    completion_status: Optional[str]
     in_combat: bool
     is_deleted: bool
     scene_timestamp: str
@@ -60,19 +58,12 @@ class SceneDetail(BaseModel):
     title: str
     description: str
     scene_type: str
-    location_id: Optional[str]
-    location_description: Optional[str]
 
     # Narrative data
     objectives: List[str]
-    narrative_notes: List[str]
     outcomes: List[str]
-    objectives_completed: List[str]
-    objectives_added: List[str]
-    description_updates: List[str]
 
     # Status
-    completion_status: Optional[str]
     duration_turns: int
 
     # Turn management
@@ -82,7 +73,6 @@ class SceneDetail(BaseModel):
     combat_data: Optional[Dict[str, Any]]
 
     # Display names and metadata
-    entity_display_names: Dict[str, str]
     scene_metadata: Dict[str, Any]
 
     # Soft delete
@@ -105,7 +95,6 @@ class SceneStats(BaseModel):
     active_scenes: int
     deleted_scenes: int
     scenes_by_type: Dict[str, int]
-    scenes_by_status: Dict[str, int]
     campaigns_with_scenes: int
 
 
@@ -131,14 +120,6 @@ async def get_scene_stats(db=Depends(get_async_db)) -> SceneStats:
     )
     scenes_by_type = {row[0]: row[1] for row in type_result.all()}
 
-    # By status
-    status_result = await db.execute(
-        select(Scene.completion_status, func.count(Scene.scene_id))
-        .where(Scene.is_deleted == False)
-        .group_by(Scene.completion_status)
-    )
-    scenes_by_status = {(row[0] or "null"): row[1] for row in status_result.all()}
-
     # Unique campaigns
     campaign_result = await db.execute(
         select(func.count(func.distinct(Scene.campaign_id)))
@@ -151,7 +132,6 @@ async def get_scene_stats(db=Depends(get_async_db)) -> SceneStats:
         active_scenes=active_scenes,
         deleted_scenes=deleted_scenes,
         scenes_by_type=scenes_by_type,
-        scenes_by_status=scenes_by_status,
         campaigns_with_scenes=campaigns_with_scenes,
     )
 
@@ -188,8 +168,6 @@ async def list_scenes(
             campaign_id=str(scene.campaign_id),
             title=scene.title,
             scene_type=scene.scene_type,
-            location_id=scene.location_id,
-            completion_status=scene.completion_status,
             in_combat=scene.in_combat,
             is_deleted=scene.is_deleted,
             scene_timestamp=scene.scene_timestamp.isoformat(),
@@ -256,21 +234,13 @@ async def get_scene(
         title=scene.title,
         description=scene.description,
         scene_type=scene.scene_type,
-        location_id=scene.location_id,
-        location_description=scene.location_description,
         objectives=scene.objectives or [],
-        narrative_notes=scene.narrative_notes or [],
         outcomes=scene.outcomes or [],
-        objectives_completed=scene.objectives_completed or [],
-        objectives_added=scene.objectives_added or [],
-        description_updates=scene.description_updates or [],
-        completion_status=scene.completion_status,
         duration_turns=scene.duration_turns,
         turn_order=scene.turn_order or [],
         current_turn_index=scene.current_turn_index,
         in_combat=scene.in_combat,
         combat_data=scene.combat_data,
-        entity_display_names=scene.entity_display_names or {},
         scene_metadata=scene.scene_metadata or {},
         is_deleted=scene.is_deleted,
         deleted_at=scene.deleted_at.isoformat() if scene.deleted_at else None,

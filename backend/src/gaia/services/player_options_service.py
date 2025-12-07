@@ -13,8 +13,6 @@ import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 
-from sqlalchemy import select
-
 from gaia.models.character_options import CharacterOptions
 from gaia.models.personalized_player_options import PersonalizedPlayerOptions
 from gaia.models.connected_player import ConnectedPlayer
@@ -274,17 +272,16 @@ class PlayerOptionsService:
         """
         from gaia.mechanics.character.character_storage import CharacterStorage
 
-        connected_players = []
 
         if not scene_info:
-            logger.warning("[PlayerOptionsService] No scene_info provided")
-            return connected_players
+            logger.error("[PlayerOptionsService] No scene_info provided")
+            return list()
 
         # Get PCs present in scene
         pcs_present = getattr(scene_info, 'pcs_present', None) or []
         if not pcs_present:
-            logger.debug("[PlayerOptionsService] No PCs present in scene")
-            return connected_players
+            logger.error("[PlayerOptionsService] No PCs present in scene")
+            return list()
 
         try:
             char_storage = CharacterStorage(campaign_id)
@@ -313,64 +310,6 @@ class PlayerOptionsService:
 
         return connected_players
 
-    def get_seated_player_characters(self, campaign_id: str) -> List[ConnectedPlayer]:
-        """
-        DEPRECATED: Get player characters with seats in the campaign.
-
-        This queries RoomSeats (campaign membership), not scene presence.
-        Use get_scene_player_characters() with scene_info instead.
-
-        Args:
-            campaign_id: The campaign/session ID
-
-        Returns:
-            List of ConnectedPlayer objects for players with assigned seats
-        """
-        from db.src.connection import db_manager
-        from gaia.mechanics.character.character_storage import CharacterStorage
-        from gaia_private.session.session_models import RoomSeat
-
-        connected_players = []
-
-        try:
-            with db_manager.get_sync_session() as db:
-                # Get all player seats with characters
-                stmt = select(RoomSeat).where(
-                    RoomSeat.campaign_id == campaign_id,
-                    RoomSeat.seat_type == "player",
-                    RoomSeat.character_id.isnot(None)
-                )
-                seats = db.execute(stmt).scalars().all()
-
-                # Get character info for each seat
-                char_storage = CharacterStorage(campaign_id)
-
-                for seat in seats:
-                    if not seat.character_id:
-                        continue
-
-                    # Get character name from storage
-                    character_name = "Unknown"
-                    try:
-                        char_data = char_storage.get_character_data(seat.character_id)
-                        if char_data:
-                            character_name = char_data.get("name", "Unknown")
-                    except Exception as e:
-                        logger.warning(f"Failed to get character name for {seat.character_id}: {e}")
-
-                    connected_players.append(ConnectedPlayer(
-                        character_id=seat.character_id,
-                        character_name=character_name,
-                        user_id=seat.owner_user_id,
-                        seat_id=str(seat.seat_id) if seat.seat_id else None,
-                        is_dm=False
-                    ))
-
-        except Exception as e:
-            logger.error(f"Error getting connected players for campaign {campaign_id}: {e}")
-
-        return connected_players
-
     async def generate_options_dict(
         self,
         campaign_id: str,
@@ -391,16 +330,23 @@ class PlayerOptionsService:
             Dict from PersonalizedPlayerOptions.to_dict() or None if no options generated
         """
         import json
+        from gaia.infra.storage.enhanced_scene_manager import EnhancedSceneManager
 
         try:
-            # Prefer scene roster when scene_info is provided
-            if scene_info:
-                connected_players = self.get_scene_player_characters(campaign_id, scene_info)
-            else:
-                # Fallback to deprecated RoomSeats method
-                connected_players = self.get_seated_player_characters(campaign_id)
+            # Fetch current scene if not provided
+            if not scene_info:
+                scene_manager = EnhancedSceneManager(campaign_id)
+                recent_scenes = scene_manager.get_recent_scenes(limit=1)
+                if recent_scenes:
+                    scene_info = recent_scenes[0]
+                    logger.debug("[PlayerOptionsService] Fetched current scene: %s", scene_info.scene_id)
+                else:
+                    logger.error("[PlayerOptionsService] No scenes found for campaign %s", campaign_id)
+                    return None
+
+            connected_players = self.get_scene_player_characters(campaign_id, scene_info)
             if not connected_players:
-                logger.debug("[PlayerOptionsService] No connected players found for campaign %s", campaign_id)
+                logger.error("[PlayerOptionsService] No connected players found for campaign %s", campaign_id)
                 return None
 
             # Extract turn info to determine active character

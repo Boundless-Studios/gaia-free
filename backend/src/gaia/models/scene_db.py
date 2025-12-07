@@ -41,22 +41,13 @@ class Scene(BaseModel):
     # Immutable creation fields
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    location_id: Mapped[Optional[str]] = mapped_column(String(255), index=True)
-    location_description: Mapped[Optional[str]] = mapped_column(Text)
     scene_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
 
     # JSONB array fields (narrative data)
     objectives: Mapped[dict] = mapped_column(JSONB, nullable=False, default=list)
-    narrative_notes: Mapped[dict] = mapped_column(JSONB, nullable=False, default=list)
 
     # Mutable tracking fields (JSONB arrays)
     outcomes: Mapped[dict] = mapped_column(JSONB, nullable=False, default=list)
-    objectives_completed: Mapped[dict] = mapped_column(JSONB, nullable=False, default=list)
-    objectives_added: Mapped[dict] = mapped_column(JSONB, nullable=False, default=list)
-    description_updates: Mapped[dict] = mapped_column(JSONB, nullable=False, default=list)
-
-    # Status and timing
-    completion_status: Mapped[Optional[str]] = mapped_column(String(50), index=True)
     duration_turns: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Turn order (JSONB array of entity IDs)
@@ -64,9 +55,6 @@ class Scene(BaseModel):
     current_turn_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     in_combat: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     combat_data: Mapped[Optional[dict]] = mapped_column(JSONB)
-
-    # Entity display name overrides (JSONB object: {entity_id: display_name})
-    entity_display_names: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     # Scene metadata (named scene_metadata to avoid SQLAlchemy reserved 'metadata')
     scene_metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
@@ -121,7 +109,7 @@ class Scene(BaseModel):
 
                 participant = SceneParticipant(
                     character_id=entity.entity_id,
-                    display_name=self.entity_display_names.get(entity.entity_id, entity.entity_id),
+                    display_name=entity.entity_metadata.get("display_name", entity.entity_id),
                     role=role,
                     capabilities=capabilities,
                     is_present=entity.is_present,
@@ -151,24 +139,17 @@ class Scene(BaseModel):
             scene_id=self.scene_id,
             title=self.title,
             description=self.description,
-            location_id=self.location_id or "",
-            location_description=self.location_description or "",
             scene_type=self.scene_type,
             objectives=self.objectives or [],
             participants=participants,
             npcs_involved=npcs_involved,
             npcs_present=npcs_present,
             pcs_present=pcs_present,
-            narrative_notes=self.narrative_notes or [],
             metadata=self.scene_metadata or {},
             timestamp=self.scene_timestamp,
             outcomes=self.outcomes or [],
-            objectives_completed=self.objectives_completed or [],
-            objectives_added=self.objectives_added or [],
             npcs_added=npcs_added,
             npcs_removed=npcs_removed,
-            description_updates=self.description_updates or [],
-            completion_status=self.completion_status,
             duration_turns=self.duration_turns,
             last_updated=self.last_updated,
             turn_order=self.turn_order or [],
@@ -192,37 +173,19 @@ class Scene(BaseModel):
         Returns:
             Scene model instance (not yet persisted)
         """
-        # Build entity_display_names map from participants
-        entity_display_names = {}
-        for participant in scene_info.participants:
-            if participant.character_id:
-                entity_display_names[participant.character_id] = participant.display_name
-
-        # Store npc_display_names from metadata if present (legacy compatibility)
-        if scene_info.metadata and "npc_display_names" in scene_info.metadata:
-            entity_display_names.update(scene_info.metadata["npc_display_names"])
-
         return cls(
             scene_id=scene_info.scene_id,
             campaign_id=campaign_id,
             title=scene_info.title,
             description=scene_info.description,
-            location_id=scene_info.location_id or None,
-            location_description=scene_info.location_description or None,
             scene_type=scene_info.scene_type,
             objectives=scene_info.objectives or [],
-            narrative_notes=scene_info.narrative_notes or [],
             outcomes=scene_info.outcomes or [],
-            objectives_completed=scene_info.objectives_completed or [],
-            objectives_added=scene_info.objectives_added or [],
-            description_updates=scene_info.description_updates or [],
-            completion_status=scene_info.completion_status,
             duration_turns=scene_info.duration_turns,
             turn_order=scene_info.turn_order or [],
             current_turn_index=scene_info.current_turn_index,
             in_combat=scene_info.in_combat,
             combat_data=scene_info.combat_data,
-            entity_display_names=entity_display_names,
             scene_metadata=scene_info.metadata or {},
             is_deleted=False,
             deleted_at=None,

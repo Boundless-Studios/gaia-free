@@ -127,8 +127,6 @@ class CampaignData:
         if scene.scene_id not in self.scene_order:
             self.scene_order.append(scene.scene_id)
         self.current_scene_id = scene.scene_id
-        if scene.location_id:
-            self.current_location_id = scene.location_id
     
     def add_narrative(self, narrative: NarrativeInfo):
         """Add a narrative entry."""

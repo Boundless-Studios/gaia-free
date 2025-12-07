@@ -91,6 +91,8 @@ class SceneEntity(BaseModel):
 
         # Store capabilities and source in entity_metadata
         entity_metadata = dict(participant.metadata) if participant.metadata else {}
+        if participant.display_name:
+            entity_metadata["display_name"] = participant.display_name
         entity_metadata["capabilities"] = int(participant.capabilities)
         if participant.source:
             entity_metadata["source"] = participant.source

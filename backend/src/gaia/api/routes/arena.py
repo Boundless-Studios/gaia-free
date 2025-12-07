@@ -95,8 +95,6 @@ def create_arena_scene(
         scene_id=f"scene_{campaign_id}_arena",
         title="The Grand Arena",
         description="A circular combat arena with sandy floor, weapon racks along the walls, and cheering crowds in the stands.",
-        location_id="grand_arena",
-        location_description="The Grand Arena - a legendary gladiatorial combat venue",
         scene_type="combat",
         objectives=["Defeat your opponents in combat"],
         participants=[
@@ -121,8 +119,15 @@ def create_arena_scene(
         pcs_present=[char.character_id for char in pc_chars],
         npcs_present=[char.character_id for char in npc_chars],
         npcs_involved=[char.character_id for char in npc_chars],
-        narrative_notes=["Arena combat begins", "2v2 gladiatorial match"],
-        metadata={"arena_mode": True, "difficulty": difficulty}
+        metadata={
+            "arena_mode": True,
+            "difficulty": difficulty,
+            "location": {
+                "id": "grand_arena",
+                "description": "The Grand Arena - a legendary gladiatorial combat venue",
+            },
+            "notes": ["Arena combat begins", "2v2 gladiatorial match"],
+        }
     )
 
     logger.info(f"Created arena scene: {arena_scene.scene_id} with {len(pc_chars)} PCs and {len(npc_chars)} NPCs")

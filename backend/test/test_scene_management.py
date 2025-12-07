@@ -62,13 +62,11 @@ class TestEnhancedSceneManager(unittest.TestCase):
             scene_id="test_scene_001",
             title="Battle at the Gate",
             description="A fierce battle erupts at the city gates",
-            location_id="city_gates",
-            location_description="The main gates of the city",
             scene_type="combat",
             objectives=["Defend the gates", "Defeat the invaders"],
             npcs_involved=["Guard Captain", "Orc Warlord"],
             outcomes=[],
-            narrative_notes=["Epic battle scene"],
+            metadata={"location": {"id": "city_gates", "description": "The main gates of the city"}},
             timestamp=datetime.now()
         )
         
@@ -82,7 +80,7 @@ class TestEnhancedSceneManager(unittest.TestCase):
         self.assertEqual(retrieved.scene_id, scene.scene_id)
         self.assertEqual(retrieved.title, scene.title)
         self.assertEqual(retrieved.scene_type, scene.scene_type)
-        self.assertEqual(retrieved.location_id, scene.location_id)
+        self.assertEqual(retrieved.metadata.get("location", {}).get("id"), "city_gates")
     
     def test_get_recent_scenes(self):
         """Test retrieving recent scenes."""
@@ -92,9 +90,8 @@ class TestEnhancedSceneManager(unittest.TestCase):
                 scene_id=f"scene_{i:03d}",
                 title=f"Scene {i}",
                 description=f"Description {i}",
-                location_id=f"location_{i}",
-                location_description=f"Location description {i}",
                 scene_type="exploration",
+                metadata={"location": f"location_{i}"},
                 timestamp=datetime.now()
             )
             self.manager.create_scene(scene)
@@ -106,28 +103,6 @@ class TestEnhancedSceneManager(unittest.TestCase):
         self.assertEqual(recent[0].scene_id, "scene_002")
         self.assertEqual(recent[1].scene_id, "scene_001")
     
-    def test_get_scenes_by_location(self):
-        """Test retrieving scenes by location."""
-        # Create scenes at different locations
-        locations = ["tavern", "dungeon", "tavern", "forest"]
-        for i, location in enumerate(locations):
-            scene = SceneInfo(
-                scene_id=f"scene_{i:03d}",
-                title=f"Scene {i}",
-                description=f"Description {i}",
-                location_id=location,
-                location_description=f"A {location} location",
-                scene_type="social" if location == "tavern" else "exploration",
-                timestamp=datetime.now()
-            )
-            self.manager.create_scene(scene)
-        
-        # Get scenes at tavern
-        tavern_scenes = self.manager.get_scenes_by_location("tavern")
-        self.assertEqual(len(tavern_scenes), 2)
-        for scene in tavern_scenes:
-            self.assertEqual(scene.location_id, "tavern")
-    
     def test_update_scene_outcomes(self):
         """Test updating scene outcomes."""
         # Create and store a scene
@@ -135,8 +110,6 @@ class TestEnhancedSceneManager(unittest.TestCase):
             scene_id="test_scene",
             title="Test Scene",
             description="A test scene",
-            location_id="test_location",
-            location_description="A test location",
             scene_type="combat",
             outcomes=[],
             timestamp=datetime.now()
@@ -260,7 +233,6 @@ class TestSceneUpdater(unittest.TestCase):
 
         self.assertIsNotNone(scene)
         self.assertEqual(scene.scene_type, "combat")
-        self.assertEqual(scene.location_id, "Dungeon Room 5")
         self.assertIn("Goblin", scene.npcs_involved)
         self.assertIn("Orc", scene.npcs_involved)
         self.assertTrue(len(scene.objectives) > 0)
@@ -309,7 +281,7 @@ class TestSceneUpdater(unittest.TestCase):
 
         scene = self._create_scene(analysis, structured_data)
 
-        self.assertEqual(scene.location_id, "Dockside")
+        self.assertEqual(scene.metadata.get("location"), "Dockside")
         self.assertIn("Goblin Lookout", scene.npcs_involved)
         self.assertIn("Captain Mira Quickspark", scene.npcs_involved)
         self.assertIn("Dockworker Rynn", scene.npcs_involved)

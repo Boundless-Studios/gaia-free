@@ -11,7 +11,7 @@ import uuid
 from typing import List, Optional
 from datetime import datetime, timezone
 
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -136,16 +136,14 @@ class SceneRepository:
         # Define mutable fields (can be updated)
         mutable_fields = {
             "outcomes",
-            "objectives_completed",
-            "objectives_added",
-            "description_updates",
-            "completion_status",
+            "npcs_added",
+            "npcs_removed",
             "duration_turns",
             "turn_order",
             "current_turn_index",
             "in_combat",
             "combat_data",
-            "entity_display_names",
+            "scene_metadata",
             "last_updated",
         }
 
@@ -217,46 +215,6 @@ class SceneRepository:
 
         except Exception as e:
             logger.error(f"Error getting recent scenes for campaign {campaign_id}: {e}")
-            raise
-
-    async def get_scenes_by_location(
-        self, campaign_id: uuid.UUID, location_id: str, limit: int = 10
-    ) -> List[SceneInfo]:
-        """Get scenes at a specific location.
-
-        Args:
-            campaign_id: Campaign UUID
-            location_id: Location identifier
-            limit: Maximum number of scenes to return
-
-        Returns:
-            List of SceneInfo at this location
-        """
-        try:
-            async with self.db_manager.get_async_session() as session:
-                stmt = (
-                    select(Scene)
-                    .where(
-                        and_(
-                            Scene.campaign_id == campaign_id,
-                            Scene.location_id == location_id,
-                            Scene.is_deleted == False,
-                        )
-                    )
-                    .order_by(Scene.scene_timestamp.desc())
-                    .limit(limit)
-                    .options(selectinload(Scene.entities))
-                )
-
-                result = await session.execute(stmt)
-                scenes = result.scalars().all()
-
-                return [scene.to_scene_info() for scene in scenes]
-
-        except Exception as e:
-            logger.error(
-                f"Error getting scenes for campaign {campaign_id} at location {location_id}: {e}"
-            )
             raise
 
     async def add_entity_to_scene(
@@ -488,16 +446,14 @@ class SceneRepository:
         # Define mutable fields (can be updated)
         mutable_fields = {
             "outcomes",
-            "objectives_completed",
-            "objectives_added",
-            "description_updates",
-            "completion_status",
+            "npcs_added",
+            "npcs_removed",
             "duration_turns",
             "turn_order",
             "current_turn_index",
             "in_combat",
             "combat_data",
-            "entity_display_names",
+            "scene_metadata",
             "last_updated",
         }
 
@@ -563,37 +519,6 @@ class SceneRepository:
             logger.error(f"Error getting recent scenes for campaign {campaign_id} (sync): {e}")
             raise
 
-    def get_scenes_by_location_sync(
-        self, campaign_id: uuid.UUID, location_id: str, limit: int = 10
-    ) -> List[SceneInfo]:
-        """Synchronous version of get_scenes_by_location."""
-        try:
-            with self.db_manager.get_sync_session() as session:
-                stmt = (
-                    select(Scene)
-                    .where(
-                        and_(
-                            Scene.campaign_id == campaign_id,
-                            Scene.location_id == location_id,
-                            Scene.is_deleted == False,
-                        )
-                    )
-                    .order_by(Scene.scene_timestamp.desc())
-                    .limit(limit)
-                    .options(selectinload(Scene.entities))
-                )
-
-                result = session.execute(stmt)
-                scenes = result.scalars().all()
-
-                return [scene.to_scene_info() for scene in scenes]
-
-        except Exception as e:
-            logger.error(
-                f"Error getting scenes for campaign {campaign_id} at location {location_id} (sync): {e}"
-            )
-            raise
-
     def add_participant_sync(
         self,
         scene_id: str,
@@ -641,6 +566,10 @@ class SceneRepository:
                     existing.is_present = True
                     existing.left_at = None
                     existing.role = role
+                    existing.entity_metadata = {
+                        **(existing.entity_metadata or {}),
+                        "display_name": display_name,
+                    }
                     logger.info(f"Updated existing participant {character_id} in scene {scene_id}")
                 else:
                     # Create new entity
@@ -657,14 +586,6 @@ class SceneRepository:
                     )
                     session.add(entity)
                     logger.info(f"Added participant {character_id} to scene {scene_id}")
-
-                # Update entity_display_names on the scene
-                if scene.entity_display_names is None:
-                    scene.entity_display_names = {}
-                # Create a new dict to trigger SQLAlchemy change detection
-                updated_names = dict(scene.entity_display_names)
-                updated_names[character_id] = display_name
-                scene.entity_display_names = updated_names
 
                 scene.last_updated = datetime.now(timezone.utc)
                 session.commit()

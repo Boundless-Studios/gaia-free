@@ -12,22 +12,13 @@ CREATE TABLE IF NOT EXISTS game.scenes (
     -- Immutable creation fields
     title VARCHAR(500) NOT NULL,
     description TEXT NOT NULL,
-    location_id VARCHAR(255),
-    location_description TEXT,
     scene_type VARCHAR(50) NOT NULL,  -- combat, exploration, social, puzzle
 
     -- Narrative and objectives (stored as JSONB arrays)
     objectives JSONB DEFAULT '[]'::jsonb NOT NULL,
-    narrative_notes JSONB DEFAULT '[]'::jsonb NOT NULL,
 
     -- Mutable tracking fields (arrays of strings)
     outcomes JSONB DEFAULT '[]'::jsonb NOT NULL,
-    objectives_completed JSONB DEFAULT '[]'::jsonb NOT NULL,
-    objectives_added JSONB DEFAULT '[]'::jsonb NOT NULL,
-    description_updates JSONB DEFAULT '[]'::jsonb NOT NULL,
-
-    -- Status and timing
-    completion_status VARCHAR(50),
     duration_turns INTEGER DEFAULT 0 NOT NULL,
 
     -- Turn order (array of entity_ids)
@@ -35,9 +26,6 @@ CREATE TABLE IF NOT EXISTS game.scenes (
     current_turn_index INTEGER DEFAULT 0 NOT NULL,
     in_combat BOOLEAN DEFAULT false NOT NULL,
     combat_data JSONB,
-
-    -- Entity display name overrides (map of entity_id -> display_name)
-    entity_display_names JSONB DEFAULT '{}'::jsonb NOT NULL,
 
     -- Scene metadata (named scene_metadata to avoid SQLAlchemy reserved 'metadata')
     scene_metadata JSONB DEFAULT '{}'::jsonb NOT NULL,
@@ -81,9 +69,7 @@ CREATE TABLE IF NOT EXISTS game.scene_entities (
 
 -- Create indexes for scenes table
 CREATE INDEX IF NOT EXISTS idx_scenes_campaign ON game.scenes(campaign_id);
-CREATE INDEX IF NOT EXISTS idx_scenes_location ON game.scenes(location_id);
 CREATE INDEX IF NOT EXISTS idx_scenes_scene_type ON game.scenes(scene_type);
-CREATE INDEX IF NOT EXISTS idx_scenes_completion_status ON game.scenes(completion_status);
 CREATE INDEX IF NOT EXISTS idx_scenes_timestamp ON game.scenes(scene_timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_scenes_campaign_timestamp ON game.scenes(campaign_id, scene_timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_scenes_is_deleted ON game.scenes(is_deleted);
@@ -125,7 +111,6 @@ COMMENT ON TABLE game.scene_entities IS 'Generic association table linking scene
 COMMENT ON COLUMN game.scenes.scene_id IS 'Unique scene identifier, format: scene_{number:03d}_{timestamp}';
 COMMENT ON COLUMN game.scenes.scene_type IS 'Type of scene: combat, exploration, social, puzzle';
 COMMENT ON COLUMN game.scenes.turn_order IS 'Array of entity_ids representing initiative/turn order';
-COMMENT ON COLUMN game.scenes.entity_display_names IS 'Map of entity_id to display_name overrides for this scene';
 COMMENT ON COLUMN game.scenes.is_deleted IS 'Soft delete flag - scenes are never hard deleted';
 COMMENT ON COLUMN game.scenes.deleted_at IS 'Timestamp when scene was soft deleted';
 

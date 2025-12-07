@@ -21,26 +21,19 @@ class SceneInfo:
     scene_id: str
     title: str
     description: str
-    location_id: str
-    location_description: str  # Detailed description of the location
     scene_type: str  # combat, exploration, social, puzzle, etc.
     objectives: List[str] = field(default_factory=list)  # Initial scene objectives
     participants: List[SceneParticipant] = field(default_factory=list)
     npcs_involved: List[str] = field(default_factory=list)  # NPCs present at scene start
     npcs_present: List[str] = field(default_factory=list)  # Current NPCs/creatures present
     pcs_present: List[str] = field(default_factory=list)  # Player character IDs present at scene start
-    narrative_notes: List[str] = field(default_factory=list)  # Scene setup notes
     metadata: Dict[str, Any] = field(default_factory=dict)  # Additional scene metadata
     timestamp: datetime = field(default_factory=datetime.now)
       
     # === Update Fields (modified as scene progresses) ===
     outcomes: List[str] = field(default_factory=list)  # What happened during the scene
-    objectives_completed: List[str] = field(default_factory=list)  # Which objectives were achieved
-    objectives_added: List[str] = field(default_factory=list)  # New objectives discovered
     npcs_added: List[str] = field(default_factory=list)  # NPCs who joined during scene
     npcs_removed: List[str] = field(default_factory=list)  # NPCs who left during scene
-    description_updates: List[str] = field(default_factory=list)  # Additional narrative descriptions
-    completion_status: Optional[str] = None  # active, completed, abandoned
     duration_turns: int = 0  # How many turns the scene lasted
     last_updated: Optional[datetime] = None
 
@@ -66,25 +59,18 @@ class SceneInfo:
             "scene_id": self.scene_id,
             "title": self.title,
             "description": self.description,
-            "location_id": self.location_id,
-            "location_description": self.location_description,
             "scene_type": self.scene_type,
             "objectives": self.objectives,
             "participants": [participant.to_dict() for participant in self.participants],
             "npcs_involved": self.npcs_involved or npcs_snapshot,
             "npcs_present": npcs_snapshot,
             "pcs_present": pcs_snapshot,
-            "narrative_notes": self.narrative_notes,
             "metadata": self.metadata,
             "timestamp": self.timestamp.isoformat(),
             # Update fields
             "outcomes": self.outcomes,
-            "objectives_completed": self.objectives_completed,
-            "objectives_added": self.objectives_added,
             "npcs_added": self.npcs_added,
             "npcs_removed": self.npcs_removed,
-            "description_updates": self.description_updates,
-            "completion_status": self.completion_status,
             "duration_turns": self.duration_turns,
             "last_updated": self.last_updated.isoformat() if self.last_updated else None,
             # Turn order fields
@@ -105,20 +91,25 @@ class SceneInfo:
             data["last_updated"] = datetime.fromisoformat(data["last_updated"])
         
         # Ensure all required fields have defaults
-        data.setdefault("location_description", "")
         data.setdefault("metadata", {})
-        data.setdefault("objectives_completed", [])
-        data.setdefault("objectives_added", [])
         data.setdefault("npcs_added", [])
         data.setdefault("npcs_removed", [])
-        data.setdefault("description_updates", [])
-        data.setdefault("completion_status", None)
         data.setdefault("duration_turns", 0)
         data.setdefault("last_updated", None)
         data.setdefault("turn_order", [])
         data.setdefault("current_turn_index", 0)
         data.setdefault("in_combat", False)
         data.setdefault("combat_data", None)
+
+        # Remove deprecated fields if present
+        data.pop("objectives_completed", None)
+        data.pop("objectives_added", None)
+        data.pop("description_updates", None)
+        data.pop("completion_status", None)
+        data.pop("entity_display_names", None)
+        data.pop("location_id", None)
+        data.pop("location_description", None)
+        data.pop("narrative_notes", None)
         participants_raw = data.get("participants", []) or []
         if participants_raw and isinstance(participants_raw, list):
             parsed_participants = []
@@ -197,22 +188,9 @@ class SceneInfo:
             type_suffix = f" ({self.scene_type})" if self.scene_type else ""
             context_parts.append(f"Scene: {self.title}{type_suffix}")
 
-        # Location with description
-        if self.location_id:
-            location_text = f"Location: {self.location_id}"
-            if self.location_description:
-                location_text += f" - {self.location_description}"
-            context_parts.append(location_text)
-
-        # Current objectives (exclude completed ones)
-        active_objectives = [
-            obj for obj in self.objectives
-            if obj not in self.objectives_completed
-        ]
-        # Add newly discovered objectives
-        active_objectives.extend(self.objectives_added)
-        if active_objectives:
-            context_parts.append(f"Objectives: {'; '.join(active_objectives)}")
+        # Current objectives
+        if self.objectives:
+            context_parts.append(f"Objectives: {'; '.join(self.objectives)}")
 
         # Combat status
         if self.in_combat:

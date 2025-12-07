@@ -996,49 +996,6 @@ async def get_scene_details(
         }
 
 
-@router.get("/campaigns/{campaign_id}/scenes/by-location/{location_id}")
-async def get_scenes_by_location(
-    campaign_id: str,
-    location_id: str,
-    limit: int = 10,
-    admin_user = require_admin()
-) -> Dict[str, Any]:
-    """Get scenes that occurred at a specific location.
-    
-    Args:
-        campaign_id: Campaign identifier
-        location_id: Location identifier
-        limit: Maximum number of scenes to return
-        
-    Returns:
-        List of scenes at the location
-    """
-    try:
-        orchestrator = get_orchestrator()
-        
-        # Get scene manager
-        scene_manager = orchestrator.campaign_runner.scene_integration.get_scene_manager(campaign_id)
-        
-        # Get scenes by location
-        scenes = scene_manager.get_scenes_by_location(location_id, limit)
-        
-        # Convert to dicts
-        scene_dicts = [scene.to_dict() for scene in scenes]
-        
-        return {
-            "success": True,
-            "location": location_id,
-            "scenes": scene_dicts,
-            "count": len(scene_dicts)
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to get scenes by location: {e}", exc_info=True)
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
 
 @router.get("/campaigns/{campaign_id}/current-scene")
 async def get_current_scene(
