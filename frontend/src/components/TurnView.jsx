@@ -145,18 +145,55 @@ const TurnView = ({
               <span className="turn-submissions-count">{playerSubmissions.length}</span>
             </div>
             <div className="turn-submissions-list">
-              {playerSubmissions.map((submission) => (
-                <div
-                  key={submission.id}
-                  className="turn-submission-item"
-                  onClick={() => onCopyPlayerSubmission && onCopyPlayerSubmission(submission)}
-                  style={onCopyPlayerSubmission ? { cursor: 'pointer' } : {}}
-                  title={onCopyPlayerSubmission ? "Click to copy to input" : ""}
-                >
-                  <span className="turn-submission-author">{submission.characterName}:</span>
-                  <span className="turn-submission-text">{submission.actionText}</span>
-                </div>
-              ))}
+              {playerSubmissions.map((submission) => {
+                // Parse action text to separate main action from observations
+                const observationPattern = /\[([^\]]+) observes\]:\s*([^\[]*)/g;
+                const observations = [];
+                let match;
+                let mainAction = submission.actionText;
+
+                // Extract all observations
+                while ((match = observationPattern.exec(submission.actionText)) !== null) {
+                  observations.push({
+                    observer: match[1],
+                    text: match[2].trim()
+                  });
+                }
+
+                // Remove observations from main action
+                if (observations.length > 0) {
+                  mainAction = submission.actionText.replace(observationPattern, '').trim();
+                }
+
+                return (
+                  <div
+                    key={submission.id}
+                    className="turn-submission-item"
+                    onClick={() => onCopyPlayerSubmission && onCopyPlayerSubmission(submission)}
+                    style={onCopyPlayerSubmission ? { cursor: 'pointer' } : {}}
+                    title={onCopyPlayerSubmission ? "Click to copy to input" : ""}
+                  >
+                    {/* Main action */}
+                    <div className="turn-submission-action">
+                      <span className="turn-submission-author">{submission.characterName}:</span>
+                      <span className="turn-submission-text">{mainAction}</span>
+                    </div>
+
+                    {/* Included observations */}
+                    {observations.length > 0 && (
+                      <div className="turn-submission-observations">
+                        <div className="turn-submission-observations-label">Included observations:</div>
+                        {observations.map((obs, idx) => (
+                          <div key={idx} className="turn-submission-observation">
+                            <span className="turn-submission-observer">{obs.observer}:</span>
+                            <span className="turn-submission-obs-text">{obs.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

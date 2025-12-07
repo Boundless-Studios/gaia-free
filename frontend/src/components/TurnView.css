@@ -350,3 +350,47 @@
   color: #e5e7eb;
 }
 
+/* Main action within a submission */
+.turn-submission-action {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+/* Observations section within a submission */
+.turn-submission-observations {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.turn-submission-observations-label {
+  font-size: 0.7rem;
+  color: #fbbf24;
+  font-weight: 600;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.turn-submission-observation {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  margin-top: 4px;
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 2px solid rgba(245, 158, 11, 0.4);
+  border-radius: 0 4px 4px 0;
+  font-size: 0.8rem;
+}
+
+.turn-submission-observer {
+  color: #fbbf24;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.turn-submission-obs-text {
+  color: #d1d5db;
+}
+

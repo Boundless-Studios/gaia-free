@@ -95,17 +95,34 @@ class SocketIOBroadcaster:
         # Update state cache for certain events
         if event_type in {"campaign_loaded", "campaign_updated", "campaign_active"}:
             if "structured_data" in data:
-                self._campaign_states[session_id] = data["structured_data"]
+                cached_state = self._campaign_states.get(session_id, {}) or {}
+                structured_data = data.get("structured_data") or {}
+                if isinstance(structured_data, dict) and isinstance(cached_state, dict):
+                    merged_state = {**cached_state, **structured_data}
+                else:
+                    merged_state = structured_data
+                self._campaign_states[session_id] = merged_state
+        elif event_type == "player_options":
+            if "options" in data:
+                cached = self._campaign_states.get(session_id, {}) or {}
+                if not isinstance(cached, dict):
+                    cached = {}
+                cached["player_options"] = data["options"]
+                self._campaign_states[session_id] = cached
         elif event_type == "personalized_player_options":
             # Merge personalized options into cached state for late joiners
             if "personalized_player_options" in data:
                 cached = self._campaign_states.get(session_id, {}) or {}
+                if not isinstance(cached, dict):
+                    cached = {}
                 cached["personalized_player_options"] = data["personalized_player_options"]
                 self._campaign_states[session_id] = cached
         elif event_type == "pending_observations":
             # Merge pending observations into cached state for late joiners
             if "pending_observations" in data:
                 cached = self._campaign_states.get(session_id, {}) or {}
+                if not isinstance(cached, dict):
+                    cached = {}
                 cached["pending_observations"] = data["pending_observations"]
                 self._campaign_states[session_id] = cached
         elif event_type == "campaign_deactivated":

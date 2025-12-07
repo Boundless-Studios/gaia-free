@@ -84,9 +84,13 @@ const ProtectedRoute = ({ children }) => {
   const [registrationStatus, setRegistrationStatus] = React.useState('checking'); // checking, pending, completed
   const [showRegistration, setShowRegistration] = React.useState(false);
 
+  // Debug logging
+  console.log('[ProtectedRoute] State:', { loading, isAuthenticated, user: !!user, registrationStatus });
+
   React.useEffect(() => {
     // If not authenticated and not loading, trigger login with returnTo
     if (!loading && !isAuthenticated) {
+      console.log('[ProtectedRoute] Not authenticated, triggering login');
       const returnTo = location.pathname + location.search;
       login({ appState: { returnTo } });
     }
@@ -95,21 +99,26 @@ const ProtectedRoute = ({ children }) => {
   // Check registration status after authentication
   React.useEffect(() => {
     if (isAuthenticated && user) {
+      console.log('[ProtectedRoute] Authenticated, checking registration status');
       checkRegistrationStatus();
     }
   }, [isAuthenticated, user]);
 
   const checkRegistrationStatus = async () => {
     try {
+      console.log('[ProtectedRoute] Getting access token...');
       const token = await getAccessTokenSilently();
+      console.log('[ProtectedRoute] Got token, fetching registration status...');
       const response = await fetch('/api/auth/registration-status', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+      console.log('[ProtectedRoute] Registration status response:', response.status);
 
       if (response.ok) {
         const status = await response.json();
+        console.log('[ProtectedRoute] Registration status:', status);
         // Show registration flow if user hasn't completed registration OR if they're awaiting approval
         if (status.registration_status === 'pending' || !status.is_authorized) {
           setRegistrationStatus('pending');
