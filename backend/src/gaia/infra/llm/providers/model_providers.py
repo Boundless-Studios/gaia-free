@@ -17,7 +17,7 @@ CLAUDE_BASE_URL = os.getenv("CLAUDE_BASE_URL") or "https://api.anthropic.com/v1"
 # Parasail configuration
 PARASAIL_API_KEY = os.getenv("PARASAIL_API_KEY")
 PARASAIL_BASE_URL = "https://api.parasail.io/v1"
-PARASAIL_MODEL = "parasail-kimi-k2-instruct"
+PARASAIL_MODEL = "parasail-kimi-k2-instruct-low-latency"
 
 class ClaudeModelProvider(ModelProvider):
     """Custom model provider for Claude."""
@@ -91,19 +91,19 @@ class ParasailModelProvider(ModelProvider):
     
     def get_model(self, model_name: str | None) -> Model:
         """Get the Parasail model."""
-        # Always use the Kimi K2 model for now
-        selected_model = PARASAIL_MODEL
+        selected_model = model_name or PARASAIL_MODEL
         return OpenAIChatCompletionsModel(
             model=selected_model,
             openai_client=self.client
         )
     
-    async def create_chat_completion(self, messages, **kwargs):
+    async def create_chat_completion(self, messages, model: str | None = None, **kwargs):
         """Create chat completion using Parasail API."""
         try:
+            selected_model = model or PARASAIL_MODEL
             response = await self.client.chat.completions.create(
                 messages=messages,
-                model=PARASAIL_MODEL,  # Ensure model is specified
+                model=selected_model,
                 **kwargs
             )
             return response
