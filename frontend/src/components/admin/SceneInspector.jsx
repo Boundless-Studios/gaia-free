@@ -11,6 +11,8 @@ const SceneInspector = () => {
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState('');
   const [campaigns, setCampaigns] = useState([]);
+  const [analysisContext, setAnalysisContext] = useState(null);
+  const [loadingContext, setLoadingContext] = useState(false);
   const { getAccessTokenSilently } = useAuth();
 
   // Fetch scene statistics
@@ -58,6 +60,7 @@ const SceneInspector = () => {
   const fetchSceneDetails = async (sceneId) => {
     try {
       setLoading(true);
+      setAnalysisContext(null); // Clear previous analysis context when switching scenes
       const token = await getAccessTokenSilently();
       const response = await fetch(`/api/admin/scenes/${sceneId}`, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -114,6 +117,26 @@ const SceneInspector = () => {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch analysis context for a campaign
+  const fetchAnalysisContext = async (campaignId) => {
+    if (!campaignId) return;
+    try {
+      setLoadingContext(true);
+      const token = await getAccessTokenSilently();
+      const response = await fetch(`/api/internal/campaign/${campaignId}/context?num_scenes=5&include_summary=false`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Failed to fetch analysis context');
+      const data = await response.json();
+      setAnalysisContext(data);
+    } catch (err) {
+      console.error('Error fetching analysis context:', err);
+      setAnalysisContext({ error: err.message });
+    } finally {
+      setLoadingContext(false);
     }
   };
 
@@ -600,6 +623,86 @@ const SceneInspector = () => {
                     </pre>
                   </div>
                 </details>
+
+                {/* Analysis Context (for debugging agent input) */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <div className="px-5 py-3 flex items-center justify-between border-b border-gray-200">
+                    <h3 className="text-base font-medium text-gray-700">Analysis Context (Agent Input)</h3>
+                    <button
+                      onClick={() => fetchAnalysisContext(selectedScene.campaign_id)}
+                      disabled={loadingContext}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors disabled:opacity-50"
+                    >
+                      {loadingContext ? 'Loading...' : 'Load Context'}
+                    </button>
+                  </div>
+                  {analysisContext && (
+                    <div className="px-5 pb-5 pt-3 space-y-4">
+                      {analysisContext.error ? (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-800 text-sm">
+                          {analysisContext.error}
+                        </div>
+                      ) : (
+                        <>
+                          {/* Active Characters Summary */}
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <h4 className="text-sm font-medium text-blue-800 mb-2">Active Characters</h4>
+                            {analysisContext.context?.active_characters?.length > 0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {analysisContext.context.active_characters.map((char, i) => (
+                                  <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {char.name || char.character_id || 'Unknown'}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-sm text-blue-600">No active characters found</span>
+                            )}
+                          </div>
+
+                          {/* Game State */}
+                          {analysisContext.context?.game_state && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                              <h4 className="text-sm font-medium text-green-800 mb-2">Game State</h4>
+                              <dl className="grid grid-cols-2 gap-2 text-sm">
+                                <div><span className="text-green-600">Location:</span> <span className="text-green-900">{analysisContext.context.game_state.location || 'N/A'}</span></div>
+                                <div><span className="text-green-600">Time:</span> <span className="text-green-900">{analysisContext.context.game_state.time || 'N/A'}</span></div>
+                                <div><span className="text-green-600">Combat:</span> <span className="text-green-900">{analysisContext.context.game_state.combat_active ? 'Yes' : 'No'}</span></div>
+                                <div><span className="text-green-600">Party Status:</span> <span className="text-green-900">{analysisContext.context.game_state.party_status || 'N/A'}</span></div>
+                              </dl>
+                            </div>
+                          )}
+
+                          {/* Previous Scenes Summary */}
+                          {analysisContext.context?.previous_scenes?.length > 0 && (
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                              <h4 className="text-sm font-medium text-purple-800 mb-2">Previous Scenes ({analysisContext.context.previous_scenes.length})</h4>
+                              <div className="space-y-2">
+                                {analysisContext.context.previous_scenes.slice(0, 3).map((scene, i) => (
+                                  <div key={i} className="text-sm text-purple-900 truncate">
+                                    {scene.narrative?.substring(0, 150) || 'No narrative'}...
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Full Context JSON */}
+                          <details className="bg-gray-50 border border-gray-200 rounded-lg">
+                            <summary className="px-4 py-2 cursor-pointer text-sm font-medium text-gray-700 hover:bg-gray-100">
+                              Full Context JSON
+                            </summary>
+                            <div className="p-4 border-t border-gray-200">
+                              <pre className="text-xs text-gray-900 overflow-x-auto max-h-96">
+                                {JSON.stringify(analysisContext.context, null, 2)}
+                              </pre>
+                            </div>
+                          </details>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}
