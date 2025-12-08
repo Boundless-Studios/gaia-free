@@ -14,10 +14,10 @@ from gaia_private.agents.combat.combatant_stat_resolver import (
     resolve_combatant_stats,
     DEFAULT_CREATURE_STATS,
 )
-from gaia_private.models.combat.agent_io.initiation.combatant_selection import (
+from gaia_private.models.combat.agent_io.initiation import (
+    CombatantSelectionOutput,
     IdentifiedCombatant,
     ResolvedCombatant,
-    CombatantSelectionOutput,
 )
 
 

@@ -35,6 +35,7 @@ class CharacterType(Enum):
     """Types of characters in the game."""
     PLAYER = "player"
     NPC = "npc"
+    ENEMY = "enemy"
     CREATURE = "creature"
 
 

@@ -44,6 +44,7 @@ def enemy_goblin():
     return CombatantView(
         name="Goblin Scout",
         type="enemy",
+        hostile=True,
         hp_current=15,
         hp_max=15,
         armor_class=13,

@@ -144,6 +144,7 @@ def test_resolve_turn_transition_skips_inactive_and_wraps():
         CombatantView(
             name="Enemy",
             type="enemy",
+            hostile=True,
             hp_current=10,
             hp_max=10,
             armor_class=12,
@@ -292,6 +293,7 @@ def test_resolve_turn_transition_all_unconscious():
         CombatantView(
             name="Enemy",
             type="enemy",
+            hostile=True,
             hp_current=0,  # Unconscious
             hp_max=10,
             armor_class=12,
@@ -361,6 +363,7 @@ def test_resolve_turn_transition_healed_after_initiative_slot():
         CombatantView(
             name="Enemy",
             type="enemy",
+            hostile=True,
             hp_current=10,
             hp_max=10,
             armor_class=12,

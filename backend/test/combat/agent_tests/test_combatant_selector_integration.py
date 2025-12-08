@@ -18,9 +18,9 @@ from gaia_private.agents.combat.combatant_selector import (
     CombatantSelectorAgent,
     select_combatants_for_combat,
 )
-from gaia_private.models.combat.agent_io.initiation.combatant_selection import (
-    CombatantSelectionRequest,
+from gaia_private.models.combat.agent_io.initiation import (
     CombatantSelectionOutput,
+    CombatantSelectionRequest,
     IdentifiedCombatant,
 )
 from gaia_private.prompts.prompt_service import PromptService, PromptNotFoundError

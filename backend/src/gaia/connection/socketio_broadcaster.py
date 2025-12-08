@@ -131,10 +131,10 @@ class SocketIOBroadcaster:
         await broadcast_to_room(session_id, event_type, message)
 
         count = await get_unique_user_count(session_id)
-        self.logger.debug(
-            "[SocketIO] Broadcast %s to %d users in session %s",
-            event_type, count, session_id
-        )
+        # self.logger.debug(
+        #     "[SocketIO] Broadcast %s to %d users in session %s",
+        #     event_type, count, session_id
+        # )
 
     async def broadcast_to_dm(
         self,

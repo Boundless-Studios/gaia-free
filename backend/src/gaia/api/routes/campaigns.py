@@ -1143,12 +1143,26 @@ class CampaignService:
         )
         
         # Convert messages to PlayerCampaignMessage
+        def _parse_timestamp(raw_timestamp: Any) -> datetime:
+            """Convert raw timestamp inputs to datetime with a safe fallback."""
+            if isinstance(raw_timestamp, datetime):
+                return raw_timestamp
+            if isinstance(raw_timestamp, str) and raw_timestamp:
+                try:
+                    return datetime.fromisoformat(raw_timestamp)
+                except ValueError:
+                    logger.debug("Invalid timestamp format %s, using now()", raw_timestamp)
+            return datetime.now()
+
         messages = []
-        for msg in data.get("messages", []):
+        for idx, msg in enumerate(data.get("messages", [])):
+            raw_id = msg.get("message_id") or msg.get("id")
+            message_id = str(raw_id) if raw_id not in (None, "") else f"{campaign_id}-msg-{idx}"
+
             player_msg = PlayerCampaignMessage(
-                message_id=msg.get("message_id", ""),
-                timestamp=datetime.fromisoformat(msg.get("timestamp", datetime.now().isoformat())),
-                role=msg.get("role", ""),
+                message_id=message_id,
+                timestamp=_parse_timestamp(msg.get("timestamp")),
+                role=msg.get("role") or "",
                 content=msg.get("content"),  # Can be complex object
                 agent_name=msg.get("agent_name")
             )
