@@ -373,10 +373,9 @@ const CollaborativeStackedEditor = forwardRef(({
         .filter(Boolean)
         .join('\n\n');
 
-      if (combinedInput) {
-        onSubmit(combinedInput);
-        clearAllText();
-      }
+      // DM can submit even with empty content (means "continue")
+      onSubmit(combinedInput || '');
+      clearAllText();
     } else {
       // Regular player submission (just their part)
       if (myContent.trim()) {

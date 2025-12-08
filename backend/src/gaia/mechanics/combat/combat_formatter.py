@@ -176,6 +176,13 @@ class CombatFormatter:
                 combatant.name for combatant in request.combatants if getattr(combatant, "name", None)
             ]
 
+        # Determine if current turn is an NPC turn
+        is_npc_turn = False
+        if combat_session and hasattr(combat_session, 'combatants'):
+            current_combatant_state = combat_session.combatants.get(character_id)
+            if current_combatant_state:
+                is_npc_turn = getattr(current_combatant_state, 'is_npc', False)
+
         turn_info = {
             "turn_id": f"{character_id}-r{current_round}-t{current_turn_number}" if character_id else f"turn-r{current_round}-t{current_turn_number}",
             "character_id": character_id,
@@ -187,6 +194,7 @@ class CombatFormatter:
             "available_actions": request.current_turn.available_actions or [],
             "initiative_order": initiative_names,
             "is_combat": True,
+            "is_npc_turn": is_npc_turn,
         }
         combat_session_id = getattr(combat_session, "session_id", None)
         if combat_session_id:
@@ -395,6 +403,13 @@ class CombatFormatter:
                 elif active_name:
                     active_id = active_name
 
+            # Determine if first turn is an NPC turn
+            is_npc_turn = False
+            if combat_session and hasattr(combat_session, 'combatants') and active_id:
+                active_state = combat_session.combatants.get(active_id)
+                if active_state:
+                    is_npc_turn = getattr(active_state, 'is_npc', False)
+
             turn_info = {
                 "turn_id": f"{active_id}-r{round_number}-t{turn_number}" if active_id else f"turn-r{round_number}-t{turn_number}",
                 "character_id": active_id,
@@ -407,6 +422,7 @@ class CombatFormatter:
                 "initiative_order": initiative_names,
                 "is_combat": True,
                 "phase": "combat_initiation",
+                "is_npc_turn": is_npc_turn,
             }
             if first_combatant_initiative is not None:
                 turn_info["initiative"] = first_combatant_initiative

@@ -11,9 +11,41 @@ const SceneInspector = () => {
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState('');
   const [campaigns, setCampaigns] = useState([]);
+  const [campaignNames, setCampaignNames] = useState({}); // Map of campaign_id to display name
   const [analysisContext, setAnalysisContext] = useState(null);
   const [loadingContext, setLoadingContext] = useState(false);
   const { getAccessTokenSilently } = useAuth();
+
+  // Fetch campaign names from /api/campaigns/simple
+  const fetchCampaignNames = async () => {
+    try {
+      const token = await getAccessTokenSilently();
+      const response = await fetch('/api/campaigns/simple', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Failed to fetch campaigns');
+      const data = await response.json();
+      // Create mapping of campaign_id to display name
+      const nameMap = {};
+      (data.campaigns || []).forEach(campaign => {
+        const id = campaign.id || campaign.session_id;
+        const name = campaign.name || id;
+        if (id) nameMap[id] = name;
+      });
+      setCampaignNames(nameMap);
+    } catch (err) {
+      console.error('Error fetching campaign names:', err);
+    }
+  };
+
+  // Helper to get display name for a campaign ID
+  const getCampaignDisplayName = (campaignId) => {
+    if (campaignNames[campaignId]) {
+      return campaignNames[campaignId];
+    }
+    // Fallback to truncated ID
+    return campaignId ? `${campaignId.substring(0, 8)}...` : 'Unknown';
+  };
 
   // Fetch scene statistics
   const fetchStats = async () => {
@@ -141,6 +173,12 @@ const SceneInspector = () => {
   };
 
   useEffect(() => {
+    fetchCampaignNames(); // Fetch campaign names for display
+    fetchStats();
+    fetchScenes();
+  }, []);
+
+  useEffect(() => {
     fetchStats();
     fetchScenes();
   }, [includeDeleted, selectedCampaign]);
@@ -190,6 +228,12 @@ const SceneInspector = () => {
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
     return new Date(dateStr).toLocaleString();
+  };
+
+  const formatShortDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   return (
@@ -249,7 +293,7 @@ const SceneInspector = () => {
               >
                 <option value="">All Campaigns</option>
                 {campaigns.map(c => (
-                  <option key={c} value={c}>{c.substring(0, 8)}...</option>
+                  <option key={c} value={c}>{getCampaignDisplayName(c)}</option>
                 ))}
               </select>
               <label className="flex items-center gap-1.5 text-xs text-gray-600">
@@ -286,7 +330,7 @@ const SceneInspector = () => {
                 {Object.entries(groupedScenes).map(([campaignId, campaignScenes]) => (
                   <div key={campaignId} className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
                     <div className="px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-50 uppercase tracking-wide">
-                      Campaign: {campaignId.substring(0, 8)}...
+                      {getCampaignDisplayName(campaignId)}
                     </div>
                     <div className="divide-y divide-gray-100">
                       {campaignScenes.map((scene) => {
@@ -331,6 +375,11 @@ const SceneInspector = () => {
                                   <span className="text-xs text-gray-500">
                                     {scene.entity_count} entities
                                   </span>
+                                  {scene.scene_timestamp && (
+                                    <span className="text-xs text-gray-400">
+                                      {formatShortDate(scene.scene_timestamp)}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>

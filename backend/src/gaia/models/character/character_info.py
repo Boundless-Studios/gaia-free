@@ -215,12 +215,12 @@ class CharacterInfo:
         # Convert combat-related fields
         if "action_points" in data and data["action_points"]:
             if isinstance(data["action_points"], dict):
-                from core.models.combat.mechanics.action_points import ActionPointState
+                from gaia.models.combat.mechanics.action_points import ActionPointState
                 data["action_points"] = ActionPointState(**data["action_points"])
 
         if "combat_stats" in data and data["combat_stats"]:
             if isinstance(data["combat_stats"], dict):
-                from core.models.combat import CombatStats
+                from gaia.models.combat import CombatStats
                 data["combat_stats"] = CombatStats(**data["combat_stats"])
 
         return cls(**data)

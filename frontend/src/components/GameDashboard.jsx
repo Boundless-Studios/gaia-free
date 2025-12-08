@@ -162,8 +162,9 @@ const GameDashboard = forwardRef(
   );
 
   // Handle collaborative text submission
+  // DM can submit empty text (means "continue")
   const handleCollabSubmit = useCallback((text) => {
-    if (onSendMessage && text && text.trim()) {
+    if (onSendMessage && typeof text === 'string') {
       onSendMessage(text);
       setCollabEditorHasDraft(false);
     }
@@ -452,8 +453,8 @@ const GameDashboard = forwardRef(
                       <button
                         onClick={handleCollabButtonClick}
                         className="dashboard-submit-button"
-                        title="Submit your turn to the DM"
-                        disabled={!collabEditorHasDraft || isChatProcessing}
+                        title="Submit your turn to the DM (empty = continue)"
+                        disabled={isChatProcessing}
                       >
                         Submit
                       </button>
