@@ -2,6 +2,13 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import apiService from '../services/apiService.js';
 import { generateUniqueId } from '../utils/idGenerator.js';
 
+// Monotonic counter to preserve insertion order across local and backend messages
+let messageOrderCounter = 0;
+const nextMessageOrder = () => {
+  messageOrderCounter += 1;
+  return messageOrderCounter;
+};
+
 /**
  * Merge local messages with backend history
  * Keeps local messages that aren't in backend yet, replaces with backend version when available
@@ -13,9 +20,17 @@ function mergeMessages(localMessages, backendMessages, options = {}) {
   const backendByTimestamp = new Map();
   const processedBackendIds = new Set();
   const dedupedEntries = [];
+  const DEDUPE_TIME_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
   const recordDeduplication = (entry) => {
     dedupedEntries.push(entry);
+  };
+
+  const normalizeTextForDedupe = (value) => {
+    if (typeof value !== 'string') {
+      return '';
+    }
+    return value.replace(/\s+/g, ' ').trim();
   };
 
   // Index backend messages by message_id and timestamp for fast lookup
@@ -57,17 +72,22 @@ function mergeMessages(localMessages, backendMessages, options = {}) {
 
       // Preserve any local-only fields like character name
       const characterName = backendVersion.characterName || localMsg.characterName || null;
+      const clientOrder = typeof localMsg.clientOrder === 'number'
+        ? localMsg.clientOrder
+        : (typeof backendVersion.clientOrder === 'number' ? backendVersion.clientOrder : nextMessageOrder());
       merged.push({
         ...backendVersion,
         characterName,
         isLocal: false,
+        clientOrder,
       });
       if (dedupeKey) {
         processedBackendIds.add(dedupeKey);
       }
     } else if (localMsg.isLocal) {
       // Keep local message (not yet confirmed by backend)
-      merged.push(localMsg);
+      const clientOrder = typeof localMsg.clientOrder === 'number' ? localMsg.clientOrder : nextMessageOrder();
+      merged.push({ ...localMsg, clientOrder });
     }
     // Skip local messages that are neither in backend nor marked isLocal
   });
@@ -76,7 +96,8 @@ function mergeMessages(localMessages, backendMessages, options = {}) {
   backendMessages.forEach(backendMsg => {
     const id = backendMsg.message_id || backendMsg.timestamp;
     if (!id || !processedBackendIds.has(id)) {
-      merged.push({ ...backendMsg, isLocal: false });
+      const clientOrder = typeof backendMsg.clientOrder === 'number' ? backendMsg.clientOrder : nextMessageOrder();
+      merged.push({ ...backendMsg, isLocal: false, clientOrder });
       if (id) {
         processedBackendIds.add(id);
       }
@@ -99,14 +120,150 @@ function mergeMessages(localMessages, backendMessages, options = {}) {
     );
   }
 
-  // Sort by timestamp to ensure chronological order
-  merged.sort((a, b) => {
-    const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-    const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-    return timeA - timeB;
+  // Deduplicate provisional DM messages (missing message_id) once canonical copies arrive
+  const provisionalDMByText = new Map();
+  const dedupeLog = [];
+  const mergedWithoutProvisionalDupes = [];
+
+  merged.forEach((msg, index) => {
+    if (!msg || msg.sender !== 'dm') {
+      mergedWithoutProvisionalDupes.push(msg);
+      return;
+    }
+
+    const textKey = `${msg.sender}|${normalizeTextForDedupe(msg.text) || ''}`;
+    const hasMessageId = Boolean(msg.message_id);
+    const existingIndex = provisionalDMByText.get(textKey);
+
+    if (!hasMessageId && existingIndex == null) {
+      provisionalDMByText.set(textKey, mergedWithoutProvisionalDupes.length);
+      mergedWithoutProvisionalDupes.push(msg);
+      return;
+    }
+
+    if (!hasMessageId && existingIndex != null) {
+      const existing = mergedWithoutProvisionalDupes[existingIndex];
+      const existingTime = existing?.timestamp ? new Date(existing.timestamp).getTime() : 0;
+      const currentTime = msg.timestamp ? new Date(msg.timestamp).getTime() : 0;
+      if (currentTime >= existingTime) {
+        mergedWithoutProvisionalDupes[existingIndex] = msg;
+      }
+      return;
+    }
+
+    if (hasMessageId && existingIndex != null) {
+      const existing = mergedWithoutProvisionalDupes[existingIndex];
+      const existingTime = existing?.timestamp ? new Date(existing.timestamp).getTime() : 0;
+      const currentTime = msg.timestamp ? new Date(msg.timestamp).getTime() : 0;
+      const useCurrent = currentTime >= existingTime || !existing?.message_id;
+      if (useCurrent) {
+        mergedWithoutProvisionalDupes[existingIndex] = msg;
+      }
+      provisionalDMByText.delete(textKey);
+      dedupeLog.push({
+        textSample: textKey.slice(0, 120),
+        replacedProvisional: Boolean(existing && !existing.message_id),
+        existingTimestamp: existing?.timestamp || null,
+        canonicalTimestamp: msg.timestamp || null,
+        index,
+      });
+      return;
+    }
+
+    // Canonical DM message with unique text (or repeated with message_id) - keep as-is
+    mergedWithoutProvisionalDupes.push(msg);
   });
 
-  return merged;
+  if (dedupeLog.length > 0) {
+    console.warn(
+      `[CHAT_DEBUG] Replaced ${dedupeLog.length} provisional DM message${dedupeLog.length === 1 ? '' : 's'} with canonical versions${sessionId ? ` (session=${sessionId})` : ''}`,
+      {
+        entries: dedupeLog.slice(0, 5),
+      }
+    );
+  }
+
+  // Sort by timestamp to ensure chronological order
+  const dmByText = new Map();
+  const dmDedupeLog = [];
+  const finalMessages = [];
+
+  const parseTime = (msg) => (msg?.timestamp ? new Date(msg.timestamp).getTime() : 0);
+
+  mergedWithoutProvisionalDupes.forEach((msg) => {
+    if (!msg || msg.sender !== 'dm') {
+      finalMessages.push(msg);
+      return;
+    }
+
+    const textKey = `${msg.sender}|${normalizeTextForDedupe(msg.text) || ''}`;
+    const existingIndex = dmByText.get(textKey);
+    const currentTime = parseTime(msg);
+
+    if (existingIndex == null) {
+      dmByText.set(textKey, finalMessages.length);
+      finalMessages.push(msg);
+      return;
+    }
+
+    const existing = finalMessages[existingIndex];
+    const existingTime = parseTime(existing);
+    const sameMessageId =
+      msg.message_id && existing?.message_id && msg.message_id === existing.message_id;
+    const timeClose = Math.abs(currentTime - existingTime) <= DEDUPE_TIME_WINDOW_MS;
+
+    // Decide whether to replace existing with current
+    const preferCurrent =
+      sameMessageId ||
+      (msg.message_id && !existing?.message_id) ||
+      (timeClose && currentTime >= existingTime);
+
+    if (preferCurrent) {
+      finalMessages[existingIndex] = msg;
+      dmDedupeLog.push({
+        textSample: textKey.slice(0, 120),
+        replacedIndex: existingIndex,
+        existingMessageId: existing?.message_id || null,
+        newMessageId: msg.message_id || null,
+        existingTimestamp: existing?.timestamp || null,
+        newTimestamp: msg.timestamp || null,
+        reason: sameMessageId
+          ? 'same_message_id'
+          : msg.message_id && !existing?.message_id
+            ? 'canonical_has_message_id'
+            : 'newer_within_window',
+      });
+    } else {
+      // Keep both messages if they are far apart; track the latest index for future dedupe
+      dmByText.set(textKey, finalMessages.length);
+      finalMessages.push(msg);
+    }
+  });
+
+  if (dmDedupeLog.length > 0) {
+    console.warn(
+      `[CHAT_DEBUG] Collapsed ${dmDedupeLog.length} duplicate DM message${dmDedupeLog.length === 1 ? '' : 's'} by text${sessionId ? ` (session=${sessionId})` : ''}`,
+      {
+        entries: dmDedupeLog.slice(0, 5),
+      }
+    );
+  }
+
+  finalMessages.sort((a, b) => {
+    const orderA = typeof a?.clientOrder === 'number' ? a.clientOrder : null;
+    const orderB = typeof b?.clientOrder === 'number' ? b.clientOrder : null;
+    if (orderA !== null && orderB !== null && orderA !== orderB) {
+      return orderA - orderB;
+    }
+    const timeA = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const timeB = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+    if (timeA !== timeB) {
+      return timeA - timeB;
+    }
+    return 0;
+  });
+
+  return finalMessages;
 }
 
 function logDuplicateMessages(sessionId, source, messages) {
@@ -212,6 +369,7 @@ function convertBackendMessages(backendMessages) {
       timestamp: msg.timestamp || new Date().toISOString(),
       isLocal: false,
       characterName: metadataCharacter || null,
+      clientOrder: nextMessageOrder(),
     };
   });
 }
@@ -346,6 +504,7 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
         characterName: options.characterName,
         isLocal: true,
         isContext: options.isContext || false,
+        clientOrder: nextMessageOrder(),
       };
 
       setSessionMessages(sessionId, (prev) => [...prev, userMessage]);
@@ -414,6 +573,7 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
           hasAudio: Boolean(options.hasAudio),
           structuredContent: options.structuredContent || null,
           isStreamed: Boolean(options.isStreamed),
+          clientOrder: nextMessageOrder(),
         };
         return [...prev, dmMessage];
       });
@@ -440,6 +600,7 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
         text: `Error: ${errorText}`,
         sender: 'system',
         timestamp: new Date().toISOString(),
+        clientOrder: nextMessageOrder(),
       };
 
       setSessionMessages(sessionId, (prev) => [...prev, errorMessage]);

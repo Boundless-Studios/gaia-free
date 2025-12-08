@@ -40,31 +40,19 @@ const StreamingNarrativeView = ({
       return [];
     }
 
-    const normalizeTime = (value) => {
-      if (!value) {
-        return null;
-      }
-      const parsed = Date.parse(value);
-      return Number.isNaN(parsed) ? null : parsed;
-    };
+    const getOrder = (msg, index) =>
+      typeof msg?.clientOrder === 'number' ? msg.clientOrder : index;
 
-    return messages
+    return [...messages]
       .map((msg, index) => ({
         msg,
+        order: getOrder(msg, index),
         index,
-        time: normalizeTime(msg.timestamp),
       }))
       .sort((a, b) => {
-        const aHasTime = typeof a.time === 'number';
-        const bHasTime = typeof b.time === 'number';
-
-        if (aHasTime && bHasTime) {
-          if (a.time !== b.time) {
-            return a.time - b.time;
-          }
-          return a.index - b.index;
+        if (a.order !== b.order) {
+          return a.order - b.order;
         }
-
         return a.index - b.index;
       })
       .map(({ msg }) => msg);
