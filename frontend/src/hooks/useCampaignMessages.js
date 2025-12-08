@@ -99,7 +99,13 @@ function mergeMessages(localMessages, backendMessages, options = {}) {
     );
   }
 
-  // Don't sort - respect the order from backend and local messages
+  // Sort by timestamp to ensure chronological order
+  merged.sort((a, b) => {
+    const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return timeA - timeB;
+  });
+
   return merged;
 }
 

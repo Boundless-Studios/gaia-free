@@ -86,11 +86,20 @@ router = APIRouter(prefix="/api/internal", tags=["internal"])
 # Global instances (will be initialized on first use)
 _scene_analyzer: Optional[ParallelSceneAnalyzer] = None
 _context_manager: Optional[ContextManager] = None
+_orchestrator: Optional[Orchestrator] = None
 
 
 def get_orchestrator() -> Orchestrator:
-    """Get the singleton orchestrator instance."""
-    return Orchestrator()
+    """Get the singleton orchestrator instance.
+
+    This ensures combat state and other in-memory state is preserved
+    across requests for the same campaign.
+    """
+    global _orchestrator
+    if _orchestrator is None:
+        logger.info("🎭 Creating singleton Orchestrator instance")
+        _orchestrator = Orchestrator()
+    return _orchestrator
 
 
 class SceneAnalysisRequest(BaseModel):

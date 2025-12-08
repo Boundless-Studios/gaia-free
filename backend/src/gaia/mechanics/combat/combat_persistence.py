@@ -498,6 +498,7 @@ class CombatPersistenceManager:
             ac=data.get("ac", 10),
             level=data.get("level", 1),
             is_npc=data.get("is_npc", False),
+            hostile=data.get("hostile", False),
             has_taken_turn=data.get("has_taken_turn", False)
         )
 

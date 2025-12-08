@@ -459,6 +459,8 @@ class CharacterSetupManager:
 
                 # Create combatant state with defaults
                 char_id = self._ensure_prefixed_id(name_to_combatant_id[name], is_npc=not is_player)
+                # Use explicit hostile flag from initiative entry - must be set by character resolution
+                is_hostile = entry.get('hostile', False)
                 combatants_by_name[name] = CombatantState(
                     character_id=char_id,
                     name=name,
@@ -468,7 +470,7 @@ class CharacterSetupManager:
                     ac=self.DEFAULT_PLAYER_AC if is_player else self.DEFAULT_ENEMY_AC,
                     level=1,
                     is_npc=not is_player,
-                    hostile=not is_player,  # Default: NPCs from initiative are hostile unless player
+                    hostile=is_hostile,  # Respect explicit hostile flag from initiative data
                     is_conscious=True
                 )
 
@@ -541,7 +543,6 @@ class CharacterSetupManager:
                 name = state.name if hasattr(state, 'name') else state.get('name')
                 if name:
                     name_to_combatant_id[name] = character_id
-                    logger.debug(f"Mapped combatant {name} -> {character_id}")
 
         return name_to_combatant_id
 

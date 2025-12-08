@@ -780,8 +780,6 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
                     self._store.write_json(turn_data, campaign_id, f"data/turns/{turn_id}.json")
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("Turn store mirror failed for %s/%s: %s", campaign_id, turn_id, exc)
-            
-            logger.debug(f"💾 Saved turn {turn_id} for campaign {campaign_id}")
             return True
             
         except Exception as e:

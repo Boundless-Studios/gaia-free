@@ -285,13 +285,14 @@ async def lifespan(app: FastAPI):
     # tts_service._check_local_tts()
     # logger.info(f"[OK] TTS service updated - Local TTS available: {tts_service.local_tts_available}")
     
-    # Initialize the unified orchestrator
-    orchestrator = Orchestrator()
+    # Initialize the unified orchestrator using the singleton getter
+    from gaia.api.routes.internal import get_orchestrator
+    orchestrator = get_orchestrator()
 
     # Set up unified broadcaster for orchestrator (sends to both WebSocket + Socket.IO)
     orchestrator.campaign_broadcaster = socketio_broadcaster
 
-    # Store orchestrator in app state for access in endpoints
+    # Store orchestrator in app state for access in endpoints (same singleton instance)
     app.state.orchestrator = orchestrator
     session_registry = SessionRegistry()
     app.state.session_registry = session_registry
