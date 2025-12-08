@@ -398,6 +398,54 @@ const PlayerControls = ({
       )
     },
     {
+      id: 'history',
+      name: 'History',
+      icon: '📜',
+      component: (
+        <div className="campaign-history-panel">
+          {campaignMessages.length > 0 ? (
+            <div className="history-content">
+              <div className="history-scroll">
+                {campaignMessages.slice().reverse().map((msg, index) => (
+                  <div key={msg.message_id || index} className={`message-entry ${msg.role}`}>
+                    <div className="message-header">
+                      <span className="message-role">
+                        {msg.role === 'assistant' ? '🎭 DM' : '👤 Player'}
+                      </span>
+                      <span className="message-time">
+                        {new Date(msg.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="message-content">
+                      {msg.role === 'assistant' && typeof msg.content === 'object' && msg.content !== null ? (
+                        <div>
+                          {msg.content.answer && (
+                            <p className="message-answer">{msg.content.answer}</p>
+                          )}
+                          {msg.content.narrative && (
+                            <p className="message-narrative">{msg.content.narrative}</p>
+                          )}
+                          {!msg.content.answer && !msg.content.narrative && (
+                            <p>{JSON.stringify(msg.content)}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p>{typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="no-history">
+              <p>No campaign history available yet.</p>
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
       id: 'media',
       name: 'Media',
       icon: '🖼️',
@@ -409,7 +457,7 @@ const PlayerControls = ({
         />
       )
     }
-  ], [campaignId, collabWebSocket, collabPlayerId, collabPlayerName, collabAllPlayers, isMyTurn, handleCollabSubmit, handlePlayerOption, recentMedia, imageRefreshTrigger, collabEditorConnected, playerOptions, isActivePlayer, pendingObservations, selectedObservationIds, toggleObservationSelection, submissionConfirmation, isTranscribing, onToggleTranscription, audioPermissionState, voiceActivityLevel, collabEditorRef, isInCombat]);
+  ], [campaignId, collabWebSocket, collabPlayerId, collabPlayerName, collabAllPlayers, isMyTurn, handleCollabSubmit, handlePlayerOption, recentMedia, imageRefreshTrigger, collabEditorConnected, playerOptions, isActivePlayer, pendingObservations, selectedObservationIds, toggleObservationSelection, submissionConfirmation, isTranscribing, onToggleTranscription, audioPermissionState, voiceActivityLevel, collabEditorRef, isInCombat, campaignMessages]);
 
   return (
     <div className="player-controls" data-testid="player-controls">
