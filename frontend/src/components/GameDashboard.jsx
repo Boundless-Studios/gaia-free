@@ -162,8 +162,9 @@ const GameDashboard = forwardRef(
   );
 
   // Handle collaborative text submission
+  // DM can submit empty text (means "continue")
   const handleCollabSubmit = useCallback((text) => {
-    if (onSendMessage && text && text.trim()) {
+    if (onSendMessage && typeof text === 'string') {
       onSendMessage(text);
       setCollabEditorHasDraft(false);
     }
