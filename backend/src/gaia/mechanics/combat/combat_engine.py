@@ -109,6 +109,12 @@ class CombatEngine:
                 speed=30
             )
 
+        # Determine hostility: prefer explicit hostile attribute, fallback to role-based inference
+        is_hostile = getattr(character, 'hostile', None)
+        if is_hostile is None:
+            # Fallback: infer from character_role if no explicit hostile attribute
+            is_hostile = character.character_role == CharacterRole.NPC_COMBATANT
+
         return CombatantState(
             character_id=character.character_id,
             name=character.name,
@@ -118,7 +124,7 @@ class CombatEngine:
             ac=character.armor_class,
             level=character.level,
             is_npc=(character.character_role != CharacterRole.PLAYER),
-            hostile=character.character_role == CharacterRole.NPC_COMBATANT,
+            hostile=is_hostile,
             action_points=ap_state,
             combat_stats=character.combat_stats
         )

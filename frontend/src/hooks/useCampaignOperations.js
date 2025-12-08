@@ -166,7 +166,15 @@ export function useCampaignOperations({
             sender: 'system',
             timestamp: new Date().toISOString(),
           };
-          setSessionMessages(sessionId, (prev) => [systemMessage, ...prev]);
+          // Add system message and sort by timestamp (don't just prepend)
+          setSessionMessages(sessionId, (prev) => {
+            const withSystem = [...prev, systemMessage];
+            return withSystem.sort((a, b) => {
+              const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+              const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+              return timeA - timeB;
+            });
+          });
         }
 
         const hasDmMessage = convertedMessages.some((msg) => msg.sender === 'dm');

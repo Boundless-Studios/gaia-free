@@ -329,6 +329,7 @@ class CharacterSetupManager:
                     character_type='creature',
                     character_role=CharacterRole.NPC_COMBATANT,
                     capabilities=capabilities,
+                    hostile=combatant_state.hostile,  # Preserve explicit hostile flag
                 )
                 characters.append(generated_character)
 
