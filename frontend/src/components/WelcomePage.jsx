@@ -410,17 +410,17 @@ const WelcomePage = () => {
                     )}
 
                     {/* Scroll Buttons Container */}
-                    <div className="flex flex-col md:flex-row gap-8 w-full max-w-4xl justify-center">
+                    <div className="flex flex-col md:flex-row gap-8 w-full max-w-4xl justify-center items-center">
                         {/* Dungeon Master Scroll Button */}
                         <button
                             onClick={handleDungeonMasterClick}
                             disabled={!backendReady}
-                            className={`relative group transition-all duration-300 flex-1 md:max-w-md ${
+                            className={`relative group transition-all duration-300 flex-1 md:max-w-md w-3/4 md:w-full md:-translate-x-6 ${
                                 backendReady
                                     ? 'hover:scale-105 active:scale-95 cursor-pointer'
                                     : 'opacity-50 cursor-not-allowed'
                             }`}
-                            style={{minHeight: '120px', transform: 'translateX(-25px)'}}
+                            style={{minHeight: '120px'}}
                         >
                             {/* Scroll Background */}
                             <img
@@ -450,12 +450,12 @@ const WelcomePage = () => {
                         <button
                             onClick={handleAdventurerClick}
                             disabled={!backendReady}
-                            className={`relative group transition-all duration-300 flex-1 md:max-w-md ${
+                            className={`relative group transition-all duration-300 flex-1 md:max-w-md w-3/4 md:w-full md:translate-x-6 ${
                                 backendReady
                                     ? 'hover:scale-105 active:scale-95 cursor-pointer'
                                     : 'opacity-50 cursor-not-allowed'
                             }`}
-                            style={{minHeight: '120px', transform: 'translateX(25px)'}}
+                            style={{minHeight: '120px'}}
                         >
                             {/* Scroll Background */}
                             <img
