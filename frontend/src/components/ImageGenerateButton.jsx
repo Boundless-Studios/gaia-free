@@ -134,7 +134,7 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
             
             if (data) {
                 console.log('Image generation response:', data);
-                
+
                 if (data.success && data.image) {
                     // Format the image data to match the expected structure
                     const imageData = {
@@ -147,7 +147,17 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
                     if (onImageGenerated) {
                         onImageGenerated(imageData);
                     }
+                } else {
+                    // Log failure details
+                    console.error('[ImageGen] Image generation failed:', {
+                        success: data.success,
+                        hasImage: !!data.image,
+                        error: data.error || 'Unknown error',
+                        fullResponse: data
+                    });
                 }
+            } else {
+                console.error('[ImageGen] No response data received from API');
             }
         } catch (error) {
             console.error('Failed to generate image:', error);

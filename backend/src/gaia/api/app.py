@@ -968,7 +968,8 @@ async def generate_image_old(
         raise HTTPException(status_code=500, detail="Orchestrator not initialized")
     
     logger.info(f"🎨 Image generation request: {request.image_type} for campaign {request.campaign_id}")
-    
+    logger.info(f"🎨 Prompt (first 200 chars): {request.prompt[:200] if request.prompt else 'EMPTY'}")
+
     # Verify model if specified (but don't switch/reload)
     if request.model:
         from gaia.infra.image.image_config import get_image_config
@@ -990,8 +991,11 @@ async def generate_image_old(
             session_id=request.campaign_id,
         )
         
+        logger.info(f"🎨 Image generation result: success={image_result.get('success')}, has_url={bool(image_result.get('image_url') or image_result.get('proxy_url'))}")
+
         # Handle success/failure
         if not image_result.get('success'):
+            logger.warning(f"🎨 Image generation failed: {image_result.get('error', 'Unknown error')}")
             return {"success": False, "error": image_result.get('error', 'Failed to generate image')}
 
         # Save metadata and add API URL
@@ -1017,7 +1021,8 @@ async def generate_image_old(
             metadata_payload,
             campaign_id=request.campaign_id or "default",
         )
-        
+
+        logger.info(f"🎨 Image generation successful - URL: {image_result.get('image_url') or image_result.get('proxy_url', 'N/A')[:100]}")
         return {"success": True, "image": image_result}
         
     except Exception as e:
