@@ -46,7 +46,6 @@ class ProfileManager:
         """
         # Check cache first
         if profile_id in self._cache:
-            logger.debug(f"Profile {profile_id} loaded from cache")
             return self._cache[profile_id]
 
         # Load from storage
