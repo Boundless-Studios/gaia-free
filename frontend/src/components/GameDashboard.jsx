@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useRef, useCallback, useState } from 'react';
 import TurnView from './TurnView';
 import CombatStatusView from './CombatStatusView';
 import ImageGalleryWithPolling from './ImageGalleryWithPolling';
+import SceneImagesMiniGallery from './SceneImagesMiniGallery';
 import PlayerAndTurnList from './PlayerAndTurnList/PlayerAndTurnList';
 import CollaborativeStackedEditor from './collaborative/CollaborativeStackedEditor.jsx';
 import apiService from '../services/apiService';
@@ -380,6 +381,15 @@ const GameDashboard = forwardRef(
           campaignId={campaignId}
           pollingInterval={30000}
           onImageClick={onImageGenerated}
+        />
+      </div>
+
+      {/* Scene Images Mini Gallery - For DM to show generated scene images to players */}
+      <div className="dashboard-scene-images-panel">
+        <SceneImagesMiniGallery
+          campaignId={campaignId}
+          onShowToPlayers={onImageGenerated}
+          pollingInterval={5000}
         />
       </div>
 
