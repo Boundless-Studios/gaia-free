@@ -921,6 +921,10 @@ class CampaignService:
         # Load campaign history from the campaign manager
         messages = self.campaign_manager.load_campaign_history(campaign_id)
 
+        # Sort messages by timestamp to ensure chronological order
+        if messages:
+            messages.sort(key=lambda m: m.get("timestamp", "") or "")
+
         # For newly created campaigns with no history, return empty data instead of error
         if not messages:
             logger.info(f"Campaign {campaign_id} has no history yet (newly created)")
