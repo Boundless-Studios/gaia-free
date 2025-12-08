@@ -1209,6 +1209,7 @@ function App() {
 
     if (typeof messageText === 'string') {
       // Programmatic call with explicit message string - don't clear input
+      // Allow empty string for DM "continue" action
       message = messageText;
     } else if (messageText && typeof messageText === 'object' && messageText.preventDefault) {
       // It's an event object, use inputMessage
@@ -1219,8 +1220,11 @@ function App() {
       message = inputMessage;
     }
 
-    // Ensure message is a string
-    if (!message || typeof message !== 'string' || !message.trim()) return;
+    // Ensure message is a string - allow empty string for DM "continue" action
+    if (typeof message !== 'string') return;
+    // For non-programmatic calls (form submission), require non-empty text
+    const isProgrammaticCall = typeof messageText === 'string';
+    if (!isProgrammaticCall && !message.trim()) return;
     if (!currentCampaignId) {
       setError('No active campaign selected. Start a new campaign before sending messages.');
       return;

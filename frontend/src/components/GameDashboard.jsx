@@ -452,8 +452,8 @@ const GameDashboard = forwardRef(
                       <button
                         onClick={handleCollabButtonClick}
                         className="dashboard-submit-button"
-                        title="Submit your turn to the DM"
-                        disabled={!collabEditorHasDraft || isChatProcessing}
+                        title="Submit your turn to the DM (empty = continue)"
+                        disabled={isChatProcessing}
                       >
                         Submit
                       </button>

@@ -8,6 +8,7 @@ import { UserMenu } from '../../AppWithAuth0.jsx';
 import PlayerView from './PlayerView.jsx';
 import apiService from '../../services/apiService.js';
 import { AudioStreamProvider, useAudioStream, AUDIO_STREAM_COMPLETED_EVENT } from '../../context/audioStreamContext.jsx';
+import { SFXProvider, useSFX } from '../../context/sfxContext.jsx';
 import { API_CONFIG } from '../../config/api.js';
 import { generateUniqueId } from '../../utils/idGenerator.js';
 import { useUserAudioQueue, handleAudioPlayedConfirmation } from '../../hooks/useUserAudioQueue.js';
@@ -113,6 +114,9 @@ const PlayerPage = () => {
 
   // Synchronized audio streaming (only playback mechanism)
   const audioStream = useAudioStream();
+
+  // Sound effects context
+  const { handleSfxAvailable } = useSFX();
 
   // Campaign ID loaded from URL params via useEffect (see below)
   const [currentCampaignId, setCurrentCampaignId] = useState(null);
@@ -946,6 +950,11 @@ const PlayerPage = () => {
     playback_queue_updated: (data) => handleCampaignUpdate({ ...data, type: 'playback_queue_updated' }),
     // Audio acknowledgment confirmation (for reliable user queue playback)
     audio_played_confirmed: handleAudioPlayedConfirmation,
+    // Sound effects broadcast
+    sfx_available: (data) => {
+      console.log('🔊 [PLAYER] Received sfx_available event:', data);
+      handleSfxAvailable(data, data.campaign_id || sessionId);
+    },
     // Room events - handle both dot notation and direct names
     'room.seat_updated': (data) => handleCampaignUpdate({ ...data, type: 'room.seat_updated' }),
     'room.seat_character_updated': (data) => handleCampaignUpdate({ ...data, type: 'room.seat_character_updated' }),
@@ -983,7 +992,7 @@ const PlayerPage = () => {
       console.log('[Collab] Player registered via Socket.IO:', data);
       setCollabIsConnected(true);
     },
-  }), [handleCampaignUpdate]);
+  }), [handleCampaignUpdate, handleSfxAvailable, sessionId]);
 
   // Use Socket.IO connection
   const {
@@ -1903,11 +1912,13 @@ const PlayerRoomShell = ({
   );
 };
 
-// Wrap PlayerPage with AudioStreamProvider to enable synchronized audio streaming
+// Wrap PlayerPage with AudioStreamProvider and SFXProvider to enable synchronized audio streaming and sound effects
 function PlayerPageWithAudioStream() {
   return (
     <AudioStreamProvider>
-      <PlayerPage />
+      <SFXProvider>
+        <PlayerPage />
+      </SFXProvider>
     </AudioStreamProvider>
   );
 }

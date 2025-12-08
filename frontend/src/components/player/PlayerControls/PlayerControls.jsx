@@ -193,6 +193,21 @@ const PlayerControls = ({
   // TODO: Wire up to actual turn info from structuredData.turn_info
   const isMyTurn = true;
 
+  // Check if combat is active - hide suggestions during combat (combat has its own action system)
+  const isInCombat = useMemo(() => {
+    if (!structuredData) return false;
+    const combatStatus = structuredData.combat_status;
+    if (!combatStatus) return false;
+    // Check if combat_status has meaningful content (not empty object/array/string)
+    if (typeof combatStatus === 'object') {
+      return Array.isArray(combatStatus) ? combatStatus.length > 0 : Object.keys(combatStatus).length > 0;
+    }
+    if (typeof combatStatus === 'string') {
+      return combatStatus.trim().length > 0;
+    }
+    return false;
+  }, [structuredData]);
+
   // Parse player options from structuredData
   // Priority: personalized_player_options > player_options > turn
   const playerOptions = useMemo(() => {
@@ -342,33 +357,43 @@ const PlayerControls = ({
             );
           })()}
 
-          {/* Player Options */}
-          <div className="quick-actions-sidebar">
-            {/* Section header for secondary players */}
-            {!isActivePlayer && playerOptions.length > 0 && (
-              <div className="options-section-header">
-                <span className="options-section-icon">👁️</span>
-                <span className="options-section-title">Observe & Discover</span>
-                <span className="options-section-hint">Click to share with active player</span>
+          {/* Player Options - hidden during combat (combat has its own action system) */}
+          {!isInCombat && (
+            <div className="quick-actions-sidebar">
+              {/* Section header for secondary players */}
+              {!isActivePlayer && playerOptions.length > 0 && (
+                <div className="options-section-header">
+                  <span className="options-section-icon">👁️</span>
+                  <span className="options-section-title">Observe & Discover</span>
+                  <span className="options-section-hint">Click to share with active player</span>
+                </div>
+              )}
+              {playerOptions.length > 0 ? (
+                playerOptions.map((option, index) => (
+                  <button
+                    key={index}
+                    className={`quick-action-btn ${!isActivePlayer ? 'observation-option' : ''}`}
+                    onClick={() => handlePlayerOption(option)}
+                    title={!isActivePlayer ? 'Click to share this observation with the active player' : 'Click to add to your action'}
+                  >
+                    {option}
+                  </button>
+                ))
+              ) : (
+                <div className="no-options-message">
+                  {isActivePlayer ? 'Waiting for options...' : 'Observe & Discover - waiting for options...'}
+                </div>
+              )}
+            </div>
+          )}
+          {isInCombat && (
+            <div className="quick-actions-sidebar combat-mode">
+              <div className="combat-mode-message">
+                <span className="combat-icon">⚔️</span>
+                <span>Combat in progress - use the Combat panel for actions</span>
               </div>
-            )}
-            {playerOptions.length > 0 ? (
-              playerOptions.map((option, index) => (
-                <button
-                  key={index}
-                  className={`quick-action-btn ${!isActivePlayer ? 'observation-option' : ''}`}
-                  onClick={() => handlePlayerOption(option)}
-                  title={!isActivePlayer ? 'Click to share this observation with the active player' : 'Click to add to your action'}
-                >
-                  {option}
-                </button>
-              ))
-            ) : (
-              <div className="no-options-message">
-                {isActivePlayer ? 'Waiting for options...' : 'Observe & Discover - waiting for options...'}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )
     },
@@ -384,7 +409,7 @@ const PlayerControls = ({
         />
       )
     }
-  ], [campaignId, collabWebSocket, collabPlayerId, collabPlayerName, collabAllPlayers, isMyTurn, handleCollabSubmit, handlePlayerOption, recentMedia, imageRefreshTrigger, collabEditorConnected, playerOptions, isActivePlayer, pendingObservations, selectedObservationIds, toggleObservationSelection, submissionConfirmation, isTranscribing, onToggleTranscription, audioPermissionState, voiceActivityLevel, collabEditorRef]);
+  ], [campaignId, collabWebSocket, collabPlayerId, collabPlayerName, collabAllPlayers, isMyTurn, handleCollabSubmit, handlePlayerOption, recentMedia, imageRefreshTrigger, collabEditorConnected, playerOptions, isActivePlayer, pendingObservations, selectedObservationIds, toggleObservationSelection, submissionConfirmation, isTranscribing, onToggleTranscription, audioPermissionState, voiceActivityLevel, collabEditorRef, isInCombat]);
 
   return (
     <div className="player-controls" data-testid="player-controls">

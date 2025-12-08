@@ -57,6 +57,14 @@ const PlayerView = ({
     if (!state || !state.combat_status) {
       return false;
     }
+
+    // Check if combat_state indicates combat has ended (is_active = false)
+    // This handles the case where combat ends (VICTORIOUS/DEFEATED) but combat_status still has data
+    if (state.combat_state && state.combat_state.is_active === false) {
+      console.log('🎮 Combat ended (is_active=false), hiding combat view');
+      return false;
+    }
+
     const status = state.combat_status;
 
     if (typeof status === 'string') {
@@ -67,7 +75,7 @@ const PlayerView = ({
       if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
         try {
           const parsed = JSON.parse(trimmed);
-          return hasCombatStatusData({ combat_status: parsed });
+          return hasCombatStatusData({ combat_status: parsed, combat_state: state.combat_state });
         } catch (error) {
           console.warn('Failed to parse combat status string:', status, error);
           return false;
