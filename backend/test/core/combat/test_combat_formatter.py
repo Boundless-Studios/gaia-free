@@ -572,8 +572,8 @@ class TestCombatFormatterSceneResponse:
             ),
             battlefield=BattlefieldConfig(terrain="arena"),
             initiative_order=[
-                InitiativeEntry(name="Thorin", initiative=18, is_player=True, is_surprised=False),
-                InitiativeEntry(name="Goblin Raider", initiative=12, is_player=False, is_surprised=False),
+                InitiativeEntry(name="Thorin", initiative=18, is_player=True, is_surprised=False, hostile=False),
+                InitiativeEntry(name="Goblin Raider", initiative=12, is_player=False, is_surprised=False, hostile=True),
             ]
         )
 

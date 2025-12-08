@@ -27,8 +27,13 @@ from gaia_private.prompts.prompt_service import PromptService, PromptNotFoundErr
 from db.src import db_manager
 
 
-# Skip all tests in this module if prompt not available
-pytestmark = pytest.mark.asyncio
+# Mark all tests in this module as integration tests (use real LLM)
+# Skip with: pytest -m "not integration"
+pytestmark = [
+    pytest.mark.asyncio,
+    pytest.mark.integration,
+    pytest.mark.slow,
+]
 
 
 class TestCombatantSelectorIntegration:

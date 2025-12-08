@@ -407,8 +407,8 @@ class CharacterSetupManager:
             if not name or name in combatants_by_name:
                 continue
 
-            # Determine if hostile
-            is_hostile = npc.get('hostile', True)
+            # Determine if hostile - must be explicitly set, default to non-hostile
+            is_hostile = npc.get('hostile', False)
 
             # Build ID mapping
             if name not in name_to_combatant_id:
@@ -584,7 +584,7 @@ class CharacterSetupManager:
                 hit_points_current=entry_data.get('hp_current', entry_data.get('hp', 10)),
                 hit_points_max=entry_data.get('hp_max', 10),
                 armor_class=entry_data.get('armor_class', entry_data.get('ac', 12)),
-                character_type='creature' if getattr(combatant_info, 'hostile', True) else 'npc'
+                character_type='creature' if getattr(combatant_info, 'hostile', False) else 'npc'
             )
 
         # Add initiative modifier
@@ -806,8 +806,8 @@ class CharacterSetupManager:
                 npcs.append({
                     'name': combatant_state.name,
                     'character_id': char_id,
-                    'type': 'enemy' if getattr(combatant_state, 'hostile', True) else 'npc',
-                    'hostile': getattr(combatant_state, 'hostile', True),
+                    'type': 'enemy' if getattr(combatant_state, 'hostile', False) else 'npc',
+                    'hostile': getattr(combatant_state, 'hostile', False),
                     'hp': getattr(combatant_state, 'hit_points_current',
                                  getattr(combatant_state, 'hp', self.DEFAULT_NPC_HP)),
                     'hp_current': getattr(combatant_state, 'hit_points_current',
