@@ -72,6 +72,12 @@
   padding: 0;
 }
 
+.dashboard-scene-images-panel {
+  width: 100%;
+  flex: 0 0 auto;
+  margin-bottom: 4px;
+}
+
 .dashboard-streaming-panel {
   width: 100%;
   height: 100%;

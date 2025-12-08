@@ -332,6 +332,7 @@ function App() {
     shareState,
     fetchToken: fetchInviteToken,
     copyInviteLink: handleCopyInviteLink,
+    fetchAndCopyInviteLink,
     inviteLink,
   } = useShareInvite(currentCampaignId, setInfoBanner);
 
@@ -1485,7 +1486,7 @@ function App() {
             </button>
             {/* Characters button removed - will be added in followup */}
             <button
-              onClick={() => setShowShareModal(true)}
+              onClick={() => fetchAndCopyInviteLink()}
               className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!currentCampaignId}
             >
@@ -1702,9 +1703,11 @@ function App() {
         {/* Campaign Setup Modal */}
         <CampaignSetup
           isOpen={showCampaignSetup}
-          onComplete={(campaignId) => {
+          onComplete={async (campaignId) => {
             setShowCampaignSetup(false);
-            handleSelectCampaign(campaignId, true); // Pass true for new campaign
+            await handleSelectCampaign(campaignId, true); // Pass true for new campaign
+            // Auto-copy invite link for DM after campaign creation
+            fetchAndCopyInviteLink(campaignId);
           }}
           onCancel={() => setShowCampaignSetup(false)}
           onCreateBlank={resetApp}

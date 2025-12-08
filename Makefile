@@ -197,3 +197,11 @@ write-prompts-prod: ## Write prompts to production database
 .PHONY: write-prompts-prod-dry
 write-prompts-prod-dry: ## Dry-run: show prompts that would be written to production
 	./backend/src/gaia_private/prompts/write_prompts_to_db.sh --prod --dry-run
+
+.PHONY: sync-prompts-from-prod
+sync-prompts-from-prod: ## Export prompts from production database to SQL files
+	python3 backend/src/gaia_private/_scripts/backend/sync_prompts_from_production.py
+
+.PHONY: sync-prompts-from-prod-dry
+sync-prompts-from-prod-dry: ## Dry-run: show prompts that would be exported from production
+	python3 backend/src/gaia_private/_scripts/backend/sync_prompts_from_production.py --dry-run
