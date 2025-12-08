@@ -1024,18 +1024,23 @@ const PlayerPage = () => {
     if (user?.email) {
       const role = 'player';
       const playerId = `${user.email}:${role}`;
-      // Note: Character name from seat is handled in PlayerRoomShell which has access to useRoom()
-      const playerName = user.name || user.email.split('@')[0];
-
       setCollabPlayerId(playerId);
-      setAssignedPlayerName(playerName);
-
-      // Register with backend when connected
-      if (sioIsConnected && sioSocket) {
-        sioSocket.emit('register', { playerId, playerName });
-      }
+      // Note: Character name from seat is handled in PlayerRoomShell which has access to useRoom()
+      // Use "Player" as default - character name will be updated when seat data loads
+      // Only set if not already set (preserve character name if already loaded)
+      setAssignedPlayerName(prev => prev || 'Player');
     }
-  }, [user?.email, user?.name, sioIsConnected, sioSocket]);
+  }, [user?.email]);
+
+  // Register with backend when connected (separate effect to handle reconnections properly)
+  useEffect(() => {
+    if (sioIsConnected && sioSocket && collabPlayerId) {
+      // Use current assignedPlayerName (which may be character name or "Player")
+      const nameToRegister = assignedPlayerName || 'Player';
+      sioSocket.emit('register', { playerId: collabPlayerId, playerName: nameToRegister });
+      console.log('[PlayerPage] Registered with backend:', { playerId: collabPlayerId, playerName: nameToRegister });
+    }
+  }, [sioIsConnected, sioSocket, collabPlayerId, assignedPlayerName]);
 
   // Create a ref that holds the socket for backward compatibility
   const socketRef = useRef(null);
@@ -1348,23 +1353,16 @@ const PlayerRoomShell = ({
     isDMSeated,
   } = useRoom();
 
-  // Update assignedPlayerName from seat's character_name and re-register with backend
+  // Update assignedPlayerName from seat's character_name
+  // Note: Re-registration with backend is handled automatically by the effect in PlayerPage
+  // that watches assignedPlayerName changes
   useEffect(() => {
     const characterName = currentUserPlayerSeat?.character_name;
     if (characterName && characterName !== assignedPlayerName) {
       console.log('[PlayerRoomShell] Updating player name from seat character:', characterName);
       setAssignedPlayerName(characterName);
-
-      // Re-register with backend so other players see the character name
-      if (sioIsConnected && sioSocket && collabPlayerId) {
-        sioSocket.emit('register', {
-          playerId: collabPlayerId,
-          playerName: characterName,
-        });
-        console.log('[PlayerRoomShell] Re-registered with character name:', characterName);
-      }
     }
-  }, [currentUserPlayerSeat?.character_name, assignedPlayerName, setAssignedPlayerName, sioIsConnected, sioSocket, collabPlayerId]);
+  }, [currentUserPlayerSeat?.character_name, assignedPlayerName, setAssignedPlayerName]);
 
   // Voice transcription state
   const [isTranscribing, setIsTranscribing] = useState(false);
