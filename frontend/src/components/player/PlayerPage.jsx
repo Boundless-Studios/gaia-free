@@ -1494,36 +1494,39 @@ const PlayerRoomShell = ({
 
   // Determine if current player is the active (turn-taking) player
   const { currentCharacterId, isActivePlayer, pendingObservations } = useMemo(() => {
+    // Use the player's own character_id from their seat - DO NOT fall back to active_character_id
+    // Each player should only see their own personalized options
     const charId = currentUserPlayerSeat?.character_id || null;
     const personalizedOptions = latestStructuredData?.personalized_player_options;
     const pending = latestStructuredData?.pending_observations?.observations || [];
     const characters = personalizedOptions?.characters || {};
-    const fallbackActiveId = personalizedOptions?.active_character_id || Object.keys(characters)[0] || null;
-    const resolvedCharId = charId || fallbackActiveId;
+    const activeCharacterId = personalizedOptions?.active_character_id || null;
 
     // Debug: Log what we're computing
     console.log('👁️ PlayerPage useMemo computing:', {
       charId,
-      resolvedCharId,
       pendingObsRaw: latestStructuredData?.pending_observations,
       pendingCount: pending?.length,
       hasPersonalizedOptions: !!personalizedOptions,
-      activeCharacterId: personalizedOptions?.active_character_id
+      activeCharacterId,
+      charactersKeys: Object.keys(characters)
     });
 
-    if (personalizedOptions && resolvedCharId) {
-      const charOptions = characters?.[resolvedCharId];
+    // If we have the player's character_id, look up their personalized options
+    if (personalizedOptions && charId) {
+      const charOptions = characters?.[charId];
       return {
-        currentCharacterId: resolvedCharId,
-        isActivePlayer: charOptions?.is_active ?? resolvedCharId === personalizedOptions?.active_character_id,
+        currentCharacterId: charId,
+        isActivePlayer: charOptions?.is_active ?? charId === activeCharacterId,
         pendingObservations: pending
       };
     }
 
-    // Default to active if no personalized options
+    // No character_id available - player hasn't been assigned a character yet
+    // Don't show as active player if we can't determine their character
     return {
-      currentCharacterId: resolvedCharId,
-      isActivePlayer: true,
+      currentCharacterId: charId,
+      isActivePlayer: false,
       pendingObservations: pending
     };
   }, [currentUserPlayerSeat?.character_id, latestStructuredData]);

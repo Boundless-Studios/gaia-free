@@ -358,6 +358,11 @@ class PlayerOptionsService:
                 except (json.JSONDecodeError, TypeError):
                     turn_info = {}
 
+            # Log turn_info to debug active player detection
+            logger.info("[PlayerOptionsService] turn_info keys: %s, values: %s",
+                       list(turn_info.keys()) if turn_info else "empty",
+                       {k: v for k, v in (turn_info.items() if turn_info else []) if k in ['character_id', 'characterId', 'active_character_id', 'activeCharacterId', 'character_name']})
+
             # Look for active character ID - check multiple field names for compatibility
             # The Turn model uses 'character_id', but some code may use 'active_character_id'
             active_character_id = (
@@ -368,10 +373,12 @@ class PlayerOptionsService:
             )
             previous_char_name = turn_info.get("previous_character_name") or turn_info.get("previousCharacterName") or "the previous player"
 
+            logger.info("[PlayerOptionsService] Resolved active_character_id: %s from turn_info", active_character_id)
+
             # If no active character specified, use the first connected player
             if not active_character_id and connected_players:
                 active_character_id = connected_players[0].character_id
-                logger.debug("[PlayerOptionsService] No active character specified, using first player: %s", active_character_id)
+                logger.warning("[PlayerOptionsService] FALLBACK: No active character in turn_info, using first player: %s", active_character_id)
 
             # Must have an active character to generate options
             if not active_character_id:

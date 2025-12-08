@@ -1285,6 +1285,10 @@ function App() {
           isStreamed: Boolean(structData?.streamed),
         });
       }
+
+      // Clear player submissions after DM successfully processes a turn
+      // This prevents stale submissions from persisting in the DM view
+      setPlayerSubmissions([]);
     } catch (error) {
       console.error("❌ Error in handleSendMessage:", error);
       setError(`Failed to send message: ${error.message}`);
