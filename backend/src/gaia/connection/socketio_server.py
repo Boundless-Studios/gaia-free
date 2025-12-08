@@ -71,7 +71,6 @@ class SessionYjsState:
         try:
             update_bytes = bytes(update)
             doc.apply_update(update_bytes)
-            logger.debug("[YjsState] Applied update (%d bytes) to session=%s", len(update_bytes), session_id)
             return True
         except Exception as e:
             logger.warning("[YjsState] Failed to apply update: %s", e)

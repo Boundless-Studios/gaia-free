@@ -614,10 +614,13 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
             logs_dir = self.storage.ensure_subdir(campaign_id, "logs")
             data_dir = self.storage.ensure_subdir(campaign_id, "data")
             
-            # Add timestamps if missing
+            # Add timestamps and message_ids if missing (preserve existing values)
+            import uuid as uuid_mod
             for msg in messages:
                 if 'timestamp' not in msg:
                     msg['timestamp'] = datetime.now().isoformat()
+                if 'message_id' not in msg:
+                    msg['message_id'] = f"msg_{uuid_mod.uuid4().hex[:12]}"
             
             # Save to logs directory
             log_file = logs_dir / "chat_history.json"
@@ -780,8 +783,6 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
                     self._store.write_json(turn_data, campaign_id, f"data/turns/{turn_id}.json")
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("Turn store mirror failed for %s/%s: %s", campaign_id, turn_id, exc)
-            
-            logger.debug(f"💾 Saved turn {turn_id} for campaign {campaign_id}")
             return True
             
         except Exception as e:

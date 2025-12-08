@@ -285,13 +285,14 @@ async def lifespan(app: FastAPI):
     # tts_service._check_local_tts()
     # logger.info(f"[OK] TTS service updated - Local TTS available: {tts_service.local_tts_available}")
     
-    # Initialize the unified orchestrator
-    orchestrator = Orchestrator()
+    # Initialize the unified orchestrator using the singleton getter
+    from gaia.api.routes.internal import get_orchestrator
+    orchestrator = get_orchestrator()
 
     # Set up unified broadcaster for orchestrator (sends to both WebSocket + Socket.IO)
     orchestrator.campaign_broadcaster = socketio_broadcaster
 
-    # Store orchestrator in app state for access in endpoints
+    # Store orchestrator in app state for access in endpoints (same singleton instance)
     app.state.orchestrator = orchestrator
     session_registry = SessionRegistry()
     app.state.session_registry = session_registry
@@ -1529,15 +1530,35 @@ async def get_campaign_characters(
         session_manager = getattr(http_request.app.state, "session_manager", None)
         character_manager = None
 
+        def _ensure_character_manager(orchestrator) -> Optional['CharacterManager']:
+            """Return a character manager bound to the requested campaign."""
+            cm = getattr(orchestrator, "character_manager", None)
+            if not cm or getattr(cm, "campaign_id", None) != campaign_id:
+                try:
+                    cm = orchestrator.services.get_character_manager(campaign_id)
+                    orchestrator.set_character_manager(cm)
+                except Exception as exc:  # noqa: BLE001 - defensive guard
+                    logger.warning(
+                        "Failed to sync orchestrator character manager for %s: %s",
+                        campaign_id,
+                        exc,
+                    )
+                    return None
+            return cm
+
         if session_manager:
             try:
                 session_context = await session_manager.get_or_create(campaign_id)
                 if session_context and hasattr(session_context, 'orchestrator'):
                     orchestrator = session_context.orchestrator
-                    if hasattr(orchestrator, 'character_manager'):
-                        character_manager = orchestrator.character_manager
-            except Exception:
-                pass  # Fall back to creating a new CharacterManager
+                    # Ensure we return the manager scoped to this campaign, not a stale one
+                    character_manager = _ensure_character_manager(orchestrator)
+            except Exception as exc:  # noqa: BLE001 - fallback to disk load
+                logger.debug(
+                    "Falling back to campaign storage for %s after session manager failure: %s",
+                    campaign_id,
+                    exc,
+                )
 
         # If no active session or no character manager, get singleton for this campaign
         if not character_manager:

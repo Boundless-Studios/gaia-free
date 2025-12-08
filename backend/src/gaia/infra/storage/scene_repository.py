@@ -594,3 +594,37 @@ class SceneRepository:
         except Exception as e:
             logger.error(f"Error adding participant {character_id} to scene {scene_id} (sync): {e}")
             raise
+
+    def get_entities_in_scene_sync(
+        self,
+        scene_id: str,
+        entity_type: Optional[str] = None,
+        present_only: bool = True,
+    ) -> List[SceneEntity]:
+        """Synchronous version of get_entities_in_scene.
+
+        Args:
+            scene_id: Scene to query
+            entity_type: Optional filter by entity type
+            present_only: Only return currently present entities
+
+        Returns:
+            List of SceneEntity records
+        """
+        try:
+            with self.db_manager.get_sync_session() as session:
+                conditions = [SceneEntity.scene_id == scene_id]
+
+                if entity_type:
+                    conditions.append(SceneEntity.entity_type == entity_type)
+
+                if present_only:
+                    conditions.append(SceneEntity.is_present == True)
+
+                stmt = select(SceneEntity).where(and_(*conditions))
+                result = session.execute(stmt)
+                return list(result.scalars().all())
+
+        except Exception as e:
+            logger.error(f"Error getting entities for scene {scene_id} (sync): {e}")
+            raise

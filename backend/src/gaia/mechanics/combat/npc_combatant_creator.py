@@ -61,7 +61,7 @@ class NPCCombatantCreator:
             ac=armor_class or self.DEFAULT_AC,
             level=level or self.DEFAULT_LEVEL,
             is_npc=True,
-            hostile=overrides.get("hostile", True) if overrides else True,
+            hostile=overrides.get("hostile", False) if overrides else False,  # Must be explicitly set
         )
 
     # ------------------------------------------------------------------

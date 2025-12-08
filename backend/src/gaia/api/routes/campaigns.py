@@ -13,6 +13,7 @@ from gaia.models.character import CharacterInfo
 from gaia.mechanics.campaign.simple_campaign_manager import SimpleCampaignManager
 from gaia.api.routes.campaign_generation import PreGeneratedContent, CampaignInitializer
 from gaia.api.routes.arena import create_arena_characters, create_arena_scene, build_arena_prompt
+from gaia.infra.storage.scene_repository import SceneRepository
 from gaia.api.schemas.campaign import (
     ActiveCampaignResponse,
     PlayerCampaignResponse,
@@ -800,6 +801,12 @@ class CampaignService:
                 game_theme=GameTheme.FANTASY
             )
 
+            # Set scene storage mode to database and generate UUID for scene storage
+            import uuid as uuid_module
+            campaign_data.set_scene_storage_mode("database")
+            campaign_uuid = uuid_module.uuid4()
+            campaign_data.custom_data["campaign_uuid"] = str(campaign_uuid)
+
             # Create arena characters using dedicated arena setup module
             arena_characters, arena_npcs = create_arena_characters()
 
@@ -830,25 +837,28 @@ class CampaignService:
             # Create arena scene with proper character roster
             arena_scene = create_arena_scene(campaign_id, combatant_infos, request.difficulty or "medium")
 
-            # Save scene and set as current scene
+            # Save scene to database (source of truth) - use the campaign_uuid we generated earlier
+            scene_repo = SceneRepository()
+            try:
+                await scene_repo.create_scene(arena_scene, campaign_uuid)
+                logger.info(f"Created arena scene in database: {arena_scene.scene_id}")
+            except Exception as e:
+                logger.error(f"Failed to save arena scene to database: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to create arena scene: {e}")
+
+            # Set as current scene in runtime cache (for session state)
             if hasattr(self.orchestrator, 'campaign_runner') and hasattr(self.orchestrator.campaign_runner, 'scene_integration'):
-                scene_manager = self.orchestrator.campaign_runner.scene_integration.get_scene_manager(campaign_id)
-                scene_manager._store_scene_internal(arena_scene)
-                # Use get_scene_summary to ensure all fields (including participants) are included
-                scene_summary = scene_manager.get_scene_summary(arena_scene.scene_id)
-                if scene_summary:
-                    self.orchestrator.campaign_runner.scene_integration.current_scenes[campaign_id] = scene_summary
-                    logger.info(f"Created arena scene: {arena_scene.scene_id} with {len(scene_summary.get('participants', []))} participants")
-                else:
-                    logger.warning(f"Failed to get scene summary for {arena_scene.scene_id}, using fallback")
-                    self.orchestrator.campaign_runner.scene_integration.current_scenes[campaign_id] = {
-                        'scene_id': arena_scene.scene_id,
-                        'title': arena_scene.title,
-                        'description': arena_scene.description,
-                        'scene_type': arena_scene.scene_type,
-                        'pcs_present': arena_scene.pcs_present,
-                        'npcs_present': arena_scene.npcs_present
-                    }
+                scene_summary = {
+                    'scene_id': arena_scene.scene_id,
+                    'title': arena_scene.title,
+                    'description': arena_scene.description,
+                    'scene_type': arena_scene.scene_type,
+                    'pcs_present': arena_scene.pcs_present,
+                    'npcs_present': arena_scene.npcs_present,
+                    'participants': [p.model_dump() if hasattr(p, 'model_dump') else vars(p) for p in arena_scene.participants],
+                }
+                self.orchestrator.campaign_runner.scene_integration.current_scenes[campaign_id] = scene_summary
+                logger.info(f"Created arena scene: {arena_scene.scene_id} with {len(arena_scene.participants)} participants")
 
             # Build arena combat prompt
             arena_prompt = build_arena_prompt(request.difficulty or "medium")
@@ -910,6 +920,10 @@ class CampaignService:
         """
         # Load campaign history from the campaign manager
         messages = self.campaign_manager.load_campaign_history(campaign_id)
+
+        # Sort messages by timestamp to ensure chronological order
+        if messages:
+            messages.sort(key=lambda m: m.get("timestamp", "") or "")
 
         # For newly created campaigns with no history, return empty data instead of error
         if not messages:
@@ -1129,12 +1143,26 @@ class CampaignService:
         )
         
         # Convert messages to PlayerCampaignMessage
+        def _parse_timestamp(raw_timestamp: Any) -> datetime:
+            """Convert raw timestamp inputs to datetime with a safe fallback."""
+            if isinstance(raw_timestamp, datetime):
+                return raw_timestamp
+            if isinstance(raw_timestamp, str) and raw_timestamp:
+                try:
+                    return datetime.fromisoformat(raw_timestamp)
+                except ValueError:
+                    logger.debug("Invalid timestamp format %s, using now()", raw_timestamp)
+            return datetime.now()
+
         messages = []
-        for msg in data.get("messages", []):
+        for idx, msg in enumerate(data.get("messages", [])):
+            raw_id = msg.get("message_id") or msg.get("id")
+            message_id = str(raw_id) if raw_id not in (None, "") else f"{campaign_id}-msg-{idx}"
+
             player_msg = PlayerCampaignMessage(
-                message_id=msg.get("message_id", ""),
-                timestamp=datetime.fromisoformat(msg.get("timestamp", datetime.now().isoformat())),
-                role=msg.get("role", ""),
+                message_id=message_id,
+                timestamp=_parse_timestamp(msg.get("timestamp")),
+                role=msg.get("role") or "",
                 content=msg.get("content"),  # Can be complex object
                 agent_name=msg.get("agent_name")
             )

@@ -159,14 +159,9 @@ export function useCampaignOperations({
           setSessionMessages(sessionId, []);
         }
 
+        // System message removed from chat - users already see UI state change when campaign loads
         if (!isNewCampaign) {
-          const systemMessage = {
-            id: generateUniqueId(),
-            text: `Loaded simple campaign: ${campaignId} (${data.message_count} messages)${structuredData ? ' - Game state loaded' : ''}`,
-            sender: 'system',
-            timestamp: new Date().toISOString(),
-          };
-          setSessionMessages(sessionId, (prev) => [systemMessage, ...prev]);
+          console.log(`📋 Campaign loaded: ${campaignId} (${data.message_count} messages)`);
         }
 
         const hasDmMessage = convertedMessages.some((msg) => msg.sender === 'dm');

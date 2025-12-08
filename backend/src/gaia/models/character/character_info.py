@@ -65,6 +65,7 @@ class CharacterInfo:
     action_points: Optional[ActionPointState] = None
     combat_stats: Optional[CombatStats] = None
     initiative_modifier: int = 0
+    hostile: Optional[bool] = None  # Explicit hostility flag (None = infer from role)
 
     # Portrait and visual customization fields
     portrait_url: Optional[str] = None  # URL to generated portrait image
@@ -129,6 +130,7 @@ class CharacterInfo:
             "action_points": self.action_points.to_dict() if self.action_points else None,
             "combat_stats": self.combat_stats.to_dict() if self.combat_stats else None,
             "initiative_modifier": self.initiative_modifier,
+            "hostile": self.hostile,
             # Portrait and visual fields
             "portrait_url": self.portrait_url,
             "portrait_path": self.portrait_path,

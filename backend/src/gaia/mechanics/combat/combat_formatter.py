@@ -301,7 +301,7 @@ class CombatFormatter:
                                 "hp": "Unknown",
                                 "ap": "Unknown",
                                 "status": [],
-                                "hostile": not getattr(combatant, "is_player", False)
+                                "hostile": getattr(combatant, "hostile", False)
                             }
             status = self._summarize_initiative_order(agent_response.initiative_order)
         else:
@@ -350,7 +350,7 @@ class CombatFormatter:
                                 "hp": "Unknown",
                                 "ap": "Unknown",
                                 "status": [],
-                                "hostile": not combatant.get('is_player', False)
+                                "hostile": combatant.get('hostile', False)
                             }
             else:
                 narrative = ''

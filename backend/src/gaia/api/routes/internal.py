@@ -34,12 +34,20 @@ import os
 
 from gaia_private.agents.scene_analyzer.parallel_scene_analyzer import ParallelSceneAnalyzer
 from gaia_private.session.context_manager import ContextManager
+from gaia_private.session.analysis_context import AnalysisContext
 from gaia_private.session.history_manager import ConversationHistoryManager
 from gaia_private.orchestration.orchestrator import Orchestrator
 from gaia.infra.llm.model_manager import resolve_model, ModelName, PreferredModels
-from gaia.mechanics.campaign.campaign_summarizer import CampaignSummarizer  # Still needed for other endpoints
+from gaia.mechanics.campaign.campaign_summarizer import CampaignSummarizer
 
 logger = logging.getLogger(__name__)
+
+
+def _context_to_dict(context) -> dict:
+    """Convert AnalysisContext to dict if needed."""
+    if isinstance(context, AnalysisContext):
+        return context.to_dict()
+    return context
 
 # Import authentication if available
 try:
@@ -78,11 +86,20 @@ router = APIRouter(prefix="/api/internal", tags=["internal"])
 # Global instances (will be initialized on first use)
 _scene_analyzer: Optional[ParallelSceneAnalyzer] = None
 _context_manager: Optional[ContextManager] = None
+_orchestrator: Optional[Orchestrator] = None
 
 
 def get_orchestrator() -> Orchestrator:
-    """Get the singleton orchestrator instance."""
-    return Orchestrator()
+    """Get the singleton orchestrator instance.
+
+    This ensures combat state and other in-memory state is preserved
+    across requests for the same campaign.
+    """
+    global _orchestrator
+    if _orchestrator is None:
+        logger.info("🎭 Creating singleton Orchestrator instance")
+        _orchestrator = Orchestrator()
+    return _orchestrator
 
 
 class SceneAnalysisRequest(BaseModel):
@@ -158,7 +175,7 @@ async def analyze_scene(
                     request.campaign_id,
                     request.num_previous_scenes
                 )
-                context.update(rich_context)
+                context.update(_context_to_dict(rich_context))
                 logger.info(f"Enriched context with campaign data from {request.campaign_id}")
             except Exception as e:
                 logger.warning(f"Failed to enrich context: {e}")
@@ -418,34 +435,117 @@ async def get_campaign_context(
     include_summary: bool = False,
     admin_user = require_admin()
 ) -> Dict[str, Any]:
-    """Admin only - 
+    """Admin only -
     Get the current context for a campaign.
-    
+
     This includes:
     - Previous scenes
     - Recent user actions
     - Game state
-    - Active characters
+    - Active characters (from history AND database scene entities)
     - Campaign metadata
     - Optional: Campaign summary
+    - Database scene entities (source of truth for new campaigns)
     """
     try:
         context_manager = get_context_manager()
-        
+
         # Get context with optional summary (now handled internally by ContextManager)
-        context = context_manager.get_analysis_context(
+        context = _context_to_dict(context_manager.get_analysis_context(
             user_input="",  # Empty for just context retrieval
             campaign_id=campaign_id,
             num_scenes=num_scenes,
             include_summary=include_summary  # Pass the flag to ContextManager
-        )
-        
+        ))
+
+        # Also fetch database scene entities (source of truth for new campaigns)
+        db_scene_data = {}
+        try:
+            import uuid
+            from gaia.infra.storage.scene_repository import SceneRepository
+            from gaia.dependencies import get_campaign_manager
+
+            scene_repo = SceneRepository()
+
+            # Get campaign_uuid from the campaign's custom_data (not the campaign_id)
+            campaign_manager = get_campaign_manager()
+            campaign_data = campaign_manager.load_campaign(campaign_id)
+
+            if not campaign_data:
+                raise ValueError(f"Campaign {campaign_id} not found")
+
+            # Check if this campaign uses database storage
+            storage_mode = campaign_data.get_scene_storage_mode() if hasattr(campaign_data, 'get_scene_storage_mode') else "filesystem"
+            if storage_mode != "database":
+                db_scene_data = {"info": f"Campaign uses {storage_mode} storage, no database scenes"}
+                raise ValueError(f"Campaign uses {storage_mode} storage")
+
+            # Get the campaign_uuid from custom_data
+            campaign_uuid_str = campaign_data.custom_data.get("campaign_uuid") if hasattr(campaign_data, 'custom_data') else None
+            if not campaign_uuid_str:
+                raise ValueError(f"Campaign {campaign_id} has no campaign_uuid in custom_data")
+
+            campaign_uuid = uuid.UUID(campaign_uuid_str)
+
+            # Get recent scenes from database
+            recent_scenes = await scene_repo.get_recent_scenes(campaign_uuid, limit=num_scenes)
+
+            if recent_scenes:
+                current_scene = recent_scenes[0]
+
+                # Get entities for current scene
+                entities = await scene_repo.get_entities_in_scene(
+                    current_scene.scene_id,
+                    present_only=True
+                )
+
+                # Build active_characters from database entities
+                db_active_characters = []
+                for entity in entities:
+                    db_active_characters.append({
+                        "character_id": entity.entity_id,
+                        "name": entity.entity_metadata.get("display_name") if entity.entity_metadata else entity.entity_id,
+                        "entity_type": entity.entity_type,
+                        "role": entity.role,
+                        "is_present": entity.is_present,
+                    })
+
+                db_scene_data = {
+                    "current_scene": {
+                        "scene_id": current_scene.scene_id,
+                        "title": current_scene.title,
+                        "description": current_scene.description,
+                        "scene_type": current_scene.scene_type,
+                        "in_combat": current_scene.in_combat,
+                        "pcs_present": current_scene.pcs_present,
+                        "npcs_present": current_scene.npcs_present,
+                    },
+                    "active_characters_from_db": db_active_characters,
+                    "scene_participants": [
+                        {
+                            "character_id": p.character_id,
+                            "display_name": p.display_name,
+                            "role": p.role.value if p.role else None,
+                        }
+                        for p in (current_scene.participants or [])
+                    ],
+                }
+
+                # Merge db_active_characters into context if context is empty
+                if not context.get("active_characters") and db_active_characters:
+                    context["active_characters"] = db_active_characters
+
+        except Exception as db_err:
+            logger.warning(f"Could not fetch database scene data: {db_err}")
+            db_scene_data = {"error": str(db_err)}
+
         return {
             "success": True,
             "campaign_id": campaign_id,
-            "context": context
+            "context": context,
+            "database_scene_data": db_scene_data,
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to get campaign context: {e}", exc_info=True)
         return {
@@ -582,11 +682,11 @@ async def analyze_current_scene(
         
         # Get enriched context
         context_manager = get_context_manager()
-        context = context_manager.get_analysis_context(
+        context = _context_to_dict(context_manager.get_analysis_context(
             last_user_input,
             campaign_id,
             num_previous_scenes
-        )
+        ))
         
         # Run analysis using ParallelSceneAnalyzer directly
         logger.info(f"Analyzing scene for campaign {campaign_id}: {last_user_input[:100]}...")
@@ -659,7 +759,7 @@ async def get_current_campaign_status(
         # Get context
         context_manager = get_context_manager()
         user_input = last_user_msg.get("content", "") if last_user_msg else ""
-        context = context_manager.get_analysis_context(user_input, campaign_id, 2)
+        context = _context_to_dict(context_manager.get_analysis_context(user_input, campaign_id, 2))
         
         # Extract key information
         status = {

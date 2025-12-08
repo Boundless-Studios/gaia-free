@@ -44,6 +44,7 @@ def enemy_goblin():
     return CombatantView(
         name="Goblin Scout",
         type="enemy",
+        hostile=True,
         hp_current=15,
         hp_max=15,
         armor_class=13,
@@ -572,8 +573,8 @@ class TestCombatFormatterSceneResponse:
             ),
             battlefield=BattlefieldConfig(terrain="arena"),
             initiative_order=[
-                InitiativeEntry(name="Thorin", initiative=18, is_player=True, is_surprised=False),
-                InitiativeEntry(name="Goblin Raider", initiative=12, is_player=False, is_surprised=False),
+                InitiativeEntry(name="Thorin", initiative=18, is_player=True, is_surprised=False, hostile=False),
+                InitiativeEntry(name="Goblin Raider", initiative=12, is_player=False, is_surprised=False, hostile=True),
             ]
         )
 

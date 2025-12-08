@@ -403,7 +403,7 @@ async def debug_run_streaming_direct(
         if payload.include_scene_context and getattr(campaign_runner, "scene_integration", None):
             try:
                 scene_context_str = campaign_runner.scene_integration.get_scene_context_for_agents(
-                    session_context.session_id
+                    session_context.campaign_id
                 )
             except Exception as exc:  # pragma: no cover - debug resilience
                 scene_context_str = ""
