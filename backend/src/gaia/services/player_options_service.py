@@ -358,7 +358,14 @@ class PlayerOptionsService:
                 except (json.JSONDecodeError, TypeError):
                     turn_info = {}
 
-            active_character_id = turn_info.get("active_character_id") or turn_info.get("activeCharacterId")
+            # Look for active character ID - check multiple field names for compatibility
+            # The Turn model uses 'character_id', but some code may use 'active_character_id'
+            active_character_id = (
+                turn_info.get("character_id") or
+                turn_info.get("characterId") or
+                turn_info.get("active_character_id") or
+                turn_info.get("activeCharacterId")
+            )
             previous_char_name = turn_info.get("previous_character_name") or turn_info.get("previousCharacterName") or "the previous player"
 
             # If no active character specified, use the first connected player

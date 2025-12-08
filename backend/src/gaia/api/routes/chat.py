@@ -308,6 +308,16 @@ async def chat(
                     )
 
             session_id = session_context.session_id
+
+            # Clear observations that were included in this turn submission
+            # This prevents stale observations from persisting after turn advancement
+            try:
+                obs_manager = get_observations_manager()
+                obs_manager.mark_all_included(session_id)
+                obs_manager.clear_included(session_id)
+                logger.debug("[Chat] Cleared included observations for session %s", session_id)
+            except Exception as obs_err:
+                logger.warning("[Chat] Failed to clear observations: %s", obs_err)
         else:
             if orchestrator_fallback is None:
                 raise HTTPException(status_code=500, detail="Session manager not initialized")
@@ -318,6 +328,14 @@ async def chat(
                 player_character=player_character_payload,
                 broadcaster=socketio_broadcaster,
             )
+
+            # Clear observations for legacy path too
+            try:
+                obs_manager = get_observations_manager()
+                obs_manager.mark_all_included(session_id)
+                obs_manager.clear_included(session_id)
+            except Exception:
+                pass
 
         structured_data_raw = dict(result.get("structured_data", {}) or {})
 
