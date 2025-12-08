@@ -36,6 +36,9 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 logger = logging.getLogger(__name__)
 
+# Hard limit on text length for TTS requests to avoid accidental mega-requests to ElevenLabs
+TTS_MAX_TEXT_LENGTH = 2000
+
 
 @dataclass
 class AudioSynthesisResult:
@@ -239,8 +242,12 @@ class TTSService:
             voice = VoiceRegistry.get_default_voice()
             if voice is None:
                 raise RuntimeError("No TTS providers are available. Please check your TTS configuration.")
-        
-        text = text[:2000]
+
+        # Apply hard limit on text length to avoid mega-requests
+        original_len = len(text)
+        if original_len > TTS_MAX_TEXT_LENGTH:
+            text = text[:TTS_MAX_TEXT_LENGTH]
+            logger.warning(f"🎵 TTS text truncated from {original_len} to {TTS_MAX_TEXT_LENGTH} chars")
 
         def finalize(audio_data: bytes, method: str) -> AudioSynthesisResult:
             artifact = None
@@ -420,7 +427,11 @@ class TTSService:
             if voice is None:
                 raise RuntimeError("No TTS providers are available. Please check your TTS configuration.")
 
-        text = text[:2000]
+        # Apply hard limit on text length to avoid mega-requests
+        original_len = len(text)
+        if original_len > TTS_MAX_TEXT_LENGTH:
+            text = text[:TTS_MAX_TEXT_LENGTH]
+            logger.warning(f"🎵 TTS text truncated from {original_len} to {TTS_MAX_TEXT_LENGTH} chars")
 
         # Determine provider
         voice_info = VoiceRegistry.get_voice(voice.lower())
@@ -947,6 +958,13 @@ class TTSService:
         """
         if not self.elevenlabs_available:
             raise RuntimeError("ElevenLabs TTS is not available")
+
+        # Apply hard limit on text length to avoid mega-requests
+        original_len = len(text)
+        if original_len > TTS_MAX_TEXT_LENGTH:
+            text = text[:TTS_MAX_TEXT_LENGTH]
+            logger.warning(f"🎵 TTS text truncated from {original_len} to {TTS_MAX_TEXT_LENGTH} chars")
+
         chunks = self.chunk_text_by_sentences(text)
         if not chunks:
             logger.warning("No chunks to synthesize")

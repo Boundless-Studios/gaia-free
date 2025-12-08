@@ -1284,6 +1284,12 @@ function App() {
             : null,
           isStreamed: Boolean(structData?.streamed),
         });
+
+        // Clear streaming state after adding DM message to prevent duplicate display
+        // The message is now in the history, so we don't need the streaming preview
+        if (structData?.streamed) {
+          clearStreaming(sessionId);
+        }
       }
 
       // Clear player submissions after DM successfully processes a turn
