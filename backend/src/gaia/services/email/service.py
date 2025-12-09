@@ -368,6 +368,92 @@ The Boundless Studios Team
             text_content=text_content,
         )
 
+    async def send_access_request_submitted_email(
+        self, to_email: str, display_name: str
+    ) -> bool:
+        """Send email to user confirming their access request was submitted"""
+        subject = "🔐 GAIA Access Request Submitted"
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                           color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                .alpha-badge {{ display: inline-block; background: #ff6b6b; color: white; padding: 6px 15px;
+                               border-radius: 15px; font-weight: bold; font-size: 12px; margin-bottom: 10px; }}
+                .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                .info-box {{ background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px;
+                             margin: 20px 0; border-radius: 5px; }}
+                .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 14px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <div class="alpha-badge">🔒 PRIVATE ALPHA</div>
+                    <h1>Access Request Received</h1>
+                </div>
+                <div class="content">
+                    <h2>Hello {display_name},</h2>
+                    <p>Thank you for your interest in GAIA! We've received your access request.</p>
+
+                    <div class="info-box">
+                        <strong>📋 What happens next?</strong>
+                        <ul style="margin: 10px 0 0 0;">
+                            <li>Your request has been submitted to our admin team</li>
+                            <li>We will review your request and get back to you</li>
+                            <li>You'll receive an email once your access is approved</li>
+                        </ul>
+                    </div>
+
+                    <p>In the meantime, please note that you've accepted the Playtester Agreement which includes an NDA. All information about GAIA remains confidential.</p>
+
+                    <p>Thank you for your patience!</p>
+                    <p><strong>The Boundless Studios Team</strong></p>
+                </div>
+                <div class="footer">
+                    <p>🔒 This is a private alpha - All content is confidential</p>
+                    <p>© 2025 Boundless Studios. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        text_content = f"""
+🔐 GAIA ACCESS REQUEST RECEIVED
+
+Hello {display_name},
+
+Thank you for your interest in GAIA! We've received your access request.
+
+WHAT HAPPENS NEXT?
+- Your request has been submitted to our admin team
+- We will review your request and get back to you
+- You'll receive an email once your access is approved
+
+In the meantime, please note that you've accepted the Playtester Agreement which includes an NDA. All information about GAIA remains confidential.
+
+Thank you for your patience!
+The Boundless Studios Team
+
+---
+🔒 This is a private alpha - All content is confidential
+© 2025 Boundless Studios. All rights reserved.
+        """
+
+        return await self.provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+
     async def send_access_request_email(
         self,
         admin_email: str,
