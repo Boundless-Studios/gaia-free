@@ -83,6 +83,13 @@ class UserResponse(BaseModel):
     avatar_url: Optional[str]
     is_admin: bool
     is_active: bool
+    # Registration fields
+    registration_status: str
+    eula_accepted_at: Optional[str]
+    eula_version_accepted: Optional[str]
+    registration_completed_at: Optional[str]
+    created_at: Optional[str]
+    last_login: Optional[str]
 
     @staticmethod
     def from_model(user: User) -> "UserResponse":
@@ -94,6 +101,12 @@ class UserResponse(BaseModel):
             avatar_url=getattr(user, "avatar_url", None),
             is_admin=bool(getattr(user, "is_admin", False)),
             is_active=bool(getattr(user, "is_active", True)),
+            registration_status=getattr(user, "registration_status", "pending"),
+            eula_accepted_at=user.eula_accepted_at.isoformat() if user.eula_accepted_at else None,
+            eula_version_accepted=getattr(user, "eula_version_accepted", None),
+            registration_completed_at=user.registration_completed_at.isoformat() if user.registration_completed_at else None,
+            created_at=user.created_at.isoformat() if user.created_at else None,
+            last_login=user.last_login.isoformat() if user.last_login else None,
         )
 
 
@@ -212,6 +225,63 @@ async def disable_user(user_id: str, db: AsyncSession = Depends(get_async_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.is_active = False
     await db.commit()
+    return UserResponse.from_model(user)
+
+
+@router.post("/allowlist/users/{user_id}/enable", response_model=UserResponse)
+async def enable_user(user_id: str, db: AsyncSession = Depends(get_async_db)):
+    """Enable/activate a user account."""
+    result = await db.execute(select(User).where(User.user_id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user.is_active = True
+    await db.commit()
+    return UserResponse.from_model(user)
+
+
+class OnboardUserRequest(BaseModel):
+    """Request to onboard a user - marks them as active with completed registration."""
+    send_welcome_email: bool = True
+
+
+@router.post("/allowlist/users/{user_id}/onboard", response_model=UserResponse)
+async def onboard_user(
+    user_id: str,
+    req: OnboardUserRequest,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Onboard a user who has accepted EULA and requested access.
+
+    This sets is_active=True so the user can access the system.
+    Optionally sends a welcome email.
+    """
+    from datetime import datetime, timezone
+
+    result = await db.execute(select(User).where(User.user_id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Activate the user
+    user.is_active = True
+    await db.commit()
+
+    # Send welcome email if requested
+    if req.send_welcome_email:
+        from gaia.services.email.service import get_email_service
+        email_service = get_email_service()
+        try:
+            await email_service.send_welcome_email(
+                to_email=user.email,
+                display_name=user.display_name or user.username or user.email.split('@')[0]
+            )
+        except Exception as e:
+            # Log but don't fail the onboarding
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to send welcome email to {user.email}: {e}")
+
     return UserResponse.from_model(user)
 
 
