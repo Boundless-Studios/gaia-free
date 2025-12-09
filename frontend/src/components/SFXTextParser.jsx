@@ -56,7 +56,6 @@ const SFXTextParser = ({ text, sessionId }) => {
           key={`sfx-${match.startIdx}-${match.endIdx}`}
           phrase={match.phrase}
           sfxId={match.sfxId}
-          category={match.category}
           sessionId={sessionId}
         />
       );

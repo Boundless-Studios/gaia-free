@@ -11,10 +11,9 @@ import './SFXTrigger.css';
  * Props:
  * - phrase: The text to display and send to the SFX API
  * - sfxId: Optional catalog ID for caching
- * - category: Visual category for potential styling variants
  * - sessionId: Current game session ID
  */
-const SFXTrigger = ({ phrase, sfxId = null, category = 'default', sessionId }) => {
+const SFXTrigger = ({ phrase, sfxId = null, sessionId }) => {
   const { generateSoundEffect, playSfxFromPayload, getCachedSFX, isGenerating: contextIsGenerating } = useSFX();
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -56,7 +55,7 @@ const SFXTrigger = ({ phrase, sfxId = null, category = 'default', sessionId }) =
     }
   }, [phrase, sfxId, sessionId, generateSoundEffect, playSfxFromPayload, getCachedSFX, isGenerating, contextIsGenerating]);
 
-  const className = `sfx-trigger${isGenerating ? ' sfx-trigger--generating' : ''}${category ? ` sfx-trigger--${category}` : ''}`;
+  const className = `sfx-trigger${isGenerating ? ' sfx-trigger--generating' : ''}`;
 
   return (
     <span
