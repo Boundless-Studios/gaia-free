@@ -378,7 +378,10 @@
       "id": "distant_thunder",
       "triggers": [
         "distant thunder",
-        "thunder echoes"
+        "thunder echoes",
+        "rumble",
+        "low rumble",
+        "rumble beneath the floorboards"
       ],
       "label": "Distant Thunder",
       "priority": 6,
@@ -1091,7 +1094,8 @@
       "triggers": [
         "footsteps creak",
         "wooden floorboards",
-        "steps on wood"
+        "steps on wood",
+        "floorboards"
       ],
       "label": "Footsteps (Wood)",
       "priority": 7,
@@ -1361,7 +1365,9 @@
       "triggers": [
         "fire roars",
         "flames roar",
-        "inferno"
+        "inferno",
+        "hearthfire",
+        "hearthfire burns"
       ],
       "label": "Fire Roar",
       "priority": 8,
@@ -1550,7 +1556,7 @@
     "shatter"
   ],
   "synonyms": {
-    "thunder": ["storm", "lightning", "thunderclap"],
+    "thunder": ["storm", "lightning"],
     "door": ["gate", "portal", "entrance", "hatch", "portcullis"],
     "slam": ["bang", "crash", "shut", "close"],
     "footsteps": ["steps", "footfalls", "treads"],
