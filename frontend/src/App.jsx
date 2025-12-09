@@ -777,13 +777,21 @@ function App() {
       setTimeout(() => setSessionHistoryInfo(sessionId, null), 10000);
     }
 
-    // If this was a streamed response, just clear streaming state.
-    // Don't reload history - the message was already added via addDMMessage in handleSendMessage.
-    // Reloading would cause duplicates due to timestamp differences between local and server time.
-    // History is only reloaded on page refresh (initial campaign load).
+    // If this was a streamed response, add the streamed content to history, then clear streaming state.
+    // Don't reload from backend - we have the content right here in transformed data.
     const wasStreamed = Boolean(transformed?.streamed || structured?.streamed);
     if (wasStreamed) {
-      logCampaignStartTrace('Stream complete - clearing streaming state only', { sessionId });
+      // Get the final streamed content to add to history
+      const dmMessageText = transformed?.narrative || transformed?.answer || '';
+      if (dmMessageText.trim()) {
+        logCampaignStartTrace('Adding streamed message to history', { sessionId, textLength: dmMessageText.length });
+        addDMMessage(sessionId, dmMessageText.trim(), {
+          hasAudio: Boolean(transformed?.audio),
+          structuredContent: transformed || null,
+          isStreamed: true,
+        });
+      }
+      // Now clear the streaming display
       clearStreaming(sessionId);
     }
 
