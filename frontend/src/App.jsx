@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/Auth0Context.jsx';
 import SharedHeaderLayout from './components/layout/SharedHeaderLayout.jsx';
 import LobbyButton from './components/layout/LobbyButton.jsx';
@@ -104,6 +104,7 @@ class ErrorBoundary extends React.Component {
 
 function App() {
   const { sessionId } = useParams(); // Get session ID from URL
+  const navigate = useNavigate(); // Navigation for routing to campaigns
   const { user, handleAuthError, getAccessTokenSilently, refreshAccessToken } = useAuth();
 
   // Synchronized audio streaming
@@ -244,6 +245,7 @@ function App() {
     updateStreamingResponse,
     clearStreaming,
     setCampaignName,
+    navigate,
   });
 
   const refreshActiveCampaignState = useCallback(async () => {
@@ -1461,7 +1463,7 @@ function App() {
             <UnifiedLoadingIndicator />
             {currentCampaignId && <SettingsButton onClick={() => setIsSettingsModalOpen(true)} />}
             <LobbyButton />
-            <button onClick={handleArenaQuickStart} className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors font-semibold" title="Quick start 2v2 arena combat">
+            <button onClick={handleArenaQuickStart} disabled={isLoading} className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed" title="Quick start 2v2 arena combat">
               ⚔️ Fight in Arena
             </button>
             {/* Characters button removed - will be added in followup */}

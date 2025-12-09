@@ -27,7 +27,8 @@ export function useCampaignOperations({
   updateStreamingNarrative,
   updateStreamingResponse,
   clearStreaming,
-  setCampaignName, // Add setCampaignName here
+  setCampaignName,
+  navigate, // Add navigate for routing to campaigns
 }) {
   /**
    * Select and load a campaign
@@ -263,11 +264,10 @@ export function useCampaignOperations({
       console.log('⚔️ Arena quick start response:', response);
 
       if (response.success && response.campaign_id) {
-        // Load the created campaign
-        await handleSelectCampaign(response.campaign_id, true);
+        // Navigate to the arena campaign DM view
+        navigate(`/${response.campaign_id}/dm`);
 
-        // Show success message
-        console.log('✅ Arena campaign created and loaded');
+        console.log('✅ Arena campaign created and navigated to:', response.campaign_id);
       } else {
         throw new Error('Failed to create arena campaign');
       }
@@ -276,7 +276,7 @@ export function useCampaignOperations({
       setError(`Failed to start arena: ${error.message}`);
       setIsLoading(false);
     }
-  }, [setIsLoading, setError, handleSelectCampaign]);
+  }, [setIsLoading, setError, navigate]);
 
 
   /**
