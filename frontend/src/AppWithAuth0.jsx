@@ -317,6 +317,10 @@ const AppWithAuth0 = () => {
               path="/test/collaborative-editor"
               element={<CollaborativeEditorTest />}
             />
+            <Route
+              path="/test/streaming-narrative"
+              element={<StreamingNarrativeTest />}
+            />
 
             {/* Landing page and session-based routes */}
             <Route

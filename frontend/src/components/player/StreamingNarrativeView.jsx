@@ -24,7 +24,22 @@ const StreamingNarrativeView = ({
   onImageGenerated,
   campaignId,
 }) => {
-  const hasStreamingContent = narrative || playerResponse;
+  // Debug: Log only when messages change (not during streaming)
+  // Uncomment for detailed debugging:
+  // console.log('📜 StreamingNarrativeView render:', { messagesCount: messages.length });
+
+  // Check if streaming content already exists in message history to prevent duplicates
+  const streamingTextNormalized = (narrative || playerResponse || '').replace(/\s+/g, ' ').trim();
+  const streamingAlreadyInHistory = useMemo(() => {
+    if (!streamingTextNormalized) return false;
+    return messages.some(msg => {
+      if (msg.sender !== 'dm') return false;
+      const msgText = (msg.text || '').replace(/\s+/g, ' ').trim();
+      return msgText === streamingTextNormalized;
+    });
+  }, [messages, streamingTextNormalized]);
+
+  const hasStreamingContent = (narrative || playerResponse) && !streamingAlreadyInHistory;
   const containerRef = useRef(null);
   const latestMessageRef = useRef(null);
   const streamingContentRef = useRef(null);

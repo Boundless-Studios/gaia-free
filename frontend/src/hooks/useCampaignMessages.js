@@ -544,23 +544,26 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
       const normalizedAnswer = normalizeMessageText(text);
       let messageAdded = false;
 
+      // Check for duplicates based on content, not timestamp
+      // This prevents duplicates that arrive from different sources (HTTP vs WebSocket)
+      // even if they have different timestamps
+
       setSessionMessages(sessionId, (prev) => {
-        // Check for duplicates
-        const hasDuplicate = prev.some((msg) => {
-          if (msg.sender !== 'dm') {
-            return false;
-          }
+        // Get the last N DM messages to check for duplicates
+        // We limit to last 10 to allow the same text later in the conversation
+        const RECENT_MESSAGES_TO_CHECK = 10;
+        const recentDmMessages = prev
+          .filter((msg) => msg.sender === 'dm')
+          .slice(-RECENT_MESSAGES_TO_CHECK);
+
+        // Check if this exact text already exists in recent DM messages
+        const hasDuplicate = recentDmMessages.some((msg) => {
           const candidateText = normalizeMessageText(msg.text);
-          if (candidateText !== normalizedAnswer) {
-            return false;
-          }
-          if (!msg.timestamp) {
-            return false;
-          }
-          return new Date(msg.timestamp).getTime() === new Date(timestamp).getTime();
+          return candidateText === normalizedAnswer;
         });
 
         if (hasDuplicate) {
+          console.log('🔄 Skipping duplicate DM message (same text in recent messages)');
           return prev;
         }
 
