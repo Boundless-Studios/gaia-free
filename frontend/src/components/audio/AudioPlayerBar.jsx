@@ -51,13 +51,25 @@ const AudioPlayerBar = ({
     return null;
   }
 
-  // Handle unlock - try both unlock methods
+  // Handle unlock - try both unlock methods IN PARALLEL
+  // iOS Safari requires the user gesture to be "active" when play() is called,
+  // so we run both unlocks simultaneously to stay within the gesture context
   const handleUnlockAudio = async () => {
-    if (streamNeedsGesture) {
-      await resumePlayback();
-    }
+    const unlockPromises = [];
+
+    // Unlock user audio queue first (plays silent audio to prime browser)
     if (userAudioBlocked && onUnlockUserAudio) {
-      await onUnlockUserAudio();
+      unlockPromises.push(onUnlockUserAudio());
+    }
+
+    // Resume stream playback
+    if (streamNeedsGesture) {
+      unlockPromises.push(resumePlayback());
+    }
+
+    // Run all unlocks in parallel within the same gesture context
+    if (unlockPromises.length > 0) {
+      await Promise.all(unlockPromises);
     }
   };
 
