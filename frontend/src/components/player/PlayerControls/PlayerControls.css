@@ -255,11 +255,13 @@
 
 .message-content p {
   margin: 0.25rem 0;
+  white-space: pre-wrap;
 }
 
 .message-answer {
   font-weight: 500;
   color: #fbbf24;
+  white-space: pre-wrap;
 }
 
 .message-narrative {

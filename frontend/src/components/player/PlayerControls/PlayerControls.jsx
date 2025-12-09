@@ -422,10 +422,7 @@ const PlayerControls = ({
                           {msg.content.answer && (
                             <p className="message-answer">{msg.content.answer}</p>
                           )}
-                          {msg.content.narrative && (
-                            <p className="message-narrative">{msg.content.narrative}</p>
-                          )}
-                          {!msg.content.answer && !msg.content.narrative && (
+                          {!msg.content.answer && (
                             <p>{JSON.stringify(msg.content)}</p>
                           )}
                         </div>
