@@ -28,7 +28,10 @@ const PlayerControls = ({
   pendingObservations = [],
   onCopyObservation = null,
   // Secondary player observation submission
-  onSubmitObservation = null
+  onSubmitObservation = null,
+  // Audio unlock props
+  userAudioBlocked = false,
+  onUnlockUserAudio = null
 }) => {
   const [activeTab, setActiveTab] = useState('voice');
   const [recentMedia, setRecentMedia] = useState([]);
@@ -480,6 +483,16 @@ const PlayerControls = ({
             )}
           </button>
         ))}
+        {/* Inline audio unlock indicator */}
+        {userAudioBlocked && onUnlockUserAudio && (
+          <button
+            className="audio-unlock-inline"
+            onClick={onUnlockUserAudio}
+            title="Tap to enable audio"
+          >
+            🔊
+          </button>
+        )}
       </div>
 
       {/* Tab Content */}

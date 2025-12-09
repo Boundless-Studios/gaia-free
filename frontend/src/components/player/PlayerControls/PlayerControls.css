@@ -78,6 +78,34 @@
   50% { transform: scale(1.2); opacity: 0.7; }
 }
 
+/* Inline Audio Unlock Button */
+.audio-unlock-inline {
+  background: #2563eb;
+  border: none;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-left: auto;
+  margin-right: 0.5rem;
+  animation: audio-unlock-pulse 1.5s ease-in-out infinite;
+  transition: transform 0.15s ease;
+}
+
+.audio-unlock-inline:hover {
+  background: #1d4ed8;
+  transform: scale(1.05);
+}
+
+.audio-unlock-inline:active {
+  transform: scale(0.95);
+}
+
+@keyframes audio-unlock-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
+}
+
 /* Tab Content */
 .controls-content {
   flex: 1;
