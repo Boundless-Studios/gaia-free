@@ -479,6 +479,83 @@
 }
 
 /* Responsive Design */
+
+/* iPad Landscape Optimization (1080x810px) */
+@media (max-width: 1100px) and (min-width: 1025px) {
+  .narrative-overlay {
+    padding: 1.25rem;
+    max-height: 70%;
+  }
+
+  .narrative-title {
+    font-size: 1rem;
+  }
+
+  .narrative-icon {
+    font-size: 1.1rem;
+  }
+
+  .narrative-paragraph {
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .narrative-play-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .narrative-stop-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+  }
+
+  .narrative-text {
+    max-height: calc(100vh - 250px);
+  }
+
+  .answer-label,
+  .narrative-label {
+    font-size: 0.75rem;
+  }
+
+  .answer-text {
+    font-size: 0.85rem;
+  }
+
+  .answer-section,
+  .narrative-section {
+    padding: 0.6rem;
+  }
+
+  .modal-close {
+    width: 42px;
+    height: 42px;
+    font-size: 1.2rem;
+  }
+
+  .modal-nav-button {
+    width: 50px;
+    height: 50px;
+    font-size: 1.75rem;
+  }
+
+  .modal-image-counter {
+    padding: 0.4rem 1.2rem;
+    font-size: 0.85rem;
+  }
+
+  .placeholder-title {
+    font-size: 1.3rem;
+  }
+
+  .placeholder-description {
+    font-size: 0.9rem;
+  }
+}
+
 @media (max-width: 768px) {
   .narrative-overlay {
     padding: 1rem;
