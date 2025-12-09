@@ -38,7 +38,10 @@ const PlayerView = ({
   pendingObservations = [],
   onCopyObservation = null,
   // Secondary player observation submission
-  onSubmitObservation = null
+  onSubmitObservation = null,
+  // Audio unlock props (for iOS mobile support)
+  userAudioBlocked = false,
+  onUnlockUserAudio = null,
 }) => {
   // Debug: Log observations props received by PlayerView
   console.log('👁️ PlayerView render:', {
@@ -235,7 +238,11 @@ const PlayerView = ({
 
         {/* Bottom Panel: Player Controls */}
         <div className="player-view-controls" data-testid="player-controls">
-          <AudioPlayerBar sessionId={campaignId} />
+          <AudioPlayerBar
+            sessionId={campaignId}
+            userAudioBlocked={userAudioBlocked}
+            onUnlockUserAudio={onUnlockUserAudio}
+          />
           <PlayerControls
             campaignId={campaignId}
             structuredData={gameState}

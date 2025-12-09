@@ -5,6 +5,7 @@ import os
 import logging
 from agents import ModelProvider, OpenAIChatCompletionsModel, Model
 from openai import AsyncOpenAI
+from backend.src.gaia.infra.llm.model_manager import PreferredModels
 from gaia.infra.llm.providers.ollama import ollama_manager
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ CLAUDE_BASE_URL = os.getenv("CLAUDE_BASE_URL") or "https://api.anthropic.com/v1"
 # Parasail configuration
 PARASAIL_API_KEY = os.getenv("PARASAIL_API_KEY")
 PARASAIL_BASE_URL = "https://api.parasail.io/v1"
-PARASAIL_MODEL = "parasail-kimi-k2-instruct-low-latency"
+PARASAIL_MODEL = PreferredModels.KIMI
 
 class ClaudeModelProvider(ModelProvider):
     """Custom model provider for Claude."""

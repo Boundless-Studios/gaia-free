@@ -26,7 +26,12 @@ const formatDuration = (seconds) => {
   return `${mins}:${secs}`;
 };
 
-const AudioPlayerBar = ({ sessionId = 'default', queueInfo = null }) => {
+const AudioPlayerBar = ({
+  sessionId = 'default',
+  queueInfo = null,
+  userAudioBlocked = false,
+  onUnlockUserAudio = null,
+}) => {
   const {
     currentSessionId: liveSessionId,
     isStreaming,
@@ -38,10 +43,23 @@ const AudioPlayerBar = ({ sessionId = 'default', queueInfo = null }) => {
     pendingChunkCount,
   } = useAudioStream();
 
-  // Only show audio player bar if streaming or needs gesture
-  if (!isStreaming && !streamNeedsGesture && !streamError && pendingChunkCount === 0) {
+  // Combine both audio blocked states
+  const audioNeedsUnlock = streamNeedsGesture || userAudioBlocked;
+
+  // Only show audio player bar if streaming, needs gesture, or user audio is blocked
+  if (!isStreaming && !audioNeedsUnlock && !streamError && pendingChunkCount === 0) {
     return null;
   }
+
+  // Handle unlock - try both unlock methods
+  const handleUnlockAudio = async () => {
+    if (streamNeedsGesture) {
+      await resumePlayback();
+    }
+    if (userAudioBlocked && onUnlockUserAudio) {
+      await onUnlockUserAudio();
+    }
+  };
 
   const backendPendingRequests = queueInfo?.pendingRequests ?? [];
   const backendPendingChunks = backendPendingRequests.reduce(
@@ -67,7 +85,7 @@ const AudioPlayerBar = ({ sessionId = 'default', queueInfo = null }) => {
         <span
           className={`audio-player-bar__status-dot ${
             isStreaming ? 'audio-player-bar__status-dot--live'
-            : streamNeedsGesture ? 'audio-player-bar__status-dot--warn'
+            : audioNeedsUnlock ? 'audio-player-bar__status-dot--warn'
             : 'audio-player-bar__status-dot--idle'
           }`}
         />
@@ -76,8 +94,8 @@ const AudioPlayerBar = ({ sessionId = 'default', queueInfo = null }) => {
           <div className="audio-player-bar__live-desc">
             {isStreaming
               ? `Listening to ${liveSessionId || 'active campaign'}${streamQueueSuffix}`
-              : streamNeedsGesture
-                ? `Click to join the narration${streamQueueSuffix}`
+              : audioNeedsUnlock
+                ? `Tap to enable audio${streamQueueSuffix}`
                 : streamError
                   ? streamError
                   : `Waiting for narration${streamQueueSuffix}`}
@@ -101,16 +119,16 @@ const AudioPlayerBar = ({ sessionId = 'default', queueInfo = null }) => {
         </div>
       </div>
       <div className="audio-player-bar__live-actions">
-        {streamNeedsGesture && (
+        {audioNeedsUnlock && (
           <button
             type="button"
             className="audio-player-bar__button audio-player-bar__button--primary"
-            onClick={resumePlayback}
+            onClick={handleUnlockAudio}
           >
-            Join stream
+            Enable Audio
           </button>
         )}
-        {(isStreaming || streamNeedsGesture) && (
+        {(isStreaming || audioNeedsUnlock) && (
           <button
             type="button"
             className={`audio-player-bar__button ${streamMuted ? 'audio-player-bar__button--muted' : ''}`}
@@ -147,6 +165,8 @@ AudioPlayerBar.propTypes = {
     ),
     timestamp: PropTypes.string,
   }),
+  userAudioBlocked: PropTypes.bool,
+  onUnlockUserAudio: PropTypes.func,
 };
 
 export default AudioPlayerBar;

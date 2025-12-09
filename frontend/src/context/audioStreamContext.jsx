@@ -325,16 +325,32 @@ export const AudioStreamProvider = ({ children }) => {
   const resumePlayback = useCallback(async () => {
     if (!audioRef.current) return;
 
+    const audio = audioRef.current;
+
+    // iOS Safari sometimes needs a load() call before play() to properly "unlock"
+    // the audio element after a user gesture. This is especially true when the
+    // source was set before the user gesture occurred.
     try {
-      await audioRef.current.play();
+      // If we have a source, reload it to ensure iOS Safari recognizes the user gesture
+      if (audio.src) {
+        console.log('[AUDIO_DEBUG] 📱 Reloading audio source for iOS compatibility');
+        audio.load();
+      }
+
+      await audio.play();
       setNeedsUserGesture(false);
+      setLastError(null);
       console.log('[AUDIO_STREAM] Playback resumed after user gesture');
     } catch (error) {
-      if (error.name === 'NotSupportedError') {
-        console.warn('[AUDIO_STREAM] Existing source unsupported, retrying stream attach');
+      console.warn('[AUDIO_DEBUG] ⚠️ First play attempt failed:', error.name, error.message);
+
+      // On iOS Safari, if the source is stale or the audio context is locked,
+      // we may need to fully retry the stream from scratch
+      if (error.name === 'NotSupportedError' || error.name === 'NotAllowedError') {
+        console.warn('[AUDIO_STREAM] Retrying full stream attach after user gesture');
         const retried = await retryLastStream();
         if (!retried) {
-          setLastError(error.message);
+          setLastError('Unable to start audio. Please try again.');
         }
       } else {
         console.error('[AUDIO_STREAM] Failed to resume playback:', error);
