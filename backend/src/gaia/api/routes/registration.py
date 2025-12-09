@@ -189,9 +189,11 @@ async def request_access(
 
         # Send access request email to admin
         email_service = get_email_service()
-        admin_email = os.getenv("PRIMARY_ADMIN_EMAIL")
+        admin_email = os.environ.get("PRIMARY_ADMIN_EMAIL")
         if not admin_email:
-            logger.warning("PRIMARY_ADMIN_EMAIL not configured, skipping admin notification")
+            logger.error("PRIMARY_ADMIN_EMAIL not configured - cannot send admin notification")
+            current_user.admin_notification_failed = True
+            current_user.admin_notification_error = "PRIMARY_ADMIN_EMAIL not configured"
         else:
             try:
                 success = await email_service.send_access_request_email(

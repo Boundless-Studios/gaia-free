@@ -61,12 +61,10 @@ async def check_and_notify_pending_registrations() -> None:
 
             # Get email service
             email_service = get_email_service()
-            admin_email = os.getenv("PRIMARY_ADMIN_EMAIL")
+            admin_email = os.environ.get("PRIMARY_ADMIN_EMAIL")
 
             if not admin_email:
-                logger.warning(
-                    "⚠️  PRIMARY_ADMIN_EMAIL not configured, cannot send admin notifications"
-                )
+                logger.error("PRIMARY_ADMIN_EMAIL not configured - cannot send admin notifications")
                 return
 
             # Attempt to send notification for each user

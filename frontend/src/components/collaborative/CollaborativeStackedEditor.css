@@ -3,9 +3,8 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
-  min-height: 200px;
-  max-height: none;
   min-height: 0;
+  max-height: none;
   overflow: hidden;
 }
 
@@ -235,7 +234,7 @@
   line-height: 1.5;
   color: #ffffff;
   resize: vertical;
-  min-height: 80px;
+  min-height: 15px;
   max-height: none;
   overflow-y: auto;
   vertical-align: top;
@@ -352,8 +351,8 @@
   grid-template-columns: repeat(auto-fit, minmax(220px, 320px));
   grid-auto-rows: minmax(140px, auto);
   grid-auto-flow: row dense;
-  gap: 12px;
-  padding: 10px 12px 10px 0;
+  gap: 8px;
+  padding: 6px 8px 6px 0;
   align-content: flex-start;
   justify-content: flex-start;
   margin-right: auto;
@@ -397,7 +396,7 @@
 .stacked-collaborative-editor.grid-layout .player-textarea {
   background: rgba(0, 0, 0, 0.7);
   padding: 6px 10px;
-  min-height: 120px;
+  min-height: 30px;
   max-height: 70vh;
   border-radius: 6px;
   height: auto;
@@ -433,4 +432,22 @@
 .inline-submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Responsive Design - iPad and similar tablets */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .stacked-collaborative-editor.grid-layout .player-sections-container {
+    gap: 6px;
+    padding: 4px 6px 4px 0;
+  }
+
+  .stacked-collaborative-editor.grid-layout .player-section {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .stacked-collaborative-editor.grid-layout .player-textarea {
+    min-height: 25px;
+    padding: 5px 8px;
+  }
 }
