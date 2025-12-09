@@ -231,7 +231,7 @@
 /* iPad Landscape Optimization (1080x810px) */
 @media (max-width: 1100px) and (min-width: 1025px) {
   .player-view-grid {
-    grid-template-columns: minmax(180px, auto) 1fr;
+    grid-template-columns: min-content 1fr;
     grid-template-rows: 1fr minmax(260px, 38vh);
     gap: 0.375rem;
     padding: 0.375rem;
