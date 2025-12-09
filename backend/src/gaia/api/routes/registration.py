@@ -189,27 +189,33 @@ async def request_access(
 
         # Send access request email to admin
         email_service = get_email_service()
-        try:
-            success = await email_service.send_access_request_email(
-                admin_email="ilya@your-domain.com",
-                user_email=current_user.email,
-                display_name=current_user.display_name or current_user.email,
-                reason=request.reason,
-            )
-            if success:
-                current_user.admin_notified_at = datetime.now(timezone.utc)
-                current_user.admin_notification_failed = False
-                current_user.admin_notification_error = None
-                logger.info(f"Access request email sent to admin for {current_user.email}")
-            else:
-                current_user.admin_notification_failed = True
-                current_user.admin_notification_error = "Email service returned False"
-                logger.warning(f"Email service returned False for {current_user.email}")
-        except Exception as e:
+        admin_email = os.environ.get("PRIMARY_ADMIN_EMAIL")
+        if not admin_email:
+            logger.error("PRIMARY_ADMIN_EMAIL not configured - cannot send admin notification")
             current_user.admin_notification_failed = True
-            current_user.admin_notification_error = str(e)
-            logger.error(f"Failed to send access request email: {e}")
-            # Don't fail the request if email fails
+            current_user.admin_notification_error = "PRIMARY_ADMIN_EMAIL not configured"
+        else:
+            try:
+                success = await email_service.send_access_request_email(
+                    admin_email=admin_email,
+                    user_email=current_user.email,
+                    display_name=current_user.display_name or current_user.email,
+                    reason=request.reason,
+                )
+                if success:
+                    current_user.admin_notified_at = datetime.now(timezone.utc)
+                    current_user.admin_notification_failed = False
+                    current_user.admin_notification_error = None
+                    logger.info(f"Access request email sent to admin for {current_user.email}")
+                else:
+                    current_user.admin_notification_failed = True
+                    current_user.admin_notification_error = "Email service returned False"
+                    logger.warning(f"Email service returned False for {current_user.email}")
+            except Exception as e:
+                current_user.admin_notification_failed = True
+                current_user.admin_notification_error = str(e)
+                logger.error(f"Failed to send access request email: {e}")
+                # Don't fail the request if email fails
 
         return {
             "message": "Access request submitted successfully",
