@@ -411,6 +411,12 @@ const PlayerControls = ({
                     <div className="message-header">
                       <span className="message-role">
                         {msg.role === 'assistant' ? '🎭 DM' : '👤 Player'}
+                        {msg.role === 'assistant' && msg.content?.turn_info?.character_name && (
+                          <> • {msg.content.turn_info.character_name}</>
+                        )}
+                        {msg.role === 'assistant' && msg.content?.turn_info?.turn_number && (
+                          <> • Turn {msg.content.turn_info.turn_number}</>
+                        )}
                       </span>
                       <span className="message-time">
                         {new Date(msg.timestamp).toLocaleTimeString()}
