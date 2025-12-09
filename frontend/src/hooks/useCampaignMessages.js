@@ -386,6 +386,10 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
   const [messagesBySession, setMessagesBySession] = useState({});
   const messagesBySessionRef = useRef(messagesBySession);
 
+  // Track last reload time per session to debounce rapid reloads
+  const lastReloadTimeRef = useRef({});
+  const RELOAD_DEBOUNCE_MS = 2000; // Minimum 2 seconds between reloads
+
   // Keep ref in sync with state
   useEffect(() => {
     messagesBySessionRef.current = messagesBySession;
@@ -542,10 +546,14 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
 
       const timestamp = options.timestamp || new Date().toISOString();
       const normalizedAnswer = normalizeMessageText(text);
+      const currentTime = new Date(timestamp).getTime();
       let messageAdded = false;
 
+      // Time window for considering messages as duplicates (30 seconds)
+      const DUPLICATE_TIME_WINDOW_MS = 30 * 1000;
+
       setSessionMessages(sessionId, (prev) => {
-        // Check for duplicates
+        // Check for duplicates - same text content within time window
         const hasDuplicate = prev.some((msg) => {
           if (msg.sender !== 'dm') {
             return false;
@@ -554,13 +562,17 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
           if (candidateText !== normalizedAnswer) {
             return false;
           }
+          // If text matches, consider it a duplicate if within time window
           if (!msg.timestamp) {
-            return false;
+            // No timestamp on existing message but text matches - likely a duplicate
+            return true;
           }
-          return new Date(msg.timestamp).getTime() === new Date(timestamp).getTime();
+          const msgTime = new Date(msg.timestamp).getTime();
+          return Math.abs(msgTime - currentTime) <= DUPLICATE_TIME_WINDOW_MS;
         });
 
         if (hasDuplicate) {
+          console.log('🔄 Skipping duplicate DM message (same text within time window)');
           return prev;
         }
 
@@ -611,6 +623,7 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
   /**
    * Reload chat history from backend after streaming response
    * Merges backend messages and clears streaming state
+   * Debounced to prevent duplicate messages from rapid WebSocket events
    *
    * @param {string} sessionId - The session to reload
    */
@@ -619,6 +632,22 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
       if (!sessionId) {
         return;
       }
+
+      // Debounce: skip if we reloaded this session recently
+      const now = Date.now();
+      const lastReload = lastReloadTimeRef.current[sessionId] || 0;
+      if (now - lastReload < RELOAD_DEBOUNCE_MS) {
+        console.log('🔄 Skipping reload - debounced (last reload', now - lastReload, 'ms ago)');
+        // Still clear streaming state even if skipping reload
+        if (streamingState.clearNarrativeStreaming) {
+          streamingState.clearNarrativeStreaming(sessionId);
+        }
+        if (streamingState.clearResponseStreaming) {
+          streamingState.clearResponseStreaming(sessionId);
+        }
+        return;
+      }
+      lastReloadTimeRef.current[sessionId] = now;
 
       console.log('🔄 Reloading chat history after streamed response');
 

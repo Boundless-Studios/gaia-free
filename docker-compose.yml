@@ -35,6 +35,8 @@ services:
       IMAGE_STORAGE_BUCKET: "gaia-media-stg"
       ENVIRONMENT: "development"
       DISABLE_AUTH: ${DISABLE_AUTH:-false}
+      # Enable automatic scene image generation via Visual Narrator
+      AUTO_GENERATE_SCENE_IMAGES: "true"
     volumes:
       # Mount gcloud credentials for GCS access in dev
       - ${HOME}/.config/gcloud:/home/gaia/.config/gcloud:ro
