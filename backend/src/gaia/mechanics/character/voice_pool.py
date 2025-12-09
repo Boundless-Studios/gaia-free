@@ -48,19 +48,19 @@ class VoicePool:
     
     def _define_archetypes(self) -> Dict[VoiceArchetype, List[str]]:
         """Define voice archetypes for different character types.
-        
+
         Returns:
             Mapping of archetypes to suitable voices
         """
         # Only use voices that exist in VoiceRegistry
         return {
-            VoiceArchetype.HERO: ["caleb", "nathaniel", "priyanka"],
-            VoiceArchetype.VILLAIN: ["cornelius", "caleb"],
+            VoiceArchetype.HERO: ["emmaline", "nathaniel", "priyanka"],
+            VoiceArchetype.VILLAIN: ["oxley", "cornelius"],
             VoiceArchetype.MENTOR: ["cornelius", "priyanka", "nathaniel"],
-            VoiceArchetype.MERCHANT: ["priyanka", "jen-soft", "nathaniel"],
-            VoiceArchetype.NARRATOR: ["nathaniel", "cornelius", "jen-soft"],
-            VoiceArchetype.CREATURE: ["cornelius", "caleb"],
-            VoiceArchetype.CHILD: ["jen-soft", "priyanka"],
+            VoiceArchetype.MERCHANT: ["priyanka", "rob", "nathaniel"],
+            VoiceArchetype.NARRATOR: ["nathaniel", "cornelius", "emmaline"],
+            VoiceArchetype.CREATURE: ["oxley", "cornelius"],
+            VoiceArchetype.CHILD: ["emmaline", "priyanka"],
             VoiceArchetype.ELDER: ["cornelius", "nathaniel"]
         }
     
