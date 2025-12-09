@@ -11,6 +11,7 @@ This prevents users from being stuck indefinitely in "waiting for approval" stat
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
 from typing import List
 
@@ -60,7 +61,11 @@ async def check_and_notify_pending_registrations() -> None:
 
             # Get email service
             email_service = get_email_service()
-            admin_email = "ilya@magicstudios.ai"
+            admin_email = os.environ.get("PRIMARY_ADMIN_EMAIL")
+
+            if not admin_email:
+                logger.error("PRIMARY_ADMIN_EMAIL not configured - cannot send admin notifications")
+                return
 
             # Attempt to send notification for each user
             success_count = 0
