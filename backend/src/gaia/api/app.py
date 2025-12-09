@@ -1696,7 +1696,8 @@ async def serve_image(
         session_id = None
         parts = Path(filename).parts
         for part in parts:
-            if re.match(r"(campaign_\d+)", part):
+            # Match campaign_X, debug_campaign_X, test_campaign_X, etc.
+            if re.match(r"(\w*campaign_\d+)", part):
                 session_id = part
                 break
 

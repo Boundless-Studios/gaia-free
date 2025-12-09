@@ -120,6 +120,7 @@ class RunwareImageService(ImageProvider):
         self.models = RUNWARE_MODELS
         self.api_key = os.environ.get('RUNWARE_API_KEY')
         self.client = None
+        self._connect_lock = asyncio.Lock()  # Prevent concurrent connection attempts
 
         # Configuration from environment with fallbacks to defaults
         self.timeout = int(os.getenv('RUNWARE_TIMEOUT', self.DEFAULT_TIMEOUT))
@@ -158,56 +159,62 @@ class RunwareImageService(ImageProvider):
         Lazy connection - called on first use.
         Reuses existing connection if available. The SDK handles reconnection
         automatically if the connection drops.
+
+        Uses a lock to prevent race conditions when multiple requests try to
+        connect simultaneously (one request could disconnect another's in-progress
+        connection if it sees an unauthenticated client).
         """
-        # Check if API key was loaded after initialization (common with env var loading)
-        if not self.api_key:
-            self.api_key = os.environ.get('RUNWARE_API_KEY')
-            if self.api_key:
-                logger.debug("🔄 Runware API key loaded from environment after initialization")
+        # Use lock to prevent concurrent connection attempts
+        async with self._connect_lock:
+            # Check if API key was loaded after initialization (common with env var loading)
+            if not self.api_key:
+                self.api_key = os.environ.get('RUNWARE_API_KEY')
+                if self.api_key:
+                    logger.debug("🔄 Runware API key loaded from environment after initialization")
 
-        if not self.is_available():
-            raise RuntimeError(
-                "Runware not available. "
-                f"SDK available: {RUNWARE_AVAILABLE}, "
-                f"API key configured: {bool(self.api_key)}"
-            )
+            if not self.is_available():
+                raise RuntimeError(
+                    "Runware not available. "
+                    f"SDK available: {RUNWARE_AVAILABLE}, "
+                    f"API key configured: {bool(self.api_key)}"
+                )
 
-        # Check if we have an existing client and if it's authenticated
-        if self.client:
-            try:
-                # The SDK's isAuthenticated() is the reliable check
-                if self.client.isAuthenticated():
-                    logger.debug("Reusing existing authenticated Runware WebSocket connection")
-                    # Ensure connection is still active before returning
-                    await self.client.ensureConnection()
-                    return
-                else:
-                    # Connection exists but not authenticated - need to reconnect
-                    logger.warning("Existing connection not authenticated, creating new connection...")
-                    try:
-                        await self.client.disconnect()
-                    except Exception:
-                        pass  # Ignore disconnect errors
+            # Check if we have an existing client and if it's authenticated
+            if self.client:
+                try:
+                    # The SDK's isAuthenticated() is the reliable check
+                    if self.client.isAuthenticated():
+                        logger.debug("Reusing existing authenticated Runware WebSocket connection")
+                        # Ensure connection is still active before returning
+                        await self.client.ensureConnection()
+                        return
+                    else:
+                        # Connection exists but not authenticated - need to reconnect
+                        logger.warning("Existing connection not authenticated, creating new connection...")
+                        try:
+                            await self.client.disconnect()
+                        except Exception:
+                            pass  # Ignore disconnect errors
+                        self.client = None
+                except Exception as e:
+                    # If we can't check authentication status, assume connection is bad
+                    logger.warning(f"Error checking connection status: {e}, creating new connection")
                     self.client = None
-            except Exception as e:
-                # If we can't check authentication status, assume connection is bad
-                logger.warning(f"Error checking connection status: {e}, creating new connection")
-                self.client = None
 
-        # Create new client and connect
-        logger.debug("Establishing new Runware WebSocket connection...")
-        self.client = Runware(api_key=self.api_key)
-        await self.client.connect()
+            # Create new client and connect
+            logger.debug("Establishing new Runware WebSocket connection...")
+            self.client = Runware(api_key=self.api_key)
+            await self.client.connect()
 
-        # Verify authentication succeeded
-        if not self.client.isAuthenticated():
-            self.client = None  # Clear invalid client
-            error_msg = "Runware authentication failed - invalid API key"
-            logger.error(f"❌ {error_msg}")
-            raise RuntimeError(error_msg)
+            # Verify authentication succeeded
+            if not self.client.isAuthenticated():
+                self.client = None  # Clear invalid client
+                error_msg = "Runware authentication failed - invalid API key"
+                logger.error(f"❌ {error_msg}")
+                raise RuntimeError(error_msg)
 
-        # Mark authentication as validated
-        logger.debug("✅ Connected to Runware WebSocket API (authentication verified)")
+            # Mark authentication as validated
+            logger.debug("✅ Connected to Runware WebSocket API (authentication verified)")
     
     async def disconnect(self):
         """
