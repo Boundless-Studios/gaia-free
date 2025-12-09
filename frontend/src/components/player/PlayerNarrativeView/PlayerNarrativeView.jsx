@@ -14,6 +14,7 @@ const PlayerNarrativeView = ({
   isResponseStreaming = false
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [images, setImages] = useState([]);
   const narrativeHistoryRef = useRef(null);
 
@@ -65,19 +66,15 @@ const PlayerNarrativeView = ({
         <SceneImageDisplay
           image={latestImage}
           campaignId={campaignId}
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setCurrentImageIndex(0);
+            setIsModalOpen(true);
+          }}
         />
 
         {/* Narrative Text Overlay */}
         <div className="narrative-overlay">
           <div className="narrative-content">
-            <div className="narrative-header">
-              <h2 className="narrative-title">
-                <span className="narrative-icon">📖</span>
-                Story
-              </h2>
-            </div>
-
             {/* Narrative Text */}
             <div className="narrative-text">
               {structuredData.all_narratives && structuredData.all_narratives.length > 0 ? (
@@ -190,12 +187,37 @@ const PlayerNarrativeView = ({
               ✕
             </button>
 
-            {latestImage && (
-              <img
-                src={latestImage.imageUrl || `${apiService.baseUrl}${latestImage.path}`}
-                alt={latestImage.imagePrompt || 'Scene image'}
-                className="modal-image"
-              />
+            {images.length > 0 && images[currentImageIndex] && (
+              <>
+                <img
+                  src={images[currentImageIndex].imageUrl || `${apiService.baseUrl}${images[currentImageIndex].path}`}
+                  alt={images[currentImageIndex].imagePrompt || 'Scene image'}
+                  className="modal-image"
+                />
+
+                {/* Navigation Controls */}
+                {images.length > 1 && (
+                  <>
+                    <button
+                      className="modal-nav-button modal-nav-prev"
+                      onClick={() => setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)}
+                      disabled={currentImageIndex === 0}
+                    >
+                      ‹
+                    </button>
+                    <button
+                      className="modal-nav-button modal-nav-next"
+                      onClick={() => setCurrentImageIndex((prev) => (prev + 1) % images.length)}
+                      disabled={currentImageIndex === images.length - 1}
+                    >
+                      ›
+                    </button>
+                    <div className="modal-image-counter">
+                      {currentImageIndex + 1} / {images.length}
+                    </div>
+                  </>
+                )}
+              </>
             )}
 
           </div>
