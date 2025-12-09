@@ -796,11 +796,14 @@ function App() {
       setTimeout(() => setSessionHistoryInfo(sessionId, null), 10000);
     }
 
-    // If this was a streamed response, reload chat history from backend and merge with local messages
+    // If this was a streamed response, just clear streaming state.
+    // Don't reload history - the message was already added via addDMMessage in handleSendMessage.
+    // Reloading would cause duplicates due to timestamp differences between local and server time.
+    // History is only reloaded on page refresh (initial campaign load).
     const wasStreamed = Boolean(transformed?.streamed || structured?.streamed);
     if (wasStreamed) {
-      logCampaignStartTrace('Reloading history after streamed update', { sessionId });
-      reloadHistoryAfterStream(sessionId);
+      logCampaignStartTrace('Stream complete - clearing streaming state only', { sessionId });
+      clearStreaming(sessionId);
     }
 
     const existingMessages =
