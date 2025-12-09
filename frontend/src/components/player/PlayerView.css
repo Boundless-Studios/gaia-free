@@ -147,7 +147,7 @@
 /* Main Grid Layout */
 .player-view-grid {
   display: grid;
-  grid-template-columns: minmax(220px, auto) 1fr;
+  grid-template-columns: min-content 1fr;
   grid-template-rows: 1fr minmax(340px, 45vh);
   grid-template-areas:
     "character narrative"
@@ -205,6 +205,53 @@
 }
 
 /* Responsive Design */
+
+/* Portrait Mode Optimization - Stack vertically with compact character list */
+@media (orientation: portrait) {
+  .player-view-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr minmax(280px, 40vh);
+    grid-template-areas:
+      "character"
+      "narrative"
+      "controls";
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .player-view-character {
+    max-height: 120px; /* Compact for horizontal character list */
+  }
+
+  .player-view-controls {
+    padding: 0.5rem 0.5rem 0;
+  }
+}
+
+/* iPad Landscape Optimization (1080x810px) */
+@media (max-width: 1100px) and (min-width: 1025px) {
+  .player-view-grid {
+    grid-template-columns: minmax(180px, auto) 1fr;
+    grid-template-rows: 1fr minmax(260px, 38vh);
+    gap: 0.375rem;
+    padding: 0.375rem;
+  }
+
+  .player-view-character {
+    max-height: calc(100vh - 270px);
+  }
+
+  .player-view-narrative {
+    border-radius: 8px;
+  }
+
+  .player-view-controls {
+    border-radius: 8px 8px 0 0;
+    padding: 0.375rem 0.375rem 0;
+    gap: 0.375rem;
+  }
+}
+
 @media (max-width: 1024px) {
   .player-view-grid {
     grid-template-columns: 1fr;

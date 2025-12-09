@@ -11,18 +11,19 @@ import CharacterCard from './CharacterCard';
  * - Shows turn number at the top
  * - Tooltip on hover with full character details
  * - Polls for character updates every 10 seconds
- * - Supports both vertical (default) and horizontal orientations
+ * - Automatically detects orientation: portrait → horizontal, landscape → vertical
  */
 const PlayerAndTurnList = ({
   campaignId,
   turnInfo = null,
   currentPlayerId = null,
   compact = false,
-  orientation = 'vertical' // 'vertical' or 'horizontal'
+  orientation = null // Optional override, null = auto-detect based on screen orientation
 }) => {
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [detectedOrientation, setDetectedOrientation] = useState('vertical');
 
   // Fetch characters from API
   const fetchCharacters = async () => {
@@ -45,6 +46,30 @@ const PlayerAndTurnList = ({
     }
   };
 
+  // Detect screen orientation and update layout accordingly
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      // Check if window is wider than it is tall (landscape) or taller than wide (portrait)
+      const isPortrait = window.innerHeight > window.innerWidth;
+
+      // Portrait mode → horizontal layout (to save vertical space)
+      // Landscape mode → vertical layout (we have horizontal space)
+      setDetectedOrientation(isPortrait ? 'horizontal' : 'vertical');
+    };
+
+    // Set initial orientation
+    handleOrientationChange();
+
+    // Listen for orientation changes (both resize and orientationchange events)
+    window.addEventListener('resize', handleOrientationChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+
+    return () => {
+      window.removeEventListener('resize', handleOrientationChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, []);
+
   // Fetch characters on mount and when campaignId changes
   useEffect(() => {
     if (campaignId) {
@@ -64,6 +89,9 @@ const PlayerAndTurnList = ({
   const currentTurnCharacterId = turnInfo?.character_id || null;
   const currentTurnCharacter = turnInfo?.character_name || null;
   const currentTurn = turnInfo?.turn_number || turnInfo?.current_turn || 0;
+
+  // Use provided orientation prop, or fall back to detected orientation
+  const effectiveOrientation = orientation || detectedOrientation;
 
   if (loading) {
     return (
@@ -90,7 +118,7 @@ const PlayerAndTurnList = ({
   }
 
   return (
-    <div className={`player-and-turn-list ${compact ? 'compact' : ''} ${orientation}`}>
+    <div className={`player-and-turn-list ${compact ? 'compact' : ''} ${effectiveOrientation}`}>
       {/* Turn header */}
       <div className="turn-header">
         <div className="turn-number">🎯 Turn {currentTurn || 1}</div>
@@ -102,7 +130,7 @@ const PlayerAndTurnList = ({
       </div>
 
       {/* Character list */}
-      <div className={`character-list ${orientation}`}>
+      <div className={`character-list ${effectiveOrientation}`}>
         {characters.map((character) => {
           // Match by character_id first (most reliable), then fall back to name matching (case-insensitive)
           const isActiveTurn = currentTurnCharacterId

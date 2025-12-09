@@ -2,19 +2,22 @@
 .player-and-turn-list {
   background: #1a1a1a;
   border-radius: 8px;
-  padding: 0 16px 16px 16px;
+  padding: 8px 8px 8px 8px;
   color: #fff;
   max-height: 600px;
   overflow-y: auto;
   overflow-x: visible;
   width: fit-content;
-  min-width: 200px;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .player-and-turn-list.compact {
-  padding: 0 12px 12px 12px;
+  padding: 6px 6px 6px 6px;
   max-height: 90vh;
-  min-width: 200px;
+  min-width: 160px;
 }
 
 /* PlayerAndTurnList Container - Horizontal */
@@ -33,12 +36,14 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4px 12px;
+  padding: 2px 8px;
   background: rgba(245, 158, 11, 0.2);
   border: 1px solid rgba(245, 158, 11, 0.4);
-  border-radius: 6px;
-  margin-bottom: 12px;
-  min-height: 32px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  min-height: 24px;
+  width: fit-content;
+  align-self: center;
 }
 
 /* Turn Header - Horizontal mode (more compact) */
@@ -55,27 +60,29 @@
 }
 
 .turn-number {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   color: #f59e0b;
   margin: 0;
+  line-height: 1.2;
 }
 
 .turn-character-name {
-  font-size: 10px;
+  font-size: 9px;
   color: #fbbf24;
   font-style: italic;
   text-align: center;
   word-wrap: break-word;
   max-width: 140px;
   margin: 0;
+  line-height: 1.1;
 }
 
 /* Character List - Vertical (default) */
 .character-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -113,7 +120,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
+  padding: 6px;
   border: 2px solid transparent;
   border-radius: 8px;
   background: #2a2a2a;
@@ -149,7 +156,7 @@
 }
 
 .character-card.compact {
-  padding: 6px;
+  padding: 4px;
 }
 
 /* Character Portrait */
@@ -399,6 +406,138 @@
 }
 
 /* Responsive Design */
+
+/* Portrait Mode Optimization - Horizontal Layout with Smaller Portraits */
+@media (orientation: portrait) {
+  /* Make portraits much smaller in portrait mode to fit horizontally */
+  .player-and-turn-list.horizontal .character-portrait {
+    width: 80px;
+    height: 80px;
+  }
+
+  .player-and-turn-list.horizontal .character-portrait-placeholder {
+    width: 80px;
+    height: 80px;
+    font-size: 40px;
+  }
+
+  .player-and-turn-list.horizontal .character-card {
+    padding: 4px;
+  }
+
+  .player-and-turn-list.horizontal {
+    padding: 0 8px 8px 8px;
+  }
+
+  .player-and-turn-list.horizontal .character-list {
+    gap: 8px;
+    padding: 4px 0;
+  }
+
+  .player-and-turn-list.horizontal .turn-header {
+    padding: 4px 12px;
+    margin-bottom: 6px;
+    min-height: 28px;
+  }
+
+  .player-and-turn-list.horizontal .turn-number {
+    font-size: 13px;
+  }
+
+  .player-and-turn-list.horizontal .turn-character-name {
+    font-size: 10px;
+  }
+
+  .player-and-turn-list.horizontal .active-turn-indicator {
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    top: -6px;
+    right: -6px;
+  }
+}
+
+/* iPad Landscape Optimization (1080x810px) */
+@media (max-width: 1100px) and (min-width: 1025px) {
+  .player-and-turn-list {
+    padding: 0 10px 10px 10px;
+    max-height: 550px;
+  }
+
+  .turn-header {
+    padding: 3px 8px;
+    margin-bottom: 8px;
+    min-height: 26px;
+  }
+
+  .turn-number {
+    font-size: 12px;
+  }
+
+  .turn-character-name {
+    font-size: 9px;
+    max-width: 120px;
+  }
+
+  .character-list {
+    gap: 6px;
+  }
+
+  .character-card {
+    padding: 6px;
+  }
+
+  .character-portrait {
+    width: 120px;
+    height: 120px;
+  }
+
+  .character-portrait-placeholder {
+    width: 120px;
+    height: 120px;
+    font-size: 60px;
+  }
+
+  .character-card.compact .character-portrait {
+    width: 120px;
+    height: 120px;
+  }
+
+  .character-card.compact .character-portrait-placeholder {
+    width: 120px;
+    height: 120px;
+    font-size: 60px;
+  }
+
+  .active-turn-indicator {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+  }
+
+  .character-modal {
+    max-width: 280px;
+    min-width: 240px;
+    padding: 12px;
+  }
+
+  .tooltip-name {
+    font-size: 14px;
+  }
+
+  .tooltip-hp {
+    font-size: 13px;
+  }
+
+  .tooltip-section-title {
+    font-size: 12px;
+  }
+
+  .stat-value {
+    font-size: 12px;
+  }
+}
+
 @media (max-width: 768px) {
   .character-card {
     padding: 8px;
