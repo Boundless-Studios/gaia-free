@@ -49,12 +49,29 @@ const PlayerAndTurnList = ({
   // Detect screen orientation and update layout accordingly
   useEffect(() => {
     const handleOrientationChange = () => {
-      // Check if window is wider than it is tall (landscape) or taller than wide (portrait)
-      const isPortrait = window.innerHeight > window.innerWidth;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const isPortrait = height > width;
 
-      // Portrait mode → horizontal layout (to save vertical space)
-      // Landscape mode → vertical layout (we have horizontal space)
-      setDetectedOrientation(isPortrait ? 'horizontal' : 'vertical');
+      // Layout decision based on device size and orientation:
+      // - Desktop/Laptop (>1100px): Always vertical (we have space)
+      // - iPad landscape (1025-1100px): Always vertical
+      // - iPad portrait / tablets (768-1024px portrait): Horizontal to save vertical space
+      // - Mobile (<768px): Always horizontal
+
+      if (width > 1100) {
+        // Desktop/Laptop - always vertical
+        setDetectedOrientation('vertical');
+      } else if (width >= 1025 && width <= 1100) {
+        // iPad landscape - always vertical
+        setDetectedOrientation('vertical');
+      } else if (width >= 768 && width <= 1024) {
+        // Tablets - horizontal if portrait, vertical if landscape
+        setDetectedOrientation(isPortrait ? 'horizontal' : 'vertical');
+      } else {
+        // Mobile - always horizontal
+        setDetectedOrientation('horizontal');
+      }
     };
 
     // Set initial orientation

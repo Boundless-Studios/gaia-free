@@ -2,22 +2,21 @@
 .player-and-turn-list {
   background: #1a1a1a;
   border-radius: 8px;
-  padding: 8px 8px 8px 8px;
+  padding: 8px;
   color: #fff;
   max-height: 600px;
   overflow-y: auto;
   overflow-x: visible;
-  width: fit-content;
-  min-width: 180px;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
 }
 
 .player-and-turn-list.compact {
-  padding: 6px 6px 6px 6px;
+  padding: 6px;
   max-height: 90vh;
-  min-width: 160px;
 }
 
 /* PlayerAndTurnList Container - Horizontal */
@@ -42,8 +41,7 @@
   border-radius: 4px;
   margin-bottom: 6px;
   min-height: 24px;
-  width: fit-content;
-  align-self: center;
+  width: 100%;
 }
 
 /* Turn Header - Horizontal mode (more compact) */
@@ -84,6 +82,7 @@
   flex-direction: column;
   gap: 6px;
   align-items: center;
+  width: 100%;
 }
 
 /* Character List - Horizontal */
@@ -405,69 +404,190 @@
   background: #555;
 }
 
-/* Responsive Design */
+/* ===================================================================
+   RESPONSIVE DESIGN - Device-Specific Breakpoints
+   =================================================================== */
 
-/* Portrait Mode Optimization - Horizontal Layout with Smaller Portraits */
-@media (orientation: portrait) {
-  /* Make portraits much smaller in portrait mode to fit horizontally */
-  .player-and-turn-list.horizontal .character-portrait {
-    width: 80px;
-    height: 80px;
+/* ===================================================================
+   DESKTOP / LARGE MONITORS (>1366px)
+   Default styles above - 160x160 portraits, vertical layout
+   =================================================================== */
+
+/* ===================================================================
+   LAPTOP / SMALL DESKTOP (1101px - 1366px)
+   Slightly reduce sizes
+   =================================================================== */
+@media (max-width: 1366px) and (min-width: 1101px) {
+  .player-and-turn-list {
+    padding: 8px;
   }
 
-  .player-and-turn-list.horizontal .character-portrait-placeholder {
-    width: 80px;
-    height: 80px;
-    font-size: 40px;
+  .character-portrait,
+  .character-portrait-placeholder,
+  .character-card.compact .character-portrait,
+  .character-card.compact .character-portrait-placeholder {
+    width: 140px;
+    height: 140px;
+  }
+
+  .character-portrait-placeholder,
+  .character-card.compact .character-portrait-placeholder {
+    font-size: 70px;
+  }
+
+  .active-turn-indicator {
+    width: 26px;
+    height: 26px;
+    font-size: 15px;
+  }
+}
+
+/* ===================================================================
+   IPAD LANDSCAPE (1025px - 1100px) - e.g., iPad Pro 11" landscape
+   Medium sizes, vertical layout
+   =================================================================== */
+@media (max-width: 1100px) and (min-width: 1025px) {
+  .player-and-turn-list {
+    padding: 6px;
+    min-width: 140px;
+  }
+
+  .turn-header {
+    padding: 2px 8px;
+    margin-bottom: 6px;
+    min-height: 24px;
+  }
+
+  .turn-number {
+    font-size: 11px;
+  }
+
+  .turn-character-name {
+    font-size: 9px;
+  }
+
+  .character-list {
+    gap: 5px;
+  }
+
+  .character-card {
+    padding: 5px;
+  }
+
+  .character-portrait,
+  .character-portrait-placeholder,
+  .character-card.compact .character-portrait,
+  .character-card.compact .character-portrait-placeholder {
+    width: 120px;
+    height: 120px;
+  }
+
+  .character-portrait-placeholder,
+  .character-card.compact .character-portrait-placeholder {
+    font-size: 60px;
+  }
+
+  .active-turn-indicator {
+    width: 22px;
+    height: 22px;
+    font-size: 13px;
+    top: -6px;
+    right: -6px;
+  }
+
+  .character-modal {
+    max-width: 280px;
+    min-width: 240px;
+    padding: 12px;
+  }
+}
+
+/* ===================================================================
+   IPAD PORTRAIT / SMALL TABLETS (768px - 1024px)
+   Horizontal layout when in portrait orientation
+   =================================================================== */
+@media (max-width: 1024px) and (min-width: 768px) {
+  /* Horizontal layout for portrait tablets */
+  .player-and-turn-list.horizontal {
+    width: 100%;
+    padding: 6px 8px;
+    overflow-x: visible;
+  }
+
+  .player-and-turn-list.horizontal .turn-header {
+    flex-direction: row;
+    padding: 3px 10px;
+    margin-bottom: 6px;
+  }
+
+  .player-and-turn-list.horizontal .turn-number {
+    font-size: 11px;
+  }
+
+  .player-and-turn-list.horizontal .turn-character-name {
+    font-size: 9px;
+  }
+
+  .player-and-turn-list.horizontal .character-list {
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 4px 0;
+    width: 100%;
   }
 
   .player-and-turn-list.horizontal .character-card {
     padding: 4px;
+    flex-shrink: 0;
   }
 
-  .player-and-turn-list.horizontal {
-    padding: 0 8px 8px 8px;
+  .player-and-turn-list.horizontal .character-portrait,
+  .player-and-turn-list.horizontal .character-portrait-placeholder {
+    width: 85px;
+    height: 85px;
   }
 
-  .player-and-turn-list.horizontal .character-list {
-    gap: 8px;
-    padding: 4px 0;
-  }
-
-  .player-and-turn-list.horizontal .turn-header {
-    padding: 4px 12px;
-    margin-bottom: 6px;
-    min-height: 28px;
-  }
-
-  .player-and-turn-list.horizontal .turn-number {
-    font-size: 13px;
-  }
-
-  .player-and-turn-list.horizontal .turn-character-name {
-    font-size: 10px;
+  .player-and-turn-list.horizontal .character-portrait-placeholder {
+    font-size: 42px;
   }
 
   .player-and-turn-list.horizontal .active-turn-indicator {
     width: 20px;
     height: 20px;
     font-size: 12px;
-    top: -6px;
-    right: -6px;
+    top: -5px;
+    right: -5px;
+  }
+
+  /* Keep vertical layout compact for landscape tablets */
+  .player-and-turn-list:not(.horizontal) .character-portrait,
+  .player-and-turn-list:not(.horizontal) .character-portrait-placeholder {
+    width: 110px;
+    height: 110px;
+  }
+
+  .player-and-turn-list:not(.horizontal) .character-portrait-placeholder {
+    font-size: 55px;
   }
 }
 
-/* iPad Landscape Optimization (1080x810px) */
-@media (max-width: 1100px) and (min-width: 1025px) {
+/* ===================================================================
+   MOBILE / IPHONE (<768px)
+   Horizontal layout, small portraits
+   =================================================================== */
+@media (max-width: 767px) {
+  /* Force horizontal layout on mobile */
   .player-and-turn-list {
-    padding: 0 10px 10px 10px;
-    max-height: 550px;
+    width: 100%;
+    padding: 6px 10px;
   }
 
   .turn-header {
-    padding: 3px 8px;
-    margin-bottom: 8px;
-    min-height: 26px;
+    flex-direction: row;
+    padding: 3px 10px;
+    margin-bottom: 6px;
+    gap: 6px;
   }
 
   .turn-number {
@@ -476,95 +596,41 @@
 
   .turn-character-name {
     font-size: 9px;
-    max-width: 120px;
   }
 
   .character-list {
-    gap: 6px;
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 0;
   }
 
   .character-card {
-    padding: 6px;
+    padding: 4px;
   }
 
-  .character-portrait {
-    width: 120px;
-    height: 120px;
+  .character-portrait,
+  .character-portrait-placeholder {
+    width: 80px;
+    height: 80px;
   }
 
   .character-portrait-placeholder {
-    width: 120px;
-    height: 120px;
-    font-size: 60px;
-  }
-
-  .character-card.compact .character-portrait {
-    width: 120px;
-    height: 120px;
-  }
-
-  .character-card.compact .character-portrait-placeholder {
-    width: 120px;
-    height: 120px;
-    font-size: 60px;
+    font-size: 40px;
   }
 
   .active-turn-indicator {
-    width: 24px;
-    height: 24px;
-    font-size: 14px;
-  }
-
-  .character-modal {
-    max-width: 280px;
-    min-width: 240px;
-    padding: 12px;
-  }
-
-  .tooltip-name {
-    font-size: 14px;
-  }
-
-  .tooltip-hp {
-    font-size: 13px;
-  }
-
-  .tooltip-section-title {
+    width: 20px;
+    height: 20px;
     font-size: 12px;
-  }
-
-  .stat-value {
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 768px) {
-  .character-card {
-    padding: 8px;
-  }
-
-  .character-portrait {
-    width: 140px;
-    height: 140px;
-  }
-
-  .character-portrait-placeholder {
-    width: 140px;
-    height: 140px;
-    font-size: 72px;
-  }
-
-  .character-name {
-    font-size: 14px;
-  }
-
-  .character-hp {
-    font-size: 12px;
+    top: -5px;
+    right: -5px;
   }
 
   .character-modal {
     max-width: 260px;
-    min-width: 240px;
+    min-width: 220px;
+    padding: 10px;
   }
 }
 
