@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import './ChatMessage.css';
 import apiService from '../services/apiService';
+import SFXTextParser from './SFXTextParser.jsx';
 
 const extractText = (value) => {
   if (value == null) {
@@ -159,7 +160,10 @@ const ChatMessage = ({ message, className = '', sessionId }) => {
                   )}
                 </div>
                 <div className="message-section-content">
-                  {message.structuredContent.narrative}
+                  <SFXTextParser
+                    text={narrativeText}
+                    sessionId={queueSessionId}
+                  />
                 </div>
               </div>
             )}
@@ -189,7 +193,15 @@ const ChatMessage = ({ message, className = '', sessionId }) => {
             )}
           </>
         ) : (
-          message.text
+          // Apply SFX parser to DM messages without structured content
+          message.sender === 'dm' && typeof message.text === 'string' ? (
+            <SFXTextParser
+              text={message.text}
+              sessionId={queueSessionId}
+            />
+          ) : (
+            message.text
+          )
         )}
       </div>
 

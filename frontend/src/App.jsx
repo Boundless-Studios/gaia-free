@@ -580,13 +580,32 @@ function App() {
   }, []);
 
   // User audio queue playback (shared hook) - uses WebSocket for reliable acknowledgment
-  const { fetchUserAudioQueue } = useUserAudioQueue({
+  const { fetchUserAudioQueue, audioBlocked, unlockAudio } = useUserAudioQueue({
     user,
     audioStream,
     apiService,
     socketEmit: socketEmitWrapper,
     campaignId: currentCampaignId,
   });
+
+  // On iOS, try to unlock audio on any user interaction with the page
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      if (audioBlocked) {
+        console.log('🎵 [DM] User interaction detected, attempting to unlock audio');
+        unlockAudio();
+      }
+    };
+
+    // Add listeners for common user interactions
+    document.addEventListener('touchstart', handleUserInteraction, { passive: true });
+    document.addEventListener('click', handleUserInteraction, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleUserInteraction);
+      document.removeEventListener('click', handleUserInteraction);
+    };
+  }, [audioBlocked, unlockAudio]);
 
   // Handle audio_available notifications (user queue playback)
   const handleAudioAvailable = useCallback((data, sessionId) => {
@@ -1617,6 +1636,8 @@ function App() {
         <AudioPlayerBar
           sessionId={currentCampaignId}
           queueInfo={playbackQueueInfo}
+          userAudioBlocked={audioBlocked}
+          onUnlockUserAudio={unlockAudio}
         />
 
         {/* Voice Input (hidden background service for DM collaborative editor) */}

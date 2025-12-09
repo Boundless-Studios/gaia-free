@@ -1,6 +1,25 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { API_CONFIG } from '../config/api.js';
 
+/**
+ * Create an Audio element with iOS Safari compatibility attributes.
+ * iOS Safari requires playsinline to prevent fullscreen mode and
+ * to properly handle autoplay restrictions.
+ */
+const createIOSCompatibleAudio = () => {
+  const audio = new Audio();
+  // iOS Safari requires these attributes for proper playback
+  audio.setAttribute('playsinline', '');
+  audio.setAttribute('webkit-playsinline', '');
+  // Prevent iOS from trying to AirPlay by default
+  audio.setAttribute('x-webkit-airplay', 'deny');
+  // Allow cross-origin audio (needed for streaming from API)
+  audio.crossOrigin = 'anonymous';
+  // Preload metadata for faster start
+  audio.preload = 'auto';
+  return audio;
+};
+
 // Shared audio element to maintain browser autoplay permission
 let sharedAudioElement = null;
 let audioUnlocked = false;
@@ -61,10 +80,13 @@ export function unlockAudio() {
   if (audioUnlocked) return Promise.resolve(true);
 
   if (!sharedAudioElement) {
-    sharedAudioElement = new Audio();
+    sharedAudioElement = createIOSCompatibleAudio();
     // Use a tiny silent audio data URI
     sharedAudioElement.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwmHAAAAAAD/+1DEAAAGAAGn9AAAIiwijW80AAQAAAT/JJ5mn//t/5J//l/kn5J+Sf/5J/t//5f5J+Sf//+X+Sf5J5J+X/8k/ygAAANtVVVV//tQxA4AAADSAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
   }
+
+  // iOS Safari may need a load() call before play()
+  sharedAudioElement.load();
 
   return sharedAudioElement.play()
     .then(() => {
@@ -187,9 +209,9 @@ export function useUserAudioQueue({ user, audioStream, apiService, socketEmit, c
 
     console.log(`🎵 [USER_QUEUE] Starting sequential playback of ${chunks.length} chunks`);
 
-    // Reuse or create global audio element
+    // Reuse or create global audio element with iOS Safari compatibility
     if (!globalAudioElement) {
-      globalAudioElement = new Audio();
+      globalAudioElement = createIOSCompatibleAudio();
     }
     const audio = globalAudioElement;
 

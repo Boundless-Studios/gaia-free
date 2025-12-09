@@ -1,0 +1,4270 @@
+{
+  "entries": [
+    {
+      "id": "door_slam",
+      "triggers": [
+        "door slams",
+        "door slam",
+        "gate slams",
+        "iron-banded door slams",
+        "slam shut",
+        "slams shut",
+        "door bangs",
+        "door crashes",
+        "slams closed",
+        "door slams shut"
+      ],
+      "label": "Door Slam",
+      "priority": 10,
+      "category": "impact"
+    },
+    {
+      "id": "door_creak",
+      "triggers": [
+        "door creaks",
+        "gate creaks",
+        "hinges creak",
+        "door groans",
+        "creaking door",
+        "door creaks open"
+      ],
+      "label": "Door Creak",
+      "priority": 8,
+      "category": "impact"
+    },
+    {
+      "id": "chest_open",
+      "triggers": [
+        "chest opens",
+        "chest creaks open",
+        "lid opens",
+        "chest lid",
+        "opens the chest"
+      ],
+      "label": "Chest Open",
+      "priority": 9,
+      "category": "impact"
+    },
+    {
+      "id": "window_shatter",
+      "triggers": [
+        "window shatters",
+        "glass shatters",
+        "window breaks",
+        "glass breaks",
+        "shattered glass"
+      ],
+      "label": "Window Shatter",
+      "priority": 10,
+      "category": "impact"
+    },
+    {
+      "id": "heavy_impact",
+      "triggers": [
+        "crashes to the ground",
+        "slams into",
+        "heavy impact",
+        "smashes into",
+        "collides with"
+      ],
+      "label": "Heavy Impact",
+      "priority": 9,
+      "category": "impact"
+    },
+    {
+      "id": "wood_crack",
+      "triggers": [
+        "wood cracks",
+        "wood splinters",
+        "timber cracks",
+        "wooden beam cracks"
+      ],
+      "label": "Wood Crack",
+      "priority": 7,
+      "category": "impact"
+    },
+    {
+      "id": "portcullis",
+      "triggers": [
+        "portcullis rises",
+        "portcullis drops",
+        "portcullis slams",
+        "iron gate rises"
+      ],
+      "label": "Portcullis",
+      "priority": 9,
+      "category": "impact"
+    },
+    {
+      "id": "hatch_open",
+      "triggers": [
+        "hatch opens",
+        "trapdoor opens",
+        "hatch slams",
+        "trapdoor slams"
+      ],
+      "label": "Hatch",
+      "priority": 8,
+      "category": "impact"
+    },
+    {
+      "id": "lock_click",
+      "triggers": [
+        "lock clicks",
+        "lock opens",
+        "unlocks",
+        "latch clicks",
+        "bolt slides"
+      ],
+      "label": "Lock Click",
+      "priority": 7,
+      "category": "impact"
+    },
+    {
+      "id": "barrel_roll",
+      "triggers": [
+        "barrel rolls",
+        "barrel tumbles",
+        "barrels crash"
+      ],
+      "label": "Barrel Roll",
+      "priority": 6,
+      "category": "impact"
+    },
+    {
+      "id": "table_flip",
+      "triggers": [
+        "table flips",
+        "overturns the table",
+        "table crashes"
+      ],
+      "label": "Table Flip",
+      "priority": 7,
+      "category": "impact"
+    },
+    {
+      "id": "shelves_collapse",
+      "triggers": [
+        "shelves collapse",
+        "shelf collapses",
+        "bookshelf crashes"
+      ],
+      "label": "Shelves Collapse",
+      "priority": 8,
+      "category": "impact"
+    },
+    {
+      "id": "crate_break",
+      "triggers": [
+        "crate breaks",
+        "crate shatters",
+        "wooden crate breaks"
+      ],
+      "label": "Crate Break",
+      "priority": 7,
+      "category": "impact"
+    },
+    {
+      "id": "stone_door",
+      "triggers": [
+        "stone door",
+        "stone grinds",
+        "grinding stone",
+        "stone slides"
+      ],
+      "label": "Stone Door",
+      "priority": 9,
+      "category": "impact"
+    },
+    {
+      "id": "drawbridge",
+      "triggers": [
+        "drawbridge lowers",
+        "drawbridge drops",
+        "chains rattle"
+      ],
+      "label": "Drawbridge",
+      "priority": 8,
+      "category": "impact"
+    },
+    {
+      "id": "book_slam",
+      "triggers": [
+        "book slams",
+        "tome slams",
+        "book shuts"
+      ],
+      "label": "Book Slam",
+      "priority": 6,
+      "category": "impact"
+    },
+    {
+      "id": "gong",
+      "triggers": [
+        "gong sounds",
+        "gong rings",
+        "strikes the gong"
+      ],
+      "label": "Gong",
+      "priority": 8,
+      "category": "impact"
+    },
+    {
+      "id": "anvil_strike",
+      "triggers": [
+        "hammer strikes anvil",
+        "anvil rings",
+        "hammering metal"
+      ],
+      "label": "Anvil Strike",
+      "priority": 7,
+      "category": "impact"
+    },
+    {
+      "id": "cage_slam",
+      "triggers": [
+        "cage slams",
+        "cage door",
+        "iron cage"
+      ],
+      "label": "Cage Slam",
+      "priority": 7,
+      "category": "impact"
+    },
+    {
+      "id": "lever_pull",
+      "triggers": [
+        "pulls the lever",
+        "lever clicks",
+        "yanks the lever"
+      ],
+      "label": "Lever Pull",
+      "priority": 7,
+      "category": "impact"
+    },
+    {
+      "id": "thunderclap",
+      "triggers": [
+        "thunderclap",
+        "thunder",
+        "thunder rumbles",
+        "thunder booms",
+        "thunder crashes",
+        "thunder roars"
+      ],
+      "label": "Thunder",
+      "priority": 10,
+      "category": "weather"
+    },
+    {
+      "id": "lightning",
+      "triggers": [
+        "lightning strikes",
+        "lightning flash",
+        "lightning crackles",
+        "bolt of lightning"
+      ],
+      "label": "Lightning",
+      "priority": 9,
+      "category": "weather"
+    },
+    {
+      "id": "rain_heavy",
+      "triggers": [
+        "heavy rain",
+        "rain pours",
+        "downpour",
+        "torrential rain",
+        "rain hammers"
+      ],
+      "label": "Heavy Rain",
+      "priority": 8,
+      "category": "weather"
+    },
+    {
+      "id": "rain_light",
+      "triggers": [
+        "light rain",
+        "rain patters",
+        "gentle rain",
+        "rain drizzles"
+      ],
+      "label": "Light Rain",
+      "priority": 6,
+      "category": "weather"
+    },
+    {
+      "id": "wind_howl",
+      "triggers": [
+        "wind howls",
+        "howling wind",
+        "wind screams",
+        "gale howls"
+      ],
+      "label": "Wind Howl",
+      "priority": 8,
+      "category": "weather"
+    },
+    {
+      "id": "wind_gust",
+      "triggers": [
+        "gust of wind",
+        "wind gusts",
+        "sudden gust",
+        "wind blows"
+      ],
+      "label": "Wind Gust",
+      "priority": 7,
+      "category": "weather"
+    },
+    {
+      "id": "storm",
+      "triggers": [
+        "storm rages",
+        "raging storm",
+        "tempest",
+        "violent storm"
+      ],
+      "label": "Storm",
+      "priority": 9,
+      "category": "weather"
+    },
+    {
+      "id": "hail",
+      "triggers": [
+        "hail falls",
+        "hailstorm",
+        "ice pelts"
+      ],
+      "label": "Hail",
+      "priority": 7,
+      "category": "weather"
+    },
+    {
+      "id": "snow_wind",
+      "triggers": [
+        "blizzard",
+        "snowstorm",
+        "snow whips"
+      ],
+      "label": "Blizzard",
+      "priority": 8,
+      "category": "weather"
+    },
+    {
+      "id": "tornado",
+      "triggers": [
+        "tornado",
+        "whirlwind",
+        "cyclone"
+      ],
+      "label": "Tornado",
+      "priority": 9,
+      "category": "weather"
+    },
+    {
+      "id": "earthquake",
+      "triggers": [
+        "earthquake",
+        "ground shakes",
+        "earth trembles",
+        "tremor"
+      ],
+      "label": "Earthquake",
+      "priority": 10,
+      "category": "weather"
+    },
+    {
+      "id": "distant_thunder",
+      "triggers": [
+        "distant thunder",
+        "thunder echoes",
+        "rumble",
+        "low rumble",
+        "rumble beneath the floorboards"
+      ],
+      "label": "Distant Thunder",
+      "priority": 6,
+      "category": "weather"
+    },
+    {
+      "id": "ocean_waves",
+      "triggers": [
+        "waves crash",
+        "ocean roars",
+        "surf pounds"
+      ],
+      "label": "Ocean Waves",
+      "priority": 7,
+      "category": "weather"
+    },
+    {
+      "id": "foghorn",
+      "triggers": [
+        "foghorn",
+        "horn blows"
+      ],
+      "label": "Foghorn",
+      "priority": 7,
+      "category": "weather"
+    },
+    {
+      "id": "ice_crack",
+      "triggers": [
+        "ice cracks",
+        "ice breaks",
+        "frozen surface cracks"
+      ],
+      "label": "Ice Crack",
+      "priority": 8,
+      "category": "weather"
+    },
+    {
+      "id": "arcane_blast",
+      "triggers": [
+        "arcane blast",
+        "magical explosion",
+        "burst of magic",
+        "spell explodes"
+      ],
+      "label": "Arcane Blast",
+      "priority": 10,
+      "category": "magic"
+    },
+    {
+      "id": "magic_crackle",
+      "triggers": [
+        "magic crackles",
+        "arcane energy crackles",
+        "crackling magic"
+      ],
+      "label": "Magic Crackle",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "spell_cast",
+      "triggers": [
+        "casts a spell",
+        "spell incantation",
+        "chanting spell",
+        "weaves magic"
+      ],
+      "label": "Spell Cast",
+      "priority": 9,
+      "category": "magic"
+    },
+    {
+      "id": "magic_whoosh",
+      "triggers": [
+        "magical whoosh",
+        "spell whooshes",
+        "magic rushes"
+      ],
+      "label": "Magic Whoosh",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "portal_open",
+      "triggers": [
+        "portal opens",
+        "rift opens",
+        "dimensional tear"
+      ],
+      "label": "Portal Open",
+      "priority": 9,
+      "category": "magic"
+    },
+    {
+      "id": "teleport",
+      "triggers": [
+        "teleports",
+        "vanishes",
+        "blinks away",
+        "dimension door"
+      ],
+      "label": "Teleport",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "magic_shield",
+      "triggers": [
+        "shield spell",
+        "magical barrier",
+        "ward activates"
+      ],
+      "label": "Magic Shield",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "fireball",
+      "triggers": [
+        "fireball",
+        "ball of fire",
+        "fiery explosion"
+      ],
+      "label": "Fireball",
+      "priority": 10,
+      "category": "magic"
+    },
+    {
+      "id": "ice_spell",
+      "triggers": [
+        "cone of cold",
+        "ice spell",
+        "frost spreads",
+        "freezing ray"
+      ],
+      "label": "Ice Spell",
+      "priority": 9,
+      "category": "magic"
+    },
+    {
+      "id": "lightning_spell",
+      "triggers": [
+        "lightning bolt spell",
+        "chain lightning",
+        "electric arc"
+      ],
+      "label": "Lightning Spell",
+      "priority": 9,
+      "category": "magic"
+    },
+    {
+      "id": "healing_spell",
+      "triggers": [
+        "healing light",
+        "divine radiance",
+        "cure wounds"
+      ],
+      "label": "Healing Spell",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "dark_magic",
+      "triggers": [
+        "dark magic",
+        "shadow energy",
+        "necrotic burst"
+      ],
+      "label": "Dark Magic",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "magic_glow",
+      "triggers": [
+        "glows with magic",
+        "magical glow",
+        "shimmers with power"
+      ],
+      "label": "Magic Glow",
+      "priority": 6,
+      "category": "magic"
+    },
+    {
+      "id": "enchantment",
+      "triggers": [
+        "enchantment",
+        "magical aura",
+        "spell takes hold"
+      ],
+      "label": "Enchantment",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "dispel",
+      "triggers": [
+        "dispel magic",
+        "magic fades",
+        "spell breaks"
+      ],
+      "label": "Dispel",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "levitate",
+      "triggers": [
+        "levitates",
+        "floats upward",
+        "rises off the ground"
+      ],
+      "label": "Levitate",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "summon",
+      "triggers": [
+        "summons",
+        "creature appears",
+        "conjures"
+      ],
+      "label": "Summon",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "magic_missile",
+      "triggers": [
+        "magic missile",
+        "darts of force",
+        "arcane missiles"
+      ],
+      "label": "Magic Missile",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "polymorph",
+      "triggers": [
+        "transforms",
+        "polymorphs",
+        "shape shifts"
+      ],
+      "label": "Polymorph",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "time_stop",
+      "triggers": [
+        "time stops",
+        "time freeze",
+        "temporal stasis"
+      ],
+      "label": "Time Stop",
+      "priority": 9,
+      "category": "magic"
+    },
+    {
+      "id": "sword_clash",
+      "triggers": [
+        "swords clash",
+        "blades clash",
+        "steel rings",
+        "metal clashes",
+        "weapons collide"
+      ],
+      "label": "Sword Clash",
+      "priority": 10,
+      "category": "combat"
+    },
+    {
+      "id": "sword_swing",
+      "triggers": [
+        "swings sword",
+        "blade cuts",
+        "slashes with sword"
+      ],
+      "label": "Sword Swing",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "arrow_release",
+      "triggers": [
+        "releases arrow",
+        "arrow flies",
+        "bow twangs",
+        "fires arrow"
+      ],
+      "label": "Arrow Release",
+      "priority": 9,
+      "category": "combat"
+    },
+    {
+      "id": "arrow_hit",
+      "triggers": [
+        "arrow strikes",
+        "arrow hits",
+        "arrow thuds into"
+      ],
+      "label": "Arrow Hit",
+      "priority": 9,
+      "category": "combat"
+    },
+    {
+      "id": "shield_block",
+      "triggers": [
+        "shield blocks",
+        "deflects with shield",
+        "shield bash"
+      ],
+      "label": "Shield Block",
+      "priority": 9,
+      "category": "combat"
+    },
+    {
+      "id": "armor_clang",
+      "triggers": [
+        "armor clangs",
+        "metal armor",
+        "plate mail"
+      ],
+      "label": "Armor Clang",
+      "priority": 7,
+      "category": "combat"
+    },
+    {
+      "id": "axe_swing",
+      "triggers": [
+        "swings axe",
+        "axe chops",
+        "battle axe"
+      ],
+      "label": "Axe Swing",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "hammer_strike",
+      "triggers": [
+        "hammer strikes",
+        "warhammer",
+        "maul crashes"
+      ],
+      "label": "Hammer Strike",
+      "priority": 9,
+      "category": "combat"
+    },
+    {
+      "id": "dagger_stab",
+      "triggers": [
+        "dagger stabs",
+        "knife pierces",
+        "blade sinks"
+      ],
+      "label": "Dagger Stab",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "spear_thrust",
+      "triggers": [
+        "spear thrusts",
+        "lance strikes",
+        "javelin flies"
+      ],
+      "label": "Spear Thrust",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "crossbow_fire",
+      "triggers": [
+        "crossbow fires",
+        "bolt flies",
+        "crossbow clicks"
+      ],
+      "label": "Crossbow Fire",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "body_hit",
+      "triggers": [
+        "punch lands",
+        "strike connects",
+        "hit lands",
+        "blow connects"
+      ],
+      "label": "Body Hit",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "sword_draw",
+      "triggers": [
+        "draws sword",
+        "unsheathes",
+        "blade rings out"
+      ],
+      "label": "Sword Draw",
+      "priority": 7,
+      "category": "combat"
+    },
+    {
+      "id": "weapon_drop",
+      "triggers": [
+        "weapon drops",
+        "sword clatters",
+        "blade falls"
+      ],
+      "label": "Weapon Drop",
+      "priority": 7,
+      "category": "combat"
+    },
+    {
+      "id": "parry",
+      "triggers": [
+        "parries",
+        "deflects attack",
+        "blocks strike"
+      ],
+      "label": "Parry",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "critical_hit",
+      "triggers": [
+        "critical hit",
+        "devastating blow",
+        "crushing strike"
+      ],
+      "label": "Critical Hit",
+      "priority": 10,
+      "category": "combat"
+    },
+    {
+      "id": "chain_rattle",
+      "triggers": [
+        "chains rattle",
+        "chain whip",
+        "flail swings"
+      ],
+      "label": "Chain Rattle",
+      "priority": 7,
+      "category": "combat"
+    },
+    {
+      "id": "staff_strike",
+      "triggers": [
+        "staff strikes",
+        "quarterstaff",
+        "pole strikes"
+      ],
+      "label": "Staff Strike",
+      "priority": 7,
+      "category": "combat"
+    },
+    {
+      "id": "whip_crack",
+      "triggers": [
+        "whip cracks",
+        "lash snaps"
+      ],
+      "label": "Whip Crack",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "gunshot",
+      "triggers": [
+        "gunshot",
+        "pistol fires",
+        "musket fires"
+      ],
+      "label": "Gunshot",
+      "priority": 10,
+      "category": "combat"
+    },
+    {
+      "id": "explosion",
+      "triggers": [
+        "explosion",
+        "blast",
+        "detonation",
+        "bomb explodes"
+      ],
+      "label": "Explosion",
+      "priority": 10,
+      "category": "combat"
+    },
+    {
+      "id": "dodge",
+      "triggers": [
+        "dodges",
+        "sidesteps",
+        "evades"
+      ],
+      "label": "Dodge",
+      "priority": 6,
+      "category": "combat"
+    },
+    {
+      "id": "charge",
+      "triggers": [
+        "charges forward",
+        "rushing attack",
+        "battle cry"
+      ],
+      "label": "Charge",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "disarm",
+      "triggers": [
+        "disarms",
+        "knocks weapon away"
+      ],
+      "label": "Disarm",
+      "priority": 7,
+      "category": "combat"
+    },
+    {
+      "id": "reload",
+      "triggers": [
+        "reloads",
+        "loading weapon"
+      ],
+      "label": "Reload",
+      "priority": 6,
+      "category": "combat"
+    },
+    {
+      "id": "dragon_roar",
+      "triggers": [
+        "dragon roars",
+        "wyrm roars",
+        "draconic roar"
+      ],
+      "label": "Dragon Roar",
+      "priority": 10,
+      "category": "creature"
+    },
+    {
+      "id": "wolf_howl",
+      "triggers": [
+        "wolf howls",
+        "wolves howl",
+        "lupine howl"
+      ],
+      "label": "Wolf Howl",
+      "priority": 8,
+      "category": "creature"
+    },
+    {
+      "id": "lion_roar",
+      "triggers": [
+        "lion roars",
+        "beast roars"
+      ],
+      "label": "Lion Roar",
+      "priority": 8,
+      "category": "creature"
+    },
+    {
+      "id": "bear_growl",
+      "triggers": [
+        "bear growls",
+        "ursine growl"
+      ],
+      "label": "Bear Growl",
+      "priority": 8,
+      "category": "creature"
+    },
+    {
+      "id": "snake_hiss",
+      "triggers": [
+        "snake hisses",
+        "serpent hisses"
+      ],
+      "label": "Snake Hiss",
+      "priority": 7,
+      "category": "creature"
+    },
+    {
+      "id": "eagle_screech",
+      "triggers": [
+        "eagle screeches",
+        "hawk screams",
+        "raptor cries"
+      ],
+      "label": "Eagle Screech",
+      "priority": 7,
+      "category": "creature"
+    },
+    {
+      "id": "monster_growl",
+      "triggers": [
+        "monster growls",
+        "creature snarls",
+        "beast snarls"
+      ],
+      "label": "Monster Growl",
+      "priority": 8,
+      "category": "creature"
+    },
+    {
+      "id": "insect_buzz",
+      "triggers": [
+        "insects buzz",
+        "swarm buzzing",
+        "flies buzz"
+      ],
+      "label": "Insect Buzz",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "horse_neigh",
+      "triggers": [
+        "horse neighs",
+        "steed whinnies"
+      ],
+      "label": "Horse Neigh",
+      "priority": 7,
+      "category": "creature"
+    },
+    {
+      "id": "bat_screech",
+      "triggers": [
+        "bats screech",
+        "bat swarm"
+      ],
+      "label": "Bat Screech",
+      "priority": 7,
+      "category": "creature"
+    },
+    {
+      "id": "rat_squeak",
+      "triggers": [
+        "rats squeak",
+        "rodents squeal"
+      ],
+      "label": "Rat Squeak",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "bird_chirp",
+      "triggers": [
+        "birds chirp",
+        "songbirds",
+        "birds singing"
+      ],
+      "label": "Bird Chirp",
+      "priority": 5,
+      "category": "creature"
+    },
+    {
+      "id": "owl_hoot",
+      "triggers": [
+        "owl hoots",
+        "owl calls"
+      ],
+      "label": "Owl Hoot",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "frog_croak",
+      "triggers": [
+        "frogs croak",
+        "toad croaks"
+      ],
+      "label": "Frog Croak",
+      "priority": 5,
+      "category": "creature"
+    },
+    {
+      "id": "zombie_moan",
+      "triggers": [
+        "zombie moans",
+        "undead groan",
+        "shambling corpse"
+      ],
+      "label": "Zombie Moan",
+      "priority": 8,
+      "category": "creature"
+    },
+    {
+      "id": "footsteps_stone",
+      "triggers": [
+        "footsteps echo",
+        "footfalls",
+        "steps on stone",
+        "walking on stone"
+      ],
+      "label": "Footsteps (Stone)",
+      "priority": 7,
+      "category": "ambience"
+    },
+    {
+      "id": "footsteps_wood",
+      "triggers": [
+        "footsteps creak",
+        "wooden floorboards",
+        "steps on wood",
+        "floorboards"
+      ],
+      "label": "Footsteps (Wood)",
+      "priority": 7,
+      "category": "ambience"
+    },
+    {
+      "id": "door_knock",
+      "triggers": [
+        "knock on door",
+        "knocking",
+        "rapping on door"
+      ],
+      "label": "Door Knock",
+      "priority": 8,
+      "category": "ambience"
+    },
+    {
+      "id": "dripping_water",
+      "triggers": [
+        "water drips",
+        "dripping sound",
+        "drops of water"
+      ],
+      "label": "Dripping Water",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "clock_tick",
+      "triggers": [
+        "clock ticks",
+        "ticking clock"
+      ],
+      "label": "Clock Tick",
+      "priority": 5,
+      "category": "ambience"
+    },
+    {
+      "id": "whisper",
+      "triggers": [
+        "whispers",
+        "whispering voices",
+        "hushed voices"
+      ],
+      "label": "Whisper",
+      "priority": 7,
+      "category": "ambience"
+    },
+    {
+      "id": "rustling",
+      "triggers": [
+        "rustling",
+        "leaves rustle",
+        "papers rustle"
+      ],
+      "label": "Rustling",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "heartbeat",
+      "triggers": [
+        "heartbeat",
+        "heart pounds",
+        "pulse races"
+      ],
+      "label": "Heartbeat",
+      "priority": 7,
+      "category": "ambience"
+    },
+    {
+      "id": "breathing",
+      "triggers": [
+        "heavy breathing",
+        "labored breath",
+        "panting"
+      ],
+      "label": "Breathing",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "echo",
+      "triggers": [
+        "echoes",
+        "sound echoes",
+        "reverberates"
+      ],
+      "label": "Echo",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "building_collapse",
+      "triggers": [
+        "building collapses",
+        "structure falls",
+        "walls crumble"
+      ],
+      "label": "Building Collapse",
+      "priority": 10,
+      "category": "destruction"
+    },
+    {
+      "id": "wall_break",
+      "triggers": [
+        "wall breaks",
+        "smashes through wall",
+        "wall crumbles"
+      ],
+      "label": "Wall Break",
+      "priority": 9,
+      "category": "destruction"
+    },
+    {
+      "id": "pillar_crack",
+      "triggers": [
+        "pillar cracks",
+        "column breaks",
+        "support beam"
+      ],
+      "label": "Pillar Crack",
+      "priority": 8,
+      "category": "destruction"
+    },
+    {
+      "id": "ceiling_collapse",
+      "triggers": [
+        "ceiling collapses",
+        "roof caves in"
+      ],
+      "label": "Ceiling Collapse",
+      "priority": 9,
+      "category": "destruction"
+    },
+    {
+      "id": "bridge_collapse",
+      "triggers": [
+        "bridge collapses",
+        "bridge breaks"
+      ],
+      "label": "Bridge Collapse",
+      "priority": 9,
+      "category": "destruction"
+    },
+    {
+      "id": "stone_shatter",
+      "triggers": [
+        "stone shatters",
+        "rock breaks",
+        "boulder cracks"
+      ],
+      "label": "Stone Shatter",
+      "priority": 8,
+      "category": "destruction"
+    },
+    {
+      "id": "pottery_break",
+      "triggers": [
+        "pottery breaks",
+        "vase shatters",
+        "ceramic breaks"
+      ],
+      "label": "Pottery Break",
+      "priority": 7,
+      "category": "destruction"
+    },
+    {
+      "id": "glass_break",
+      "triggers": [
+        "glass breaks",
+        "mirror shatters"
+      ],
+      "label": "Glass Break",
+      "priority": 8,
+      "category": "destruction"
+    },
+    {
+      "id": "bone_crack",
+      "triggers": [
+        "bone cracks",
+        "bones snap",
+        "skeletal crack"
+      ],
+      "label": "Bone Crack",
+      "priority": 8,
+      "category": "destruction"
+    },
+    {
+      "id": "tree_fall",
+      "triggers": [
+        "tree falls",
+        "timber crashes",
+        "tree topples"
+      ],
+      "label": "Tree Fall",
+      "priority": 9,
+      "category": "destruction"
+    },
+    {
+      "id": "water_pour",
+      "triggers": [
+        "water pours",
+        "liquid pours",
+        "pouring water"
+      ],
+      "label": "Water Pour",
+      "priority": 6,
+      "category": "liquid"
+    },
+    {
+      "id": "splash",
+      "triggers": [
+        "splash",
+        "water splashes",
+        "splashing"
+      ],
+      "label": "Splash",
+      "priority": 7,
+      "category": "liquid"
+    },
+    {
+      "id": "bubbling",
+      "triggers": [
+        "bubbling",
+        "liquid bubbles",
+        "cauldron bubbles"
+      ],
+      "label": "Bubbling",
+      "priority": 6,
+      "category": "liquid"
+    },
+    {
+      "id": "waterfall",
+      "triggers": [
+        "waterfall",
+        "cascading water"
+      ],
+      "label": "Waterfall",
+      "priority": 7,
+      "category": "liquid"
+    },
+    {
+      "id": "stream",
+      "triggers": [
+        "stream flows",
+        "babbling brook",
+        "running water"
+      ],
+      "label": "Stream",
+      "priority": 6,
+      "category": "liquid"
+    },
+    {
+      "id": "fire_crackle",
+      "triggers": [
+        "fire crackles",
+        "flames crackle",
+        "crackling fire"
+      ],
+      "label": "Fire Crackle",
+      "priority": 7,
+      "category": "fire"
+    },
+    {
+      "id": "fire_roar",
+      "triggers": [
+        "fire roars",
+        "flames roar",
+        "inferno",
+        "hearthfire",
+        "hearthfire burns"
+      ],
+      "label": "Fire Roar",
+      "priority": 8,
+      "category": "fire"
+    },
+    {
+      "id": "torch",
+      "triggers": [
+        "torch flickers",
+        "torch burns"
+      ],
+      "label": "Torch",
+      "priority": 5,
+      "category": "fire"
+    },
+    {
+      "id": "extinguish",
+      "triggers": [
+        "fire extinguishes",
+        "flames die",
+        "fire goes out"
+      ],
+      "label": "Extinguish",
+      "priority": 6,
+      "category": "fire"
+    },
+    {
+      "id": "burning",
+      "triggers": [
+        "burning",
+        "flames consume",
+        "fire spreads"
+      ],
+      "label": "Burning",
+      "priority": 7,
+      "category": "fire"
+    },
+    {
+      "id": "bell_toll",
+      "triggers": [
+        "bell tolls",
+        "bell rings",
+        "church bell"
+      ],
+      "label": "Bell Toll",
+      "priority": 8,
+      "category": "misc"
+    },
+    {
+      "id": "horn_blow",
+      "triggers": [
+        "horn blows",
+        "war horn",
+        "trumpet sounds"
+      ],
+      "label": "Horn Blow",
+      "priority": 8,
+      "category": "misc"
+    },
+    {
+      "id": "crowd_murmur",
+      "triggers": [
+        "crowd murmurs",
+        "people talking",
+        "voices murmur"
+      ],
+      "label": "Crowd Murmur",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "crowd_cheer",
+      "triggers": [
+        "crowd cheers",
+        "applause",
+        "cheering"
+      ],
+      "label": "Crowd Cheer",
+      "priority": 7,
+      "category": "misc"
+    },
+    {
+      "id": "scream",
+      "triggers": [
+        "scream",
+        "screams",
+        "shriek"
+      ],
+      "label": "Scream",
+      "priority": 9,
+      "category": "misc"
+    },
+    {
+      "id": "laughter",
+      "triggers": [
+        "laughter",
+        "laughing",
+        "cackle"
+      ],
+      "label": "Laughter",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "coins_jingle",
+      "triggers": [
+        "coins jingle",
+        "gold pieces",
+        "money clinks"
+      ],
+      "label": "Coins Jingle",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "paper_rustle",
+      "triggers": [
+        "parchment rustles",
+        "paper crinkles",
+        "scroll unfurls"
+      ],
+      "label": "Paper Rustle",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "quill_scratch",
+      "triggers": [
+        "quill scratches",
+        "pen scratching",
+        "writing"
+      ],
+      "label": "Quill Scratch",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "dice_roll",
+      "triggers": [
+        "dice clatter",
+        "rolls dice",
+        "dice roll"
+      ],
+      "label": "Dice Roll",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "stone_grind",
+      "triggers": [
+        "stone grinds",
+        "stone slab slides",
+        "stone slab grates",
+        "hidden door grinds open",
+        "grinding stone"
+      ],
+      "label": "Stone Grind",
+      "priority": 8,
+      "category": "impact"
+    },
+    {
+      "id": "fist_pound",
+      "triggers": [
+        "fist pounds",
+        "pounds on the door",
+        "booming knock",
+        "heavy pounding",
+        "hammering fist"
+      ],
+      "label": "Fist Pound",
+      "priority": 7,
+      "category": "impact"
+    },
+    {
+      "id": "shield_drop",
+      "triggers": [
+        "shield drops",
+        "shield hits the ground",
+        "shield thuds",
+        "shield falls"
+      ],
+      "label": "Shield Drop",
+      "priority": 7,
+      "category": "impact"
+    },
+    {
+      "id": "boulder_crash",
+      "triggers": [
+        "boulder crashes",
+        "rock smashes down",
+        "massive stone falls",
+        "boulder impact",
+        "rockfall slam"
+      ],
+      "label": "Boulder Crash",
+      "priority": 9,
+      "category": "impact"
+    },
+    {
+      "id": "crate_slide",
+      "triggers": [
+        "crates slide",
+        "heavy crate scrapes",
+        "wooden box slides",
+        "wood drags across stone"
+      ],
+      "label": "Crate Slide",
+      "priority": 6,
+      "category": "impact"
+    },
+    {
+      "id": "furniture_topple",
+      "triggers": [
+        "bench topples",
+        "stool falls over",
+        "chair crashes",
+        "table tips",
+        "furniture overturns"
+      ],
+      "label": "Furniture Topple",
+      "priority": 7,
+      "category": "impact"
+    },
+    {
+      "id": "gauntlet_knock",
+      "triggers": [
+        "gauntlet raps",
+        "metallic knock",
+        "iron knuckles rap",
+        "armored fist taps"
+      ],
+      "label": "Gauntlet Knock",
+      "priority": 6,
+      "category": "impact"
+    },
+    {
+      "id": "anchor_drop",
+      "triggers": [
+        "anchor drops",
+        "anchor chain rattles",
+        "anchor hits water",
+        "anchor splashes down",
+        "anchor slams"
+      ],
+      "label": "Anchor Drop",
+      "priority": 7,
+      "category": "impact"
+    },
+    {
+      "id": "cart_crash",
+      "triggers": [
+        "cart crashes",
+        "wagon overturns",
+        "wagon clatters",
+        "cart tips over",
+        "wheels splinter"
+      ],
+      "label": "Cart Crash",
+      "priority": 8,
+      "category": "impact"
+    },
+    {
+      "id": "door_bash",
+      "triggers": [
+        "door bursts open",
+        "door is kicked in",
+        "door splinters",
+        "boots crash against door",
+        "door gives way"
+      ],
+      "label": "Door Bash",
+      "priority": 10,
+      "category": "impact"
+    },
+    {
+      "id": "rain_patter",
+      "triggers": [
+        "rain patters",
+        "rain pattering",
+        "drizzle patter",
+        "raindrops drum",
+        "rain taps on roof"
+      ],
+      "label": "Rain Patter",
+      "priority": 6,
+      "category": "weather"
+    },
+    {
+      "id": "sleet_rattle",
+      "triggers": [
+        "sleet rattles",
+        "ice pellets rattle",
+        "frozen rain clatters",
+        "sleet against the window"
+      ],
+      "label": "Sleet Rattle",
+      "priority": 6,
+      "category": "weather"
+    },
+    {
+      "id": "blizzard_howl",
+      "triggers": [
+        "blizzard roars",
+        "whiteout wind",
+        "snow gale",
+        "blizzard howl",
+        "snowstorm whips"
+      ],
+      "label": "Blizzard Howl",
+      "priority": 8,
+      "category": "weather"
+    },
+    {
+      "id": "monsoon_downpour",
+      "triggers": [
+        "monsoon rains",
+        "torrential rain",
+        "rain lashes down",
+        "sheets of rain",
+        "downpour crashes"
+      ],
+      "label": "Monsoon Downpour",
+      "priority": 8,
+      "category": "weather"
+    },
+    {
+      "id": "sandstorm_whip",
+      "triggers": [
+        "sandstorm whips",
+        "grit lashes",
+        "desert wind screams",
+        "sand scours",
+        "dunes roar"
+      ],
+      "label": "Sandstorm",
+      "priority": 7,
+      "category": "weather"
+    },
+    {
+      "id": "avalanche_roar",
+      "triggers": [
+        "avalanche roars",
+        "snow collapses",
+        "snow slide",
+        "mountain gives way",
+        "snowfall thunder"
+      ],
+      "label": "Avalanche",
+      "priority": 9,
+      "category": "weather"
+    },
+    {
+      "id": "icicle_shatter",
+      "triggers": [
+        "icicles fall",
+        "icicle cracks",
+        "ice shards fall",
+        "icicle shatters",
+        "icicles break loose"
+      ],
+      "label": "Icicle Shatter",
+      "priority": 7,
+      "category": "weather"
+    },
+    {
+      "id": "rooftop_rain",
+      "triggers": [
+        "rain drums on the roof",
+        "steady rainfall",
+        "rain thrums",
+        "rain on shingles",
+        "roof patter"
+      ],
+      "label": "Rooftop Rain",
+      "priority": 5,
+      "category": "weather"
+    },
+    {
+      "id": "rolling_thunder",
+      "triggers": [
+        "thunder rolls",
+        "low thunder",
+        "rolling thunder",
+        "storm rolls overhead",
+        "long thunder"
+      ],
+      "label": "Rolling Thunder",
+      "priority": 8,
+      "category": "weather"
+    },
+    {
+      "id": "storm_tossed_branches",
+      "triggers": [
+        "branches whip",
+        "tree limbs thrash",
+        "storm gusts through trees",
+        "trees whip in wind",
+        "branches creak in gale"
+      ],
+      "label": "Storm Tossed Branches",
+      "priority": 6,
+      "category": "weather"
+    },
+    {
+      "id": "rune_pulse",
+      "triggers": [
+        "runes pulse",
+        "sigils flare",
+        "glyphs glow",
+        "etched runes hum",
+        "runes shimmer"
+      ],
+      "label": "Rune Pulse",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "ward_shatter",
+      "triggers": [
+        "ward shatters",
+        "barrier breaks",
+        "protective field cracks",
+        "shield collapses",
+        "wards fail"
+      ],
+      "label": "Ward Shatter",
+      "priority": 9,
+      "category": "magic"
+    },
+    {
+      "id": "illusion_shimmer",
+      "triggers": [
+        "illusion shimmers",
+        "mirage ripples",
+        "veil flickers",
+        "phantasm wavers",
+        "figment flickers"
+      ],
+      "label": "Illusion Shimmer",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "curse_whisper",
+      "triggers": [
+        "curse whispers",
+        "hex murmurs",
+        "eldritch whisper",
+        "forbidden name hissed",
+        "cursed words"
+      ],
+      "label": "Curse Whisper",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "summoning_rumble",
+      "triggers": [
+        "summoning circle hums",
+        "ritual circle thrums",
+        "summoning rumble",
+        "portal hums open",
+        "ritual energy builds"
+      ],
+      "label": "Summoning Rumble",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "arcane_backfire",
+      "triggers": [
+        "magic destabilizes",
+        "arcane feedback",
+        "spell backfires",
+        "mana sputters",
+        "spell fizzles"
+      ],
+      "label": "Arcane Backfire",
+      "priority": 9,
+      "category": "magic"
+    },
+    {
+      "id": "crystal_resonance",
+      "triggers": [
+        "crystal resonates",
+        "crystal hums",
+        "crystal sings",
+        "gemstone chimes",
+        "crystal ring"
+      ],
+      "label": "Crystal Resonance",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "necrotic_pulse",
+      "triggers": [
+        "necrotic pulse",
+        "deathly chill hum",
+        "grave magic pulses",
+        "necromantic thrum",
+        "cold pulse"
+      ],
+      "label": "Necrotic Pulse",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "chant_crescendo",
+      "triggers": [
+        "chant rises",
+        "ritual chanting",
+        "chorus intones",
+        "incantation builds",
+        "voices in unison"
+      ],
+      "label": "Chant Crescendo",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "mana_surge",
+      "triggers": [
+        "mana surges",
+        "power surges",
+        "arcane surge",
+        "magic floods",
+        "energy surge"
+      ],
+      "label": "Mana Surge",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "battle_cry",
+      "triggers": [
+        "battle cry",
+        "war cry",
+        "warcry",
+        "soldier's cry",
+        "shout of war"
+      ],
+      "label": "Battle Cry",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "shield_bash",
+      "triggers": [
+        "shield bash",
+        "shield slams",
+        "shield ram",
+        "shield smash",
+        "shield charge"
+      ],
+      "label": "Shield Bash",
+      "priority": 9,
+      "category": "combat"
+    },
+    {
+      "id": "arrow_volley",
+      "triggers": [
+        "volley of arrows",
+        "hail of arrows",
+        "arrows rain down",
+        "arrow volley",
+        "shafts hiss"
+      ],
+      "label": "Arrow Volley",
+      "priority": 9,
+      "category": "combat"
+    },
+    {
+      "id": "mace_crunch",
+      "triggers": [
+        "mace crunches",
+        "mace smashes",
+        "spiked mace hits",
+        "morningstar impact",
+        "mace thud"
+      ],
+      "label": "Mace Crunch",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "grapple_thud",
+      "triggers": [
+        "tackles to the ground",
+        "grapples hard",
+        "body slam",
+        "wrestles to the ground",
+        "grapple thud"
+      ],
+      "label": "Grapple Thud",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "armor_sunder",
+      "triggers": [
+        "armor sundered",
+        "plates tear",
+        "armor splits",
+        "breastplate buckles",
+        "armor cracks"
+      ],
+      "label": "Armor Sunder",
+      "priority": 9,
+      "category": "combat"
+    },
+    {
+      "id": "dagger_throw",
+      "triggers": [
+        "dagger thrown",
+        "knife flicks",
+        "knife thrown",
+        "blade whistles",
+        "dagger spins"
+      ],
+      "label": "Dagger Throw",
+      "priority": 7,
+      "category": "combat"
+    },
+    {
+      "id": "polearm_sweep",
+      "triggers": [
+        "halberd sweeps",
+        "polearm sweep",
+        "glaive arcs",
+        "pike swings wide",
+        "long haft whooshes"
+      ],
+      "label": "Polearm Sweep",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "spear_snap",
+      "triggers": [
+        "spear snaps",
+        "shaft splinters",
+        "lance breaks",
+        "spear cracks",
+        "broken spear"
+      ],
+      "label": "Spear Snap",
+      "priority": 7,
+      "category": "combat"
+    },
+    {
+      "id": "shield_scrape",
+      "triggers": [
+        "shield scrapes",
+        "shield drags",
+        "shield grinding",
+        "shield skids",
+        "shield scrapes stone"
+      ],
+      "label": "Shield Scrape",
+      "priority": 6,
+      "category": "combat"
+    },
+    {
+      "id": "ghost_wail",
+      "triggers": [
+        "ghost wails",
+        "spectral wail",
+        "haunting moan",
+        "spirit keens",
+        "ghostly keening"
+      ],
+      "label": "Ghost Wail",
+      "priority": 9,
+      "category": "creature"
+    },
+    {
+      "id": "goblin_chatter",
+      "triggers": [
+        "goblin chatter",
+        "goblin cackle",
+        "goblin jabber",
+        "nasal chatter",
+        "goblin squabble"
+      ],
+      "label": "Goblin Chatter",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "ogre_grunt",
+      "triggers": [
+        "ogre grunts",
+        "ogre bellows",
+        "troll grunts",
+        "deep grunt",
+        "ogre snorts"
+      ],
+      "label": "Ogre Grunt",
+      "priority": 7,
+      "category": "creature"
+    },
+    {
+      "id": "banshee_scream",
+      "triggers": [
+        "banshee scream",
+        "banshee shriek",
+        "wail of the banshee",
+        "piercing keening",
+        "banshee howl"
+      ],
+      "label": "Banshee Scream",
+      "priority": 10,
+      "category": "creature"
+    },
+    {
+      "id": "serpent_rattle",
+      "triggers": [
+        "tail rattles",
+        "rattlesnake",
+        "bone rattle",
+        "serpent rattle",
+        "tail shakes"
+      ],
+      "label": "Serpent Rattle",
+      "priority": 7,
+      "category": "creature"
+    },
+    {
+      "id": "raven_caw",
+      "triggers": [
+        "raven caws",
+        "crow caws",
+        "black bird caw",
+        "hoarse caw",
+        "carrion bird call"
+      ],
+      "label": "Raven Caw",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "boar_snort",
+      "triggers": [
+        "boar snorts",
+        "pig snorts",
+        "boar huffs",
+        "snuffling boar",
+        "boar rooting"
+      ],
+      "label": "Boar Snort",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "giant_stomp",
+      "triggers": [
+        "giant stomps",
+        "titanic footsteps",
+        "colossal steps",
+        "ogre stomps",
+        "heavy giant stride"
+      ],
+      "label": "Giant Stomp",
+      "priority": 9,
+      "category": "creature"
+    },
+    {
+      "id": "insect_chitter",
+      "triggers": [
+        "chittering swarm",
+        "skittering insects",
+        "beetle chitter",
+        "chitinous clicking",
+        "bug chatter"
+      ],
+      "label": "Insect Chitter",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "ghoul_snarl",
+      "triggers": [
+        "ghoul snarls",
+        "undead snarl",
+        "feral ghoul hisses",
+        "ghast growl",
+        "cadaverous snarl"
+      ],
+      "label": "Ghoul Snarl",
+      "priority": 8,
+      "category": "creature"
+    },
+    {
+      "id": "tavern_murmur",
+      "triggers": [
+        "tavern murmur",
+        "alehouse chatter",
+        "pub noise",
+        "mug clinks",
+        "tavern din"
+      ],
+      "label": "Tavern Murmur",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "market_clamor",
+      "triggers": [
+        "market clamor",
+        "bazaar bustle",
+        "vendors hawking",
+        "marketplace din",
+        "crowded market buzz"
+      ],
+      "label": "Market Clamor",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "library_hush",
+      "triggers": [
+        "library hush",
+        "pages turning",
+        "soft page turns",
+        "whispered study",
+        "quiet library"
+      ],
+      "label": "Library Hush",
+      "priority": 4,
+      "category": "ambience"
+    },
+    {
+      "id": "forge_rhythm",
+      "triggers": [
+        "forge hammers",
+        "smithy rings",
+        "smith's hammer",
+        "bellows wheeze",
+        "steady forge rhythm"
+      ],
+      "label": "Forge Rhythm",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "wind_chimes",
+      "triggers": [
+        "wind chimes",
+        "bells tinkling",
+        "chimes sway",
+        "hanging chimes",
+        "tinkling chimes"
+      ],
+      "label": "Wind Chimes",
+      "priority": 5,
+      "category": "ambience"
+    },
+    {
+      "id": "rope_creak",
+      "triggers": [
+        "rope creaks",
+        "rigging creaks",
+        "hemp rope groans",
+        "gallows rope",
+        "rigging groans"
+      ],
+      "label": "Rope Creak",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "harbor_gulls",
+      "triggers": [
+        "gulls cry",
+        "sea birds",
+        "harbor gulls screech",
+        "shoreline birds",
+        "pier gulls"
+      ],
+      "label": "Harbor Gulls",
+      "priority": 5,
+      "category": "ambience"
+    },
+    {
+      "id": "swamp_bubble",
+      "triggers": [
+        "swamp bubbles",
+        "bog gurgles",
+        "marsh burps",
+        "muddy bubbles",
+        "swamp gas"
+      ],
+      "label": "Swamp Bubble",
+      "priority": 5,
+      "category": "ambience"
+    },
+    {
+      "id": "cavern_echo",
+      "triggers": [
+        "cavern echoes",
+        "hollow echo",
+        "deep cave echo",
+        "sound carries through cavern",
+        "underground echo"
+      ],
+      "label": "Cavern Echo",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "campsite_clatter",
+      "triggers": [
+        "camp utensils clatter",
+        "tin cup rattles",
+        "pan clangs",
+        "gear jingles",
+        "mess kit clinks"
+      ],
+      "label": "Campsite Clatter",
+      "priority": 5,
+      "category": "ambience"
+    },
+    {
+      "id": "ice_shatter",
+      "triggers": [
+        "ice shatters",
+        "frost breaks",
+        "frozen wall cracks",
+        "ice crust snaps",
+        "ice plate breaks"
+      ],
+      "label": "Ice Shatter",
+      "priority": 9,
+      "category": "destruction"
+    },
+    {
+      "id": "rope_snap",
+      "triggers": [
+        "rope snaps",
+        "cable breaks",
+        "line snaps",
+        "tether snaps",
+        "rope parts"
+      ],
+      "label": "Rope Snap",
+      "priority": 8,
+      "category": "destruction"
+    },
+    {
+      "id": "bridge_rope_break",
+      "triggers": [
+        "rope bridge frays",
+        "bridge ropes snap",
+        "bridge gives way",
+        "planks crack",
+        "bridge groans"
+      ],
+      "label": "Rope Bridge Break",
+      "priority": 9,
+      "category": "destruction"
+    },
+    {
+      "id": "stone_collapse",
+      "triggers": [
+        "stone collapses",
+        "arch crumbles",
+        "keystone falls",
+        "stonework gives way",
+        "masonry fails"
+      ],
+      "label": "Stone Collapse",
+      "priority": 9,
+      "category": "destruction"
+    },
+    {
+      "id": "glass_cascade",
+      "triggers": [
+        "glass rains down",
+        "shards cascade",
+        "shattered panes",
+        "glass tinkling fall",
+        "glass fragments fall"
+      ],
+      "label": "Glass Cascade",
+      "priority": 8,
+      "category": "destruction"
+    },
+    {
+      "id": "splintering_wood",
+      "triggers": [
+        "wood splinters",
+        "timber snaps",
+        "splintering beam",
+        "support gives way",
+        "wood fibers tear"
+      ],
+      "label": "Splintering Wood",
+      "priority": 8,
+      "category": "destruction"
+    },
+    {
+      "id": "rockslide",
+      "triggers": [
+        "rockslide",
+        "stones avalanche",
+        "rocks tumble",
+        "gravel pours",
+        "stone cascade"
+      ],
+      "label": "Rockslide",
+      "priority": 8,
+      "category": "destruction"
+    },
+    {
+      "id": "ceiling_dustfall",
+      "triggers": [
+        "dust rains down",
+        "ceiling dust",
+        "plaster crumbles",
+        "loose ceiling falls",
+        "dusty collapse"
+      ],
+      "label": "Ceiling Dustfall",
+      "priority": 6,
+      "category": "destruction"
+    },
+    {
+      "id": "statue_topple",
+      "triggers": [
+        "statue topples",
+        "monument cracks",
+        "stone idol falls",
+        "statue shatters",
+        "idol crashes"
+      ],
+      "label": "Statue Topple",
+      "priority": 8,
+      "category": "destruction"
+    },
+    {
+      "id": "wall_crumble",
+      "triggers": [
+        "mortar crumbles",
+        "wall crumbles",
+        "brickwork gives",
+        "stones loosen",
+        "wall disintegrates"
+      ],
+      "label": "Wall Crumble",
+      "priority": 7,
+      "category": "destruction"
+    },
+    {
+      "id": "blood_drip",
+      "triggers": [
+        "blood drips",
+        "blood patters",
+        "bloody drip",
+        "blood pooling",
+        "slow drip of blood"
+      ],
+      "label": "Blood Drip",
+      "priority": 7,
+      "category": "liquid"
+    },
+    {
+      "id": "wine_pour",
+      "triggers": [
+        "wine pours",
+        "wine splashes",
+        "goblet filled",
+        "wine sloshes",
+        "pouring wine"
+      ],
+      "label": "Wine Pour",
+      "priority": 6,
+      "category": "liquid"
+    },
+    {
+      "id": "ale_slosh",
+      "triggers": [
+        "ale sloshes",
+        "tankard sloshes",
+        "frothy ale spill",
+        "beer sloshing",
+        "ale spills"
+      ],
+      "label": "Ale Slosh",
+      "priority": 5,
+      "category": "liquid"
+    },
+    {
+      "id": "mud_squelch",
+      "triggers": [
+        "mud squelches",
+        "boots in mud",
+        "muddy suction",
+        "wet ground squelch",
+        "slogging through mud"
+      ],
+      "label": "Mud Squelch",
+      "priority": 6,
+      "category": "liquid"
+    },
+    {
+      "id": "ooze_slurp",
+      "triggers": [
+        "ooze slurps",
+        "gelatinous cube sloshes",
+        "slime gurgles",
+        "slime plops",
+        "ooze squelches"
+      ],
+      "label": "Ooze Slurp",
+      "priority": 7,
+      "category": "liquid"
+    },
+    {
+      "id": "fountain_spray",
+      "triggers": [
+        "fountain sprays",
+        "water jets",
+        "fountain splash",
+        "spray of water",
+        "fountain mist"
+      ],
+      "label": "Fountain Spray",
+      "priority": 5,
+      "category": "liquid"
+    },
+    {
+      "id": "bucket_spill",
+      "triggers": [
+        "bucket tips over",
+        "pail spills",
+        "water bucket spills",
+        "bucket sloshes",
+        "bucket overturns"
+      ],
+      "label": "Bucket Spill",
+      "priority": 5,
+      "category": "liquid"
+    },
+    {
+      "id": "river_rapids",
+      "triggers": [
+        "river rushes",
+        "current roars",
+        "whitewater",
+        "rapids crash",
+        "rushing river"
+      ],
+      "label": "River Rapids",
+      "priority": 7,
+      "category": "liquid"
+    },
+    {
+      "id": "sewer_trickle",
+      "triggers": [
+        "sewer trickles",
+        "foul water drips",
+        "ditch water drips",
+        "sluice trickle",
+        "filthy trickle"
+      ],
+      "label": "Sewer Trickle",
+      "priority": 5,
+      "category": "liquid"
+    },
+    {
+      "id": "puddle_splash",
+      "triggers": [
+        "puddle splash",
+        "boots splash",
+        "puddle slaps",
+        "muddy puddle splash",
+        "step in puddle"
+      ],
+      "label": "Puddle Splash",
+      "priority": 6,
+      "category": "liquid"
+    },
+    {
+      "id": "ember_pop",
+      "triggers": [
+        "embers pop",
+        "coals crack",
+        "coals pop",
+        "embers snap",
+        "coal pops"
+      ],
+      "label": "Ember Pop",
+      "priority": 6,
+      "category": "fire"
+    },
+    {
+      "id": "match_strike",
+      "triggers": [
+        "match strikes",
+        "flint sparks",
+        "tinder sparks",
+        "flint and steel",
+        "spark catches"
+      ],
+      "label": "Match Strike",
+      "priority": 7,
+      "category": "fire"
+    },
+    {
+      "id": "oil_ignite",
+      "triggers": [
+        "oil ignites",
+        "lamp flares",
+        "lantern flares",
+        "oil fire",
+        "lamp sputters"
+      ],
+      "label": "Oil Ignite",
+      "priority": 7,
+      "category": "fire"
+    },
+    {
+      "id": "fuse_hiss",
+      "triggers": [
+        "fuse hisses",
+        "fuse burns",
+        "fuse sizzles",
+        "wick sputters",
+        "wick hisses"
+      ],
+      "label": "Fuse Hiss",
+      "priority": 6,
+      "category": "fire"
+    },
+    {
+      "id": "smoke_hiss",
+      "triggers": [
+        "smoke hisses",
+        "smoldering hiss",
+        "smoke snakes up",
+        "ash hisses",
+        "smoldering crackle"
+      ],
+      "label": "Smoke Hiss",
+      "priority": 6,
+      "category": "fire"
+    },
+    {
+      "id": "lava_bubble",
+      "triggers": [
+        "lava bubbles",
+        "magma pops",
+        "molten rock burbles",
+        "lava gurgles",
+        "lava blisters"
+      ],
+      "label": "Lava Bubble",
+      "priority": 9,
+      "category": "fire"
+    },
+    {
+      "id": "forge_bellows",
+      "triggers": [
+        "bellows wheeze",
+        "bellows rush",
+        "forge bellows",
+        "air blasts into coals",
+        "bellows hiss"
+      ],
+      "label": "Forge Bellows",
+      "priority": 6,
+      "category": "fire"
+    },
+    {
+      "id": "candle_snuff",
+      "triggers": [
+        "candle snuffs out",
+        "flame gutters",
+        "wick dies",
+        "candle blown out",
+        "flame flickers out"
+      ],
+      "label": "Candle Snuff",
+      "priority": 5,
+      "category": "fire"
+    },
+    {
+      "id": "wildfire_roar",
+      "triggers": [
+        "wildfire roars",
+        "forest fire crackles",
+        "brushfire rages",
+        "firestorm",
+        "raging blaze"
+      ],
+      "label": "Wildfire Roar",
+      "priority": 9,
+      "category": "fire"
+    },
+    {
+      "id": "torch_drop",
+      "triggers": [
+        "torch falls",
+        "torch hits ground",
+        "torch sputters",
+        "torch clatters",
+        "dropped torch"
+      ],
+      "label": "Torch Drop",
+      "priority": 6,
+      "category": "fire"
+    },
+    {
+      "id": "glass_clink",
+      "triggers": [
+        "glasses clink",
+        "toast of mugs",
+        "goblets clink",
+        "crystal tinkle",
+        "raised mug clinks"
+      ],
+      "label": "Glass Clink",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "harp_gliss",
+      "triggers": [
+        "harp glissando",
+        "harp strings",
+        "gentle harp",
+        "angelic harp",
+        "harp flourish"
+      ],
+      "label": "Harp Gliss",
+      "priority": 4,
+      "category": "misc"
+    },
+    {
+      "id": "drum_roll",
+      "triggers": [
+        "drumroll",
+        "drums rumble",
+        "war drums roll",
+        "snare roll",
+        "drum crescendo"
+      ],
+      "label": "Drum Roll",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "card_shuffle",
+      "triggers": [
+        "cards shuffle",
+        "deck riffles",
+        "cards riffle",
+        "card shuffling",
+        "deck bridges"
+      ],
+      "label": "Card Shuffle",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "curtain_swish",
+      "triggers": [
+        "curtain swishes",
+        "drapes swish",
+        "tapestry sways",
+        "cloth swishes",
+        "curtain drawn back"
+      ],
+      "label": "Curtain Swish",
+      "priority": 4,
+      "category": "misc"
+    },
+    {
+      "id": "bottle_uncork",
+      "triggers": [
+        "cork pops",
+        "bottle uncorks",
+        "cork pulled free",
+        "wine uncorked",
+        "stopper pops"
+      ],
+      "label": "Bottle Uncork",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "chain_drop",
+      "triggers": [
+        "chain drops",
+        "chains pile",
+        "heavy chain falls",
+        "loose chain clatters",
+        "chain heap"
+      ],
+      "label": "Chain Drop",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "flag_flap",
+      "triggers": [
+        "flag flaps",
+        "banner snaps",
+        "banner whipping",
+        "standard snaps in wind",
+        "flag crackles"
+      ],
+      "label": "Flag Flap",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "key_turn",
+      "triggers": [
+        "key turns in lock",
+        "tumbler clicks",
+        "key grinds",
+        "lock tumbler clacks",
+        "key twists"
+      ],
+      "label": "Key Turn",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "scroll_seal_crack",
+      "triggers": [
+        "wax seal cracks",
+        "seal breaks",
+        "scroll seal broken",
+        "wax pops",
+        "seal snaps"
+      ],
+      "label": "Scroll Seal Crack",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "bow_draw",
+      "triggers": [
+        "bowstring creaks",
+        "drawing the bow",
+        "notches an arrow",
+        "pulls back the string",
+        "bow taut"
+      ],
+      "label": "Bow Draw",
+      "priority": 7,
+      "category": "combat"
+    },
+    {
+      "id": "blade_sharpen",
+      "triggers": [
+        "whetstone grinds",
+        "sharpening blade",
+        "honing steel",
+        "grinding metal",
+        "sharpening sword"
+      ],
+      "label": "Blade Sharpen",
+      "priority": 5,
+      "category": "combat"
+    },
+    {
+      "id": "shield_equip",
+      "triggers": [
+        "straps shield",
+        "readies shield",
+        "dons shield",
+        "shield rattle",
+        "hefts shield"
+      ],
+      "label": "Shield Equip",
+      "priority": 6,
+      "category": "combat"
+    },
+    {
+      "id": "fist_miss",
+      "triggers": [
+        "punch misses",
+        "swings wild",
+        "fist whooshes",
+        "blow whiffs",
+        "swing and a miss"
+      ],
+      "label": "Fist Miss",
+      "priority": 7,
+      "category": "combat"
+    },
+    {
+      "id": "arrow_miss",
+      "triggers": [
+        "arrow whizzes by",
+        "bolt misses",
+        "projectile flies past",
+        "arrow strays",
+        "misses the mark"
+      ],
+      "label": "Arrow Miss",
+      "priority": 7,
+      "category": "combat"
+    },
+    {
+      "id": "armor_squeak",
+      "triggers": [
+        "leather squeaks",
+        "armor joints creak",
+        "rusty hinge squeak",
+        "armor shifts",
+        "rusty armor"
+      ],
+      "label": "Armor Squeak",
+      "priority": 5,
+      "category": "combat"
+    },
+    {
+      "id": "body_fall_dirt",
+      "triggers": [
+        "thuds into dirt",
+        "falls on ground",
+        "body hits earth",
+        "collapses on soil",
+        "hits the dirt"
+      ],
+      "label": "Body Fall (Dirt)",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "body_fall_water",
+      "triggers": [
+        "splashes into water",
+        "body hits lake",
+        "falls into river",
+        "splashes down",
+        "falls in water"
+      ],
+      "label": "Body Fall (Water)",
+      "priority": 8,
+      "category": "combat"
+    },
+    {
+      "id": "sword_sheath",
+      "triggers": [
+        "sheathes sword",
+        "puts away blade",
+        "slides into scabbard",
+        "sword sheathed",
+        "returns blade"
+      ],
+      "label": "Sword Sheath",
+      "priority": 6,
+      "category": "combat"
+    },
+    {
+      "id": "dagger_sheath",
+      "triggers": [
+        "sheathes dagger",
+        "hides knife",
+        "tucks blade away",
+        "dagger sheathed",
+        "conceals dagger"
+      ],
+      "label": "Dagger Sheath",
+      "priority": 6,
+      "category": "combat"
+    },
+    {
+      "id": "magic_spark",
+      "triggers": [
+        "sparks fly",
+        "magical sparks",
+        "arcane flutter",
+        "small zap",
+        "faint sparks"
+      ],
+      "label": "Magic Spark",
+      "priority": 5,
+      "category": "magic"
+    },
+    {
+      "id": "telepathy_hum",
+      "triggers": [
+        "mind hums",
+        "telepathic signal",
+        "mental vibration",
+        "psychic resonance",
+        "voice in head"
+      ],
+      "label": "Telepathy Hum",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "divination_chime",
+      "triggers": [
+        "crystal chime",
+        "future sight",
+        "mystical ring",
+        "omen sounds",
+        "vision clears"
+      ],
+      "label": "Divination Chime",
+      "priority": 6,
+      "category": "magic"
+    },
+    {
+      "id": "necromancy_whisper",
+      "triggers": [
+        "dead voices",
+        "grave whisper",
+        "tomb murmur",
+        "spirit speech",
+        "voice from the grave"
+      ],
+      "label": "Necromancy Whisper",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "nature_bloom",
+      "triggers": [
+        "flower opens",
+        "vines grow",
+        "leaves unfurl",
+        "plants sprout",
+        "nature blooms"
+      ],
+      "label": "Nature Bloom",
+      "priority": 6,
+      "category": "magic"
+    },
+    {
+      "id": "acid_splash",
+      "triggers": [
+        "acid burns",
+        "chemical splash",
+        "corrosive hiss",
+        "acid melts",
+        "acid sprays"
+      ],
+      "label": "Acid Splash",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "holy_chorus",
+      "triggers": [
+        "angelic choir",
+        "divine singing",
+        "sacred tones",
+        "heavenly voices",
+        "choir sings"
+      ],
+      "label": "Holy Chorus",
+      "priority": 9,
+      "category": "magic"
+    },
+    {
+      "id": "demonic_laugh",
+      "triggers": [
+        "evil laughter",
+        "dark cackle",
+        "demon guffaw",
+        "fiendish laugh",
+        "sinister laugh"
+      ],
+      "label": "Demonic Laugh",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "eldritch_blast",
+      "triggers": [
+        "eldritch crackle",
+        "beam of force",
+        "warlock blast",
+        "dark energy",
+        "eldritch power"
+      ],
+      "label": "Eldritch Blast",
+      "priority": 9,
+      "category": "magic"
+    },
+    {
+      "id": "magic_fizzle",
+      "triggers": [
+        "spell fails",
+        "magic dies",
+        "fizzling sound",
+        "sparks die out",
+        "spell fizzles"
+      ],
+      "label": "Magic Fizzle",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "cat_meow",
+      "triggers": [
+        "cat meows",
+        "kitten cries",
+        "feline call",
+        "stray cat",
+        "purring cat"
+      ],
+      "label": "Cat Meow",
+      "priority": 5,
+      "category": "creature"
+    },
+    {
+      "id": "dog_bark",
+      "triggers": [
+        "dog barks",
+        "hound bays",
+        "canine call",
+        "guard dog",
+        "puppy yaps"
+      ],
+      "label": "Dog Bark",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "cow_moo",
+      "triggers": [
+        "cow moos",
+        "cattle call",
+        "herd sounds",
+        "bovine lowing",
+        "cattle moo"
+      ],
+      "label": "Cow Moo",
+      "priority": 5,
+      "category": "creature"
+    },
+    {
+      "id": "sheep_baa",
+      "triggers": [
+        "sheep bleats",
+        "lamb calls",
+        "flock sounds",
+        "sheep baa",
+        "bleating sheep"
+      ],
+      "label": "Sheep Baa",
+      "priority": 5,
+      "category": "creature"
+    },
+    {
+      "id": "chicken_cluck",
+      "triggers": [
+        "chicken clucks",
+        "hen sounds",
+        "rooster crows",
+        "poultry noise",
+        "chickens clucking"
+      ],
+      "label": "Chicken Cluck",
+      "priority": 5,
+      "category": "creature"
+    },
+    {
+      "id": "spider_hiss",
+      "triggers": [
+        "spider hisses",
+        "arachnid sound",
+        "web spinner",
+        "spider chitter",
+        "giant spider"
+      ],
+      "label": "Spider Hiss",
+      "priority": 7,
+      "category": "creature"
+    },
+    {
+      "id": "elemental_rumble",
+      "triggers": [
+        "elemental groans",
+        "earth elemental",
+        "stone golem moves",
+        "elemental roar",
+        "rock elemental"
+      ],
+      "label": "Elemental Rumble",
+      "priority": 8,
+      "category": "creature"
+    },
+    {
+      "id": "griffin_screech",
+      "triggers": [
+        "griffin cries",
+        "eagle-lion screech",
+        "mythical beast call",
+        "griffin scream",
+        "beast screech"
+      ],
+      "label": "Griffin Screech",
+      "priority": 9,
+      "category": "creature"
+    },
+    {
+      "id": "mermaid_song",
+      "triggers": [
+        "siren song",
+        "mermaid sings",
+        "underwater melody",
+        "lure song",
+        "enchanting song"
+      ],
+      "label": "Mermaid Song",
+      "priority": 7,
+      "category": "creature"
+    },
+    {
+      "id": "wolf_growl",
+      "triggers": [
+        "wolf snarls",
+        "menacing growl",
+        "alpha growl",
+        "canine threat",
+        "wolf growling"
+      ],
+      "label": "Wolf Growl",
+      "priority": 7,
+      "category": "creature"
+    },
+    {
+      "id": "forest_day",
+      "triggers": [
+        "birds singing",
+        "forest sounds",
+        "daytime woods",
+        "nature ambience",
+        "woodland sounds"
+      ],
+      "label": "Forest Day",
+      "priority": 4,
+      "category": "ambience"
+    },
+    {
+      "id": "forest_night",
+      "triggers": [
+        "crickets chirp",
+        "night woods",
+        "nocturnal sounds",
+        "forest silence",
+        "night crickets"
+      ],
+      "label": "Forest Night",
+      "priority": 4,
+      "category": "ambience"
+    },
+    {
+      "id": "rain_forest",
+      "triggers": [
+        "jungle rain",
+        "tropical downpour",
+        "wet leaves",
+        "canopy rain",
+        "forest rain"
+      ],
+      "label": "Rain Forest",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "desert_day",
+      "triggers": [
+        "hot wind",
+        "desert silence",
+        "sand shifting",
+        "dune wind",
+        "arid breeze"
+      ],
+      "label": "Desert Day",
+      "priority": 4,
+      "category": "ambience"
+    },
+    {
+      "id": "tundra_wind",
+      "triggers": [
+        "cold wind",
+        "icy gale",
+        "frozen plains",
+        "arctic breeze",
+        "tundra howl"
+      ],
+      "label": "Tundra Wind",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "city_traffic",
+      "triggers": [
+        "cart wheels",
+        "street noise",
+        "city bustle",
+        "urban sounds",
+        "busy street"
+      ],
+      "label": "City Traffic",
+      "priority": 5,
+      "category": "ambience"
+    },
+    {
+      "id": "blacksmith_hammer",
+      "triggers": [
+        "rhythm of hammer",
+        "forge work",
+        "smithing sounds",
+        "blacksmith working",
+        "hammer and anvil"
+      ],
+      "label": "Blacksmith Hammer",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "kitchen_cooking",
+      "triggers": [
+        "pot bubbling",
+        "knife chopping",
+        "frying pan",
+        "cooking sounds",
+        "kitchen bustle"
+      ],
+      "label": "Kitchen Cooking",
+      "priority": 5,
+      "category": "ambience"
+    },
+    {
+      "id": "camp_fire_crack",
+      "triggers": [
+        "fire crackles",
+        "campfire burns",
+        "wood popping",
+        "warm fire",
+        "crackling log"
+      ],
+      "label": "Campfire Crackle",
+      "priority": 5,
+      "category": "ambience"
+    },
+    {
+      "id": "sleeping_snore",
+      "triggers": [
+        "snoring",
+        "heavy sleep",
+        "deep breathing",
+        "asleep",
+        "loud snore"
+      ],
+      "label": "Sleeping Snore",
+      "priority": 5,
+      "category": "ambience"
+    },
+    {
+      "id": "potion_drink",
+      "triggers": [
+        "drinks potion",
+        "gulps liquid",
+        "swallows elixir",
+        "quaffs",
+        "drinks vial"
+      ],
+      "label": "Potion Drink",
+      "priority": 7,
+      "category": "misc"
+    },
+    {
+      "id": "food_eat",
+      "triggers": [
+        "eating",
+        "chewing",
+        "bites into",
+        "consumes food",
+        "takes a bite"
+      ],
+      "label": "Food Eat",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "page_turn",
+      "triggers": [
+        "turns page",
+        "flipping book",
+        "reading scroll",
+        "paper sound",
+        "turns the leaf"
+      ],
+      "label": "Page Turn",
+      "priority": 4,
+      "category": "misc"
+    },
+    {
+      "id": "chest_lock",
+      "triggers": [
+        "unlocks chest",
+        "lock clicks open",
+        "chest unlocks",
+        "opens lock",
+        "key turns in chest"
+      ],
+      "label": "Chest Lock",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "bag_open",
+      "triggers": [
+        "opens bag",
+        "unzips",
+        "unties sack",
+        "rummages in pack",
+        "opens pouch"
+      ],
+      "label": "Bag Open",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "loot_pickup",
+      "triggers": [
+        "picks up gold",
+        "gathers items",
+        "looting sound",
+        "collecting loot",
+        "grabs treasure"
+      ],
+      "label": "Loot Pickup",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "door_unlock",
+      "triggers": [
+        "unlocks door",
+        "key turns",
+        "bolt slides back",
+        "door unlocks",
+        "tumbler falls"
+      ],
+      "label": "Door Unlock",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "door_lock",
+      "triggers": [
+        "locks door",
+        "turns key",
+        "secures bolt",
+        "locking up",
+        "deadbolt slides"
+      ],
+      "label": "Door Lock",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "trap_disarm",
+      "triggers": [
+        "disarms trap",
+        "mechanism stops",
+        "trap safe",
+        "disables device",
+        "trap disarmed"
+      ],
+      "label": "Trap Disarm",
+      "priority": 7,
+      "category": "misc"
+    },
+    {
+      "id": "trap_spring",
+      "triggers": [
+        "trap snaps",
+        "mechanism fires",
+        "spring releases",
+        "trap triggers",
+        "trap springs"
+      ],
+      "label": "Trap Spring",
+      "priority": 8,
+      "category": "misc"
+    },
+    {
+      "id": "gasp",
+      "triggers": [
+        "gasps",
+        "sharp intake of breath",
+        "shocked gasp",
+        "surprised breath",
+        "gasps in air"
+      ],
+      "label": "Gasp",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "sigh",
+      "triggers": [
+        "sighs",
+        "exhales loudy",
+        "weary sigh",
+        "relieved sigh",
+        "long sigh"
+      ],
+      "label": "Sigh",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "groan_pain",
+      "triggers": [
+        "groans in pain",
+        "hurt sound",
+        "injured noise",
+        "grunt of pain",
+        "cries out in pain"
+      ],
+      "label": "Groan Pain",
+      "priority": 7,
+      "category": "misc"
+    },
+    {
+      "id": "cheer_small",
+      "triggers": [
+        "small cheer",
+        "yay",
+        "happy shout",
+        "brief applause",
+        "cheers softly"
+      ],
+      "label": "Cheer Small",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "boo",
+      "triggers": [
+        "crowd boos",
+        "jeering",
+        "negative shout",
+        "disapproval",
+        "booing"
+      ],
+      "label": "Boo",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "crying",
+      "triggers": [
+        "sobs",
+        "crying sound",
+        "weeping",
+        "tears fall",
+        "cries softly"
+      ],
+      "label": "Crying",
+      "priority": 7,
+      "category": "misc"
+    },
+    {
+      "id": "yawn",
+      "triggers": [
+        "yawns",
+        "tired sound",
+        "sleepy breath",
+        "stifles yawn",
+        "loud yawn"
+      ],
+      "label": "Yawn",
+      "priority": 4,
+      "category": "misc"
+    },
+    {
+      "id": "sneeze",
+      "triggers": [
+        "sneezes",
+        "achoo",
+        "sudden sneeze",
+        "loud sneeze",
+        "sneezing"
+      ],
+      "label": "Sneeze",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "cough",
+      "triggers": [
+        "coughs",
+        "clearing throat",
+        "hacking cough",
+        "sick sound",
+        "coughing fit"
+      ],
+      "label": "Cough",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "hiccup",
+      "triggers": [
+        "hiccups",
+        "drunk hiccup",
+        "sudden hiccup",
+        "hiccuping",
+        "hiccup sound"
+      ],
+      "label": "Hiccup",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "glass_fill",
+      "triggers": [
+        "fills glass",
+        "pouring drink",
+        "water into cup",
+        "fills mug",
+        "pours ale"
+      ],
+      "label": "Glass Fill",
+      "priority": 5,
+      "category": "liquid"
+    },
+    {
+      "id": "writing_scribble",
+      "triggers": [
+        "scribbling fast",
+        "pen scratching",
+        "frantic writing",
+        "writing furiously",
+        "quill scrawl"
+      ],
+      "label": "Writing Scribble",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "match_light",
+      "triggers": [
+        "striking match",
+        "lighting flare",
+        "small flame",
+        "match flare",
+        "match ignites"
+      ],
+      "label": "Match Light",
+      "priority": 6,
+      "category": "fire"
+    },
+    {
+      "id": "torch_light",
+      "triggers": [
+        "lighting torch",
+        "torch flares up",
+        "fire catches",
+        "torch ignition",
+        "lights the torch"
+      ],
+      "label": "Torch Light",
+      "priority": 7,
+      "category": "fire"
+    },
+    {
+      "id": "candle_light",
+      "triggers": [
+        "lighting candle",
+        "flame flickers",
+        "wax melts",
+        "candle lit",
+        "taper lights"
+      ],
+      "label": "Candle Light",
+      "priority": 5,
+      "category": "fire"
+    },
+    {
+      "id": "rope_tie",
+      "triggers": [
+        "tying knot",
+        "tightening rope",
+        "securing line",
+        "rope tighten",
+        "knot tied"
+      ],
+      "label": "Rope Tie",
+      "priority": 5,
+      "category": "misc"
+    },
+    {
+      "id": "fabric_rip",
+      "triggers": [
+        "ripping cloth",
+        "tearing shirt",
+        "fabric shreds",
+        "cloth rips",
+        "garment tears"
+      ],
+      "label": "Fabric Rip",
+      "priority": 6,
+      "category": "destruction"
+    },
+    {
+      "id": "mud_step",
+      "triggers": [
+        "stepping in mud",
+        "sticky step",
+        "squelching boot",
+        "walking in muck",
+        "muddy step"
+      ],
+      "label": "Mud Step",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "snow_step",
+      "triggers": [
+        "crunching snow",
+        "stepping in deep snow",
+        "icy footprint",
+        "walking in snow",
+        "snow crunch"
+      ],
+      "label": "Snow Step",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "grass_step",
+      "triggers": [
+        "rustling grass",
+        "walking in field",
+        "soft step",
+        "grass swish",
+        "step in grass"
+      ],
+      "label": "Grass Step",
+      "priority": 5,
+      "category": "ambience"
+    },
+    {
+      "id": "gravel_step",
+      "triggers": [
+        "crunching gravel",
+        "walking on stones",
+        "loose rocks",
+        "gravel walk",
+        "pebbles crunch"
+      ],
+      "label": "Gravel Step",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "metal_step",
+      "triggers": [
+        "boots on metal",
+        "clanking step",
+        "iron floor",
+        "walking on metal",
+        "metal walk"
+      ],
+      "label": "Metal Step",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "wood_creak_step",
+      "triggers": [
+        "floorboard squeaks",
+        "old wood",
+        "creaky step",
+        "walking on creaky wood",
+        "wood groan"
+      ],
+      "label": "Wood Creak Step",
+      "priority": 6,
+      "category": "ambience"
+    },
+    {
+      "id": "water_wade",
+      "triggers": [
+        "wading in water",
+        "walking through stream",
+        "splashing steps",
+        "waist deep water",
+        "trudging through water"
+      ],
+      "label": "Water Wade",
+      "priority": 6,
+      "category": "liquid"
+    },
+    {
+      "id": "swim_stroke",
+      "triggers": [
+        "swimming",
+        "splashing water",
+        "stroke sound",
+        "swimming laps",
+        "paddling"
+      ],
+      "label": "Swim Stroke",
+      "priority": 6,
+      "category": "liquid"
+    },
+    {
+      "id": "dive_water",
+      "triggers": [
+        "diving in",
+        "jumping into water",
+        "big splash",
+        "dive sound",
+        "cannonball"
+      ],
+      "label": "Dive Water",
+      "priority": 7,
+      "category": "liquid"
+    },
+    {
+      "id": "surface_water",
+      "triggers": [
+        "surfacing",
+        "gasping for air",
+        "breaking water",
+        "comes up for air",
+        "surface splash"
+      ],
+      "label": "Surface Water",
+      "priority": 7,
+      "category": "liquid"
+    },
+    {
+      "id": "climb_wall",
+      "triggers": [
+        "scrambling up",
+        "hands on stone",
+        "climbing sound",
+        "scaling wall",
+        "climbing rock"
+      ],
+      "label": "Climb Wall",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "slide_down",
+      "triggers": [
+        "sliding down",
+        "slipping",
+        "skidding stop",
+        "slides down slope",
+        "gravel slide"
+      ],
+      "label": "Slide Down",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "jump_land",
+      "triggers": [
+        "landing jump",
+        "feet hit ground",
+        "impact land",
+        "lands safely",
+        "jump landing"
+      ],
+      "label": "Jump Land",
+      "priority": 6,
+      "category": "misc"
+    },
+    {
+      "id": "fall_scream",
+      "triggers": [
+        "screaming while falling",
+        "falling cry",
+        "long drop",
+        "plummeting scream",
+        "yell fading"
+      ],
+      "label": "Fall Scream",
+      "priority": 8,
+      "category": "misc"
+    },
+    {
+      "id": "bones_rattle",
+      "triggers": [
+        "skeleton moves",
+        "bones clatter",
+        "rattling ribcage",
+        "skeletal rattle",
+        "loose bones"
+      ],
+      "label": "Bones Rattle",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "ghost_moan",
+      "triggers": [
+        "spooky moan",
+        "haunting sound",
+        "spirit groan",
+        "ghostly wail",
+        "phantom moan"
+      ],
+      "label": "Ghost Moan",
+      "priority": 7,
+      "category": "creature"
+    },
+    {
+      "id": "zombie_shuffle",
+      "triggers": [
+        "dragging feet",
+        "shambling walk",
+        "dead walking",
+        "zombie drag",
+        "rotting feet"
+      ],
+      "label": "Zombie Shuffle",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "vampire_hiss",
+      "triggers": [
+        "vampire hisses",
+        "fangs bared",
+        "undead threat",
+        "bloodsucker hiss",
+        "nosferatu hiss"
+      ],
+      "label": "Vampire Hiss",
+      "priority": 8,
+      "category": "creature"
+    },
+    {
+      "id": "werewolf_howl",
+      "triggers": [
+        "full moon howl",
+        "shapeshifter cry",
+        "beast call",
+        "werewolf cry",
+        "lycanthrope howl"
+      ],
+      "label": "Werewolf Howl",
+      "priority": 9,
+      "category": "creature"
+    },
+    {
+      "id": "fairy_giggle",
+      "triggers": [
+        "high pitch laugh",
+        "tiny giggle",
+        "sprite sound",
+        "fairy laugh",
+        "pixie giggle"
+      ],
+      "label": "Fairy Giggle",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "giant_laugh",
+      "triggers": [
+        "deep belly laugh",
+        "booming chortle",
+        "massive laugh",
+        "giant chuckles",
+        "titan laugh"
+      ],
+      "label": "Giant Laugh",
+      "priority": 8,
+      "category": "creature"
+    },
+    {
+      "id": "dragon_wing",
+      "triggers": [
+        "huge wings flap",
+        "wind gust",
+        "dragon flight",
+        "draconic wings",
+        "leather wings"
+      ],
+      "label": "Dragon Wing",
+      "priority": 9,
+      "category": "creature"
+    },
+    {
+      "id": "griffin_wing",
+      "triggers": [
+        "feathered wings",
+        "flying beast",
+        "eagle wings",
+        "wing beat",
+        "griffin flying"
+      ],
+      "label": "Griffin Wing",
+      "priority": 8,
+      "category": "creature"
+    },
+    {
+      "id": "bat_wing",
+      "triggers": [
+        "leathery wings",
+        "fluttering bats",
+        "swarm flight",
+        "bat flap",
+        "bats fly"
+      ],
+      "label": "Bat Wing",
+      "priority": 6,
+      "category": "creature"
+    },
+    {
+      "id": "insect_wing",
+      "triggers": [
+        "buzzing wings",
+        "fly buzzing",
+        "mosquito sound",
+        "insect flight",
+        "wasp buzz"
+      ],
+      "label": "Insect Wing",
+      "priority": 5,
+      "category": "creature"
+    },
+    {
+      "id": "bird_wing",
+      "triggers": [
+        "bird flapping",
+        "taking off",
+        "wings flutter",
+        "bird flight",
+        "flapping wings"
+      ],
+      "label": "Bird Wing",
+      "priority": 5,
+      "category": "creature"
+    },
+    {
+      "id": "teleport_in",
+      "triggers": [
+        "appearing",
+        "popping in",
+        "magical arrival",
+        "teleports in",
+        "sudden appearance"
+      ],
+      "label": "Teleport In",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "teleport_out",
+      "triggers": [
+        "disappearing",
+        "fading away",
+        "magical exit",
+        "teleports out",
+        "vanishes"
+      ],
+      "label": "Teleport Out",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "portal_hum",
+      "triggers": [
+        "portal energy",
+        "swirling vortex",
+        "dimensional gate",
+        "portal throbs",
+        "gate hums"
+      ],
+      "label": "Portal Hum",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "magic_barrier",
+      "triggers": [
+        "hitting barrier",
+        "force field hum",
+        "shield deflect",
+        "magical wall",
+        "barrier impact"
+      ],
+      "label": "Magic Barrier",
+      "priority": 8,
+      "category": "magic"
+    },
+    {
+      "id": "curse_land",
+      "triggers": [
+        "curse takes effect",
+        "dark ominous sound",
+        "bad magic",
+        "curse lands",
+        "hex applied"
+      ],
+      "label": "Curse Land",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "blessing_land",
+      "triggers": [
+        "blessing bestowed",
+        "holy light",
+        "positive magic",
+        "divine blessing",
+        "boon granted"
+      ],
+      "label": "Blessing Land",
+      "priority": 7,
+      "category": "magic"
+    },
+    {
+      "id": "level_up",
+      "triggers": [
+        "surge of power",
+        "growing stronger",
+        "heroic chime",
+        "level up",
+        "new strength"
+      ],
+      "label": "Level Up",
+      "priority": 9,
+      "category": "misc"
+    }
+  ],
+  "onomatopoeia": [
+    "boom",
+    "crash",
+    "clang",
+    "thunk",
+    "sizzle",
+    "crackle",
+    "whoosh",
+    "thud",
+    "rumble",
+    "splash",
+    "bang",
+    "clank",
+    "hiss",
+    "screech",
+    "roar",
+    "howl",
+    "whisper",
+    "rustle",
+    "squelch",
+    "splat",
+    "clink",
+    "clunk",
+    "swoosh",
+    "zing",
+    "pop",
+    "fizz",
+    "buzz",
+    "hum",
+    "chirp",
+    "tweet",
+    "creak",
+    "groan",
+    "snap",
+    "crack",
+    "rip",
+    "tear",
+    "shatter",
+    "clatter",
+    "tinkle",
+    "whump",
+    "thwack",
+    "plink",
+    "patter",
+    "swish",
+    "whoomph",
+    "drip",
+    "gurgle",
+    "crunch",
+    "scrape",
+    "ping"
+  ],
+  "synonyms": {
+    "thunder": [
+      "storm",
+      "lightning"
+    ],
+    "door": [
+      "gate",
+      "portal",
+      "entrance",
+      "hatch",
+      "portcullis"
+    ],
+    "slam": [
+      "bang",
+      "crash",
+      "shut",
+      "close"
+    ],
+    "footsteps": [
+      "steps",
+      "footfalls",
+      "treads"
+    ],
+    "sword": [
+      "blade",
+      "steel",
+      "weapon"
+    ],
+    "fire": [
+      "flame",
+      "blaze",
+      "inferno",
+      "embers"
+    ],
+    "water": [
+      "stream",
+      "river",
+      "brook"
+    ],
+    "wind": [
+      "gale",
+      "breeze",
+      "gust",
+      "squall",
+      "draft"
+    ],
+    "roar": [
+      "bellow",
+      "howl"
+    ],
+    "strike": [
+      "hit",
+      "blow",
+      "smash"
+    ],
+    "break": [
+      "shatter",
+      "crack",
+      "smash"
+    ],
+    "walk": [
+      "step",
+      "tread",
+      "pace"
+    ],
+    "shout": [
+      "cry",
+      "yell",
+      "call"
+    ],
+    "chant": [
+      "incantation",
+      "mantra",
+      "intonation"
+    ],
+    "collapse": [
+      "fall",
+      "give way",
+      "crumple"
+    ],
+    "rain": [
+      "downpour",
+      "drizzle",
+      "patter"
+    ],
+    "blood": [
+      "ichor",
+      "gore"
+    ],
+    "arrow": [
+      "bolt",
+      "shaft"
+    ],
+    "rope": [
+      "line",
+      "cord",
+      "cable"
+    ],
+    "stone": [
+      "rock",
+      "boulder"
+    ]
+  }
+}

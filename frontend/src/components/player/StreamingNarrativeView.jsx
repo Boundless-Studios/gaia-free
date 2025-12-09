@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import './StreamingNarrativeView.css';
 import apiService from '../../services/apiService.js';
 import { useLoading, LoadingTypes } from '../../contexts/LoadingContext';
+import SFXTextParser from '../SFXTextParser.jsx';
 
 /**
  * StreamingNarrativeView - Displays message history and current streaming DM narrative
@@ -360,7 +361,14 @@ const StreamingNarrativeView = ({
                   </div>
                 </div>
                 <div className="message-text">
-                  {msg.text}
+                  {msg.sender === 'dm' && typeof msg.text === 'string' ? (
+                    <SFXTextParser
+                      text={msg.text}
+                      sessionId={campaignId}
+                    />
+                  ) : (
+                    msg.text
+                  )}
                 </div>
               </div>
             );
@@ -376,7 +384,10 @@ const StreamingNarrativeView = ({
             <div className="narrative-section">
               <h3 className="narrative-header">DM:</h3>
               <div className="narrative-content">
-                {narrative}
+                <SFXTextParser
+                  text={narrative}
+                  sessionId={campaignId}
+                />
                 {isNarrativeStreaming && <span className="streaming-cursor">▮</span>}
               </div>
             </div>

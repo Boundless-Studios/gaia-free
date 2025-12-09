@@ -47,6 +47,14 @@ export const SFXProvider = ({ children }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastError, setLastError] = useState(null);
 
+  // SFX cache for deduplication (Map: cacheKey -> audioPayload)
+  const [sfxCache, setSfxCache] = useState(new Map());
+
+  // Track recently played SFX to prevent duplicate playback from WebSocket broadcast
+  // Map: audioUrl -> timestamp
+  const recentlyPlayedRef = useRef(new Map());
+  const RECENTLY_PLAYED_TTL_MS = 2000; // 2 seconds
+
   // Initialize sfxService with token getter
   useEffect(() => {
     if (isAuthenticated && getAccessTokenSilently) {
@@ -156,10 +164,83 @@ export const SFXProvider = ({ children }) => {
   }, [ensureAbsoluteUrl, getAuthToken]);
 
   /**
+   * Generate cache key from sfxId or phrase
+   * @param {string|null} sfxId - Catalog ID
+   * @param {string} phrase - Text phrase
+   * @returns {string} Cache key
+   */
+  const getCacheKey = useCallback((sfxId, phrase) => {
+    return sfxId || phrase.toLowerCase().trim();
+  }, []);
+
+  /**
+   * Retrieve cached SFX audio payload
+   * @param {string|null} sfxId - Catalog ID
+   * @param {string} phrase - Text phrase
+   * @returns {Object|null} Cached audio payload or null
+   */
+  const getCachedSFX = useCallback((sfxId, phrase) => {
+    const key = getCacheKey(sfxId, phrase);
+    return sfxCache.get(key) || null;
+  }, [sfxCache, getCacheKey]);
+
+  /**
+   * Store SFX audio payload in cache
+   * @param {string|null} sfxId - Catalog ID
+   * @param {string} phrase - Text phrase
+   * @param {Object} audioPayload - Audio data to cache
+   */
+  const cacheSFX = useCallback((sfxId, phrase, audioPayload) => {
+    const key = getCacheKey(sfxId, phrase);
+    setSfxCache(prev => {
+      const newCache = new Map(prev);
+      newCache.set(key, audioPayload);
+      return newCache;
+    });
+    console.log('[SFX] Cached audio for:', key);
+  }, [getCacheKey]);
+
+  /**
+   * Mark an SFX as recently played to prevent duplicate playback
+   * @param {string} audioUrl - The audio URL to mark
+   */
+  const markRecentlyPlayed = useCallback((audioUrl) => {
+    if (!audioUrl) return;
+    // Clean up old entries
+    const now = Date.now();
+    const recentlyPlayed = recentlyPlayedRef.current;
+    for (const [url, timestamp] of recentlyPlayed.entries()) {
+      if (now - timestamp > RECENTLY_PLAYED_TTL_MS) {
+        recentlyPlayed.delete(url);
+      }
+    }
+    // Mark this URL as recently played
+    recentlyPlayed.set(audioUrl, now);
+  }, []);
+
+  /**
+   * Check if an SFX was recently played
+   * @param {string} audioUrl - The audio URL to check
+   * @returns {boolean} True if played within TTL
+   */
+  const wasRecentlyPlayed = useCallback((audioUrl) => {
+    if (!audioUrl) return false;
+    const recentlyPlayed = recentlyPlayedRef.current;
+    const timestamp = recentlyPlayed.get(audioUrl);
+    if (!timestamp) return false;
+    const age = Date.now() - timestamp;
+    if (age > RECENTLY_PLAYED_TTL_MS) {
+      recentlyPlayed.delete(audioUrl);
+      return false;
+    }
+    return true;
+  }, []);
+
+  /**
    * Play a sound effect from a URL
    * This plays simultaneously with any existing narration audio
    */
-  const playSfx = useCallback(async (audioUrl) => {
+  const playSfx = useCallback(async (audioUrl, skipDuplicateCheck = false) => {
     if (!sfxAudioRef.current) {
       console.warn('[SFX] Audio element not available');
       return;
@@ -169,6 +250,12 @@ export const SFXProvider = ({ children }) => {
       const url = await addAuthTokenToUrl(audioUrl);
       if (!url) {
         console.error('[SFX] Failed to get audio URL');
+        return;
+      }
+
+      // Check if this SFX was recently played (unless skipping duplicate check)
+      if (!skipDuplicateCheck && wasRecentlyPlayed(audioUrl)) {
+        console.log('[SFX] Skipping duplicate playback of recently played SFX');
         return;
       }
 
@@ -188,6 +275,9 @@ export const SFXProvider = ({ children }) => {
       setIsPlaying(true);
       setLastError(null);
 
+      // Mark as recently played before playing
+      markRecentlyPlayed(audioUrl);
+
       await audio.play();
       console.log('[SFX] Sound effect playing successfully');
     } catch (error) {
@@ -195,7 +285,7 @@ export const SFXProvider = ({ children }) => {
       setLastError(error.message);
       setIsPlaying(false);
     }
-  }, [addAuthTokenToUrl]);
+  }, [addAuthTokenToUrl, wasRecentlyPlayed, markRecentlyPlayed]);
 
   /**
    * Play a sound effect from audio payload received from WebSocket/API
@@ -227,9 +317,10 @@ export const SFXProvider = ({ children }) => {
    * Generate a sound effect from selected text
    * @param {string} text - Description of the sound effect
    * @param {string} sessionId - Campaign/session ID for broadcasting
+   * @param {string|null} sfxId - Optional catalog ID for caching
    * @returns {Promise<Object|null>} Generated sound effect data or null on error
    */
-  const generateSoundEffect = useCallback(async (text, sessionId) => {
+  const generateSoundEffect = useCallback(async (text, sessionId, sfxId = null) => {
     if (!text || text.trim().length === 0) {
       console.log('[SFX] No text provided for sound effect generation');
       return null;
@@ -253,7 +344,13 @@ export const SFXProvider = ({ children }) => {
       console.log('[SFX] Sound effect generation triggered', {
         sessionId,
         textLength: text.length,
+        sfxId,
       });
+
+      // Cache the result if audio is available
+      if (result?.audio) {
+        cacheSFX(sfxId, text, result.audio);
+      }
 
       return result;
     } catch (error) {
@@ -263,7 +360,7 @@ export const SFXProvider = ({ children }) => {
     } finally {
       setIsGenerating(false);
     }
-  }, []);
+  }, [cacheSFX]);
 
   /**
    * Check if SFX service is available
@@ -343,6 +440,10 @@ export const SFXProvider = ({ children }) => {
     // Generation actions
     generateSoundEffect,
     checkAvailability,
+
+    // Cache actions
+    getCachedSFX,
+    cacheSFX,
 
     // WebSocket handler
     handleSfxAvailable,

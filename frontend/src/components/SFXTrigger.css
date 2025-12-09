@@ -1,0 +1,69 @@
+/**
+ * SFXTrigger Component Styles
+ *
+ * Dotted underline style that's more visible with a subtle highlight
+ */
+
+.sfx-trigger {
+  cursor: pointer;
+  color: inherit;
+  position: relative;
+  display: inline;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 2.5px;
+  text-underline-offset: 0.2em;
+  text-decoration-color: rgba(255, 255, 255, 0.95);
+  transition:
+    color 0.2s ease,
+    text-decoration-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.sfx-trigger:hover {
+  text-decoration-color: #ffffff;
+  box-shadow: none;
+}
+
+.sfx-trigger:focus {
+  outline: 2px solid rgba(139, 92, 246, 0.6);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.sfx-trigger:active {
+  text-decoration-color: rgb(139, 92, 246);
+}
+
+/* Generating state with pulse animation */
+.sfx-trigger--generating {
+  animation: sfx-pulse 1s ease-in-out infinite;
+  text-decoration-style: solid;
+  text-decoration-thickness: 2.5px;
+  text-decoration-color: rgba(255, 255, 255, 0.95);
+}
+
+@keyframes sfx-pulse {
+  0%, 100% {
+    opacity: 1;
+    text-decoration-color: rgba(255, 255, 255, 0.75);
+  }
+  50% {
+    opacity: 0.7;
+    text-decoration-color: rgba(255, 255, 255, 1);
+  }
+}
+
+/* Disabled state */
+.sfx-trigger:disabled,
+.sfx-trigger[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+  text-decoration-color: rgba(139, 92, 246, 0.2);
+}
+
+.sfx-trigger:disabled:hover,
+.sfx-trigger[aria-disabled="true"]:hover {
+  text-decoration-color: rgba(139, 92, 246, 0.2);
+  color: inherit;
+}

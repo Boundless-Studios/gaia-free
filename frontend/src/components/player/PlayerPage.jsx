@@ -474,13 +474,32 @@ const PlayerPage = () => {
   }, []);
 
   // User audio queue playback (shared hook) - uses WebSocket for reliable acknowledgment
-  const { fetchUserAudioQueue } = useUserAudioQueue({
+  const { fetchUserAudioQueue, audioBlocked, unlockAudio } = useUserAudioQueue({
     user,
     audioStream,
     apiService,
     socketEmit: socketEmitWrapper,
     campaignId: currentCampaignId,
   });
+
+  // On iOS, try to unlock audio on any user interaction with the page
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      if (audioBlocked) {
+        console.log('🎵 [PLAYER] User interaction detected, attempting to unlock audio');
+        unlockAudio();
+      }
+    };
+
+    // Add listeners for common user interactions
+    document.addEventListener('touchstart', handleUserInteraction, { passive: true });
+    document.addEventListener('click', handleUserInteraction, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleUserInteraction);
+      document.removeEventListener('click', handleUserInteraction);
+    };
+  }, [audioBlocked, unlockAudio]);
 
   // Load campaign from URL session ID
   useEffect(() => {
@@ -1304,6 +1323,9 @@ const PlayerPage = () => {
         setCollabPlayerId={setCollabPlayerId}
         assignedPlayerName={assignedPlayerName}
         setAssignedPlayerName={setAssignedPlayerName}
+        // Audio unlock props (for iOS mobile support)
+        audioBlocked={audioBlocked}
+        unlockAudio={unlockAudio}
       />
     </RoomProvider>
   );
@@ -1346,6 +1368,9 @@ const PlayerRoomShell = ({
   setCollabPlayerId,
   assignedPlayerName,
   setAssignedPlayerName,
+  // Audio unlock props (for iOS mobile support)
+  audioBlocked,
+  unlockAudio,
 }) => {
   const {
     playerSeats,
@@ -1878,6 +1903,9 @@ const PlayerRoomShell = ({
               pendingObservations={pendingObservations}
               onCopyObservation={handleCopyObservation}
               onSubmitObservation={handleSubmitObservation}
+              // Audio unlock props (for iOS mobile support)
+              userAudioBlocked={audioBlocked}
+              onUnlockUserAudio={unlockAudio}
             />
           </div>
         )}

@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+from gaia.infra.llm.model_manager import PreferredModels
+
 # Add backend to path
 backend_path = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_path))
@@ -77,7 +79,7 @@ async def test_orchestrator_creation():
             logger.info(f"📊 Metadata ready: {list(meta.keys())}")
 
         config = StreamingDMConfig(
-            model="parasail-kimi-k2-instruct-0905",
+            model=PreferredModels.KIMI,
             temperature=0.7,
             narrative_streaming=False,  # Disable actual streaming for test
             enable_metadata=False,
@@ -275,7 +277,7 @@ async def test_end_to_end_streaming():
             logger.info(f"📖 Content chunk {len(content_chunks)}: {len(content)} chars, final={is_final}")
 
         config = StreamingDMConfig(
-            model="parasail-kimi-k2-instruct-0905",
+            model=PreferredModels.KIMI,
             temperature=0.7,
             narrative_streaming=True,
             enable_metadata=False,  # Skip metadata for faster test
