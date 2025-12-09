@@ -10,15 +10,79 @@ Visual Narrator agent. These endpoints allow the frontend to:
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from gaia.infra.image.scene_image_set import get_scene_image_set_manager
+from auth.src.flexible_auth import optional_auth
+from auth.src.models import AccessControl, PermissionLevel, User
+from db.src import get_async_db
+from gaia.infra.image.image_artifact_store import ImageStorageType
+from gaia.infra.image.scene_image_set import ImageType, get_scene_image_set_manager
 
 logger = logging.getLogger(__name__)
 
 # Create router
 router = APIRouter(prefix="/api/scene-images", tags=["scene-images"])
+
+
+async def check_campaign_access(
+    campaign_id: str,
+    current_user: Optional[User],
+    request: Request,
+    db: AsyncSession,
+) -> bool:
+    """Check if the current user has access to the specified campaign.
+
+    Args:
+        campaign_id: The campaign ID to check access for
+        current_user: The authenticated user (may be None in dev mode)
+        request: The FastAPI request object
+        db: The async database session
+
+    Returns:
+        True if authorized, False otherwise
+    """
+    # In dev mode without auth, allow access
+    if current_user is None:
+        return True
+
+    # Check session registry first (for active sessions)
+    authorized = False
+    session_registry = getattr(request.app.state, "session_registry", None)
+    if session_registry:
+        try:
+            authorized = session_registry.is_authorized(
+                campaign_id,
+                user_id=getattr(current_user, "user_id", None),
+                user_email=getattr(current_user, "email", None),
+            )
+        except Exception:
+            authorized = False
+
+    # If not authorized via session registry, check database ACL
+    if not authorized:
+        stmt = (
+            select(func.count())
+            .select_from(AccessControl)
+            .where(
+                AccessControl.resource_type == "campaign",
+                AccessControl.resource_id == campaign_id,
+                AccessControl.user_id == current_user.user_id,
+                AccessControl.permission_level.in_(
+                    [
+                        PermissionLevel.READ.value,
+                        PermissionLevel.WRITE.value,
+                        PermissionLevel.ADMIN.value,
+                    ]
+                ),
+            )
+        )
+        result = await db.execute(stmt)
+        authorized = (result.scalar_one() or 0) > 0
+
+    return authorized
 
 
 # Response models
@@ -55,16 +119,31 @@ class SceneImageSetListResponse(BaseModel):
 
 @router.get("/latest", response_model=Optional[SceneImageSetResponse])
 async def get_latest_scene_images(
+    request: Request,
     campaign_id: str = Query(..., description="Campaign ID to get latest images for"),
+    current_user: Optional[User] = optional_auth(),
+    db: AsyncSession = Depends(get_async_db),
 ) -> Optional[Dict[str, Any]]:
     """Get the most recent scene image set for a campaign.
 
     Args:
+        request: The FastAPI request object
         campaign_id: The campaign to get images for
+        current_user: The authenticated user (optional in dev mode)
+        db: The async database session
 
     Returns:
         The latest SceneImageSet if any exist, null otherwise
+
+    Raises:
+        HTTPException: 403 if not authorized to access the campaign
     """
+    if not await check_campaign_access(campaign_id, current_user, request, db):
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to access this campaign's images",
+        )
+
     manager = get_scene_image_set_manager()
     image_set = manager.get_latest_set(campaign_id)
 
@@ -76,18 +155,33 @@ async def get_latest_scene_images(
 
 @router.get("/campaign/{campaign_id}", response_model=SceneImageSetListResponse)
 async def get_campaign_scene_images(
+    request: Request,
     campaign_id: str,
     limit: int = Query(5, ge=1, le=20, description="Maximum number of sets to return"),
+    current_user: Optional[User] = optional_auth(),
+    db: AsyncSession = Depends(get_async_db),
 ) -> Dict[str, Any]:
     """Get recent scene image sets for a campaign.
 
     Args:
+        request: The FastAPI request object
         campaign_id: The campaign to get images for
         limit: Maximum number of sets to return (1-20)
+        current_user: The authenticated user (optional in dev mode)
+        db: The async database session
 
     Returns:
         List of recent SceneImageSets, most recent first
+
+    Raises:
+        HTTPException: 403 if not authorized to access the campaign
     """
+    if not await check_campaign_access(campaign_id, current_user, request, db):
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to access this campaign's images",
+        )
+
     manager = get_scene_image_set_manager()
     sets = manager.get_campaign_sets(campaign_id, limit=limit)
 
@@ -99,18 +193,24 @@ async def get_campaign_scene_images(
 
 @router.get("/{set_id}", response_model=SceneImageSetResponse)
 async def get_scene_image_set(
+    request: Request,
     set_id: str,
+    current_user: Optional[User] = optional_auth(),
+    db: AsyncSession = Depends(get_async_db),
 ) -> Dict[str, Any]:
     """Get a specific scene image set by ID.
 
     Args:
+        request: The FastAPI request object
         set_id: The set ID to retrieve
+        current_user: The authenticated user (optional in dev mode)
+        db: The async database session
 
     Returns:
         The SceneImageSet
 
     Raises:
-        HTTPException: 404 if set not found
+        HTTPException: 404 if set not found, 403 if not authorized
     """
     manager = get_scene_image_set_manager()
     image_set = manager.get_set(set_id)
@@ -118,12 +218,22 @@ async def get_scene_image_set(
     if not image_set:
         raise HTTPException(status_code=404, detail=f"Scene image set {set_id} not found")
 
+    # Check authorization against the campaign this set belongs to
+    if not await check_campaign_access(image_set.campaign_id, current_user, request, db):
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to access this campaign's images",
+        )
+
     return image_set.to_dict()
 
 
 @router.get("/{set_id}/status")
 async def get_scene_image_set_status(
+    request: Request,
     set_id: str,
+    current_user: Optional[User] = optional_auth(),
+    db: AsyncSession = Depends(get_async_db),
 ) -> Dict[str, Any]:
     """Get the generation status of a scene image set.
 
@@ -131,19 +241,29 @@ async def get_scene_image_set_status(
     fetching full image data.
 
     Args:
+        request: The FastAPI request object
         set_id: The set ID to check
+        current_user: The authenticated user (optional in dev mode)
+        db: The async database session
 
     Returns:
         Status information including overall status and per-image status
 
     Raises:
-        HTTPException: 404 if set not found
+        HTTPException: 404 if set not found, 403 if not authorized
     """
     manager = get_scene_image_set_manager()
     image_set = manager.get_set(set_id)
 
     if not image_set:
         raise HTTPException(status_code=404, detail=f"Scene image set {set_id} not found")
+
+    # Check authorization against the campaign this set belongs to
+    if not await check_campaign_access(image_set.campaign_id, current_user, request, db):
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to access this campaign's images",
+        )
 
     return {
         "set_id": image_set.set_id,
@@ -158,3 +278,208 @@ async def get_scene_image_set_status(
             for img in image_set.images
         },
     }
+
+
+# Test/Debug endpoints
+class TestGenerateRequest(BaseModel):
+    """Request model for test scene image generation."""
+
+    campaign_id: str
+    scene_description: str
+    turn_number: int = 1
+
+
+class TestGenerateResponse(BaseModel):
+    """Response model for test generation."""
+
+    success: bool
+    set_id: Optional[str] = None
+    message: str
+    descriptions: Optional[Dict[str, str]] = None
+
+
+@router.post("/test-generate", response_model=TestGenerateResponse)
+async def test_generate_scene_images(
+    http_request: Request,
+    request: TestGenerateRequest,
+    current_user: Optional[User] = optional_auth(),
+    db: AsyncSession = Depends(get_async_db),
+) -> Dict[str, Any]:
+    """Debug endpoint to trigger scene image generation.
+
+    This endpoint creates a scene image set and triggers async image generation
+    for testing the Visual Narrator pipeline.
+
+    Args:
+        http_request: The FastAPI request object
+        request: Contains campaign_id, scene_description, and turn_number
+        current_user: The authenticated user (optional in dev mode)
+        db: The async database session
+
+    Returns:
+        Success status and set_id for polling
+
+    Raises:
+        HTTPException: 403 if not authorized to access the campaign
+    """
+    import asyncio
+
+    # Check authorization for the campaign
+    if not await check_campaign_access(request.campaign_id, current_user, http_request, db):
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to generate images for this campaign",
+        )
+
+    logger.info(
+        f"🎨 [DEBUG] Test scene image generation triggered: "
+        f"campaign={request.campaign_id}, turn={request.turn_number}"
+    )
+
+    try:
+        # Import the visual narrator agent
+        from gaia_private.agents.scene.visual_narrator_agent import (
+            VisualNarratorAgent,
+        )
+
+        # Create agent and build context
+        agent = VisualNarratorAgent()
+
+        # Build a minimal analysis context from the scene description
+        analysis_context = {
+            "previous_scenes": [{"narrative": request.scene_description}],
+            "active_characters": [],
+            "current_turn": {"character_name": "Test Character"},
+        }
+
+        # Run the visual narrator to get descriptions
+        logger.info("🎨 [DEBUG] Running visual narrator agent...")
+        result = await agent.generate_visual_descriptions(
+            user_input=request.scene_description,
+            analysis_context=analysis_context,
+        )
+
+        if not result or not any(
+            [result.location_ambiance, result.background_detail, result.moment_focus]
+        ):
+            return {
+                "success": False,
+                "message": "Visual narrator returned empty descriptions",
+                "set_id": None,
+                "descriptions": None,
+            }
+
+        descriptions = result.to_dict()
+        logger.info(f"🎨 [DEBUG] Visual narrator descriptions: {descriptions}")
+
+        # Create a scene image set
+        manager = get_scene_image_set_manager()
+        image_set = manager.create_set(
+            campaign_id=request.campaign_id,
+            turn_number=request.turn_number,
+            descriptions={
+                "location_ambiance": result.location_ambiance or "",
+                "background_detail": result.background_detail or "",
+                "moment_focus": result.moment_focus or "",
+            },
+        )
+
+        logger.info(f"🎨 [DEBUG] Created scene image set: {image_set.set_id}")
+
+        # Trigger async image generation for each description
+        async def generate_image_for_type(image_type: str, description: str):
+            """Generate a single image asynchronously."""
+            if not description:
+                manager.update_image(
+                    set_id=image_set.set_id,
+                    image_type=image_type,
+                    status="failed",
+                    error="No description provided",
+                )
+                return
+
+            try:
+                from gaia_private.agents.generators.image_generator import (
+                    generate_image_tool,
+                )
+
+                # Map scene ImageType to storage ImageStorageType
+                style_map = {
+                    ImageType.LOCATION_AMBIANCE.value: ImageStorageType.SCENE.value,
+                    ImageType.BACKGROUND_DETAIL.value: ImageStorageType.SCENE_BACKGROUND.value,
+                    ImageType.MOMENT_FOCUS.value: ImageStorageType.MOMENT.value,
+                }
+
+                image_result = await generate_image_tool(
+                    prompt=description,
+                    image_type=style_map.get(image_type, ImageStorageType.SCENE.value),
+                    session_id=request.campaign_id,
+                )
+
+                if image_result.get("success"):
+                    manager.update_image(
+                        set_id=image_set.set_id,
+                        image_type=image_type,
+                        status="complete",
+                        image_url=image_result.get("api_url")
+                        or image_result.get("image_url"),
+                        image_path=image_result.get("local_path"),
+                    )
+                    logger.info(f"🎨 [DEBUG] Generated {image_type} image successfully")
+                else:
+                    manager.update_image(
+                        set_id=image_set.set_id,
+                        image_type=image_type,
+                        status="failed",
+                        error=image_result.get("error", "Unknown error"),
+                    )
+                    logger.warning(
+                        f"🎨 [DEBUG] Failed to generate {image_type}: "
+                        f"{image_result.get('error')}"
+                    )
+            except Exception as e:
+                logger.error(f"🎨 [DEBUG] Error generating {image_type}: {e}")
+                manager.update_image(
+                    set_id=image_set.set_id,
+                    image_type=image_type,
+                    status="failed",
+                    error=str(e),
+                )
+
+        # Wrap the async generation in a coroutine
+        async def run_all_generations():
+            """Run all image generations in parallel."""
+            logger.info("🎨 [DEBUG] Starting parallel image generation...")
+            await asyncio.gather(
+                generate_image_for_type("location_ambiance", result.location_ambiance),
+                generate_image_for_type("background_detail", result.background_detail),
+                generate_image_for_type("moment_focus", result.moment_focus),
+            )
+            logger.info("🎨 [DEBUG] All image generations completed")
+
+        # Start async generation for all image types (fire and forget)
+        asyncio.create_task(run_all_generations())
+
+        return {
+            "success": True,
+            "set_id": image_set.set_id,
+            "message": "Scene image generation started",
+            "descriptions": descriptions,
+        }
+
+    except ImportError as e:
+        logger.error(f"🎨 [DEBUG] Import error: {e}")
+        return {
+            "success": False,
+            "message": f"Visual narrator agent not available: {e}",
+            "set_id": None,
+            "descriptions": None,
+        }
+    except Exception as e:
+        logger.error(f"🎨 [DEBUG] Error during test generation: {e}", exc_info=True)
+        return {
+            "success": False,
+            "message": f"Generation failed: {e}",
+            "set_id": None,
+            "descriptions": None,
+        }

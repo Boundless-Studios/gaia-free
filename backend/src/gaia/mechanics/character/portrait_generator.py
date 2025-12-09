@@ -1,9 +1,11 @@
 """Character portrait generation service."""
 
-from gaia_private.agents.generators.image_generator import ImageGeneratorAgent
-from gaia.models.character.character_info import CharacterInfo
-from typing import Dict, Any, Optional
 import logging
+from typing import Any, Dict, Optional
+
+from gaia.infra.image.image_artifact_store import ImageStorageType
+from gaia.models.character.character_info import CharacterInfo
+from gaia_private.agents.generators.image_generator import ImageGeneratorAgent
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +68,7 @@ class CharacterPortraitGenerator:
         # which calls enhance_prompt() and then generate_image_tool()
         result = await self.image_generator.generate(
             prompt=raw_prompt,
-            image_type="portrait",  # Routes to run_without_tools automatically (line 530)
+            image_type=ImageStorageType.PORTRAIT.value,  # Routes to run_without_tools automatically
             style="fantasy art",
             session_id=session_id  # Pass session_id for proper storage scoping
         )
