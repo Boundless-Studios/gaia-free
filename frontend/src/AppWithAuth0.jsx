@@ -16,6 +16,7 @@ import SceneInspector from './components/admin/SceneInspector.jsx';
 import { AudioDebugPage } from './components/debug/AudioDebugPage.jsx';
 import { AudioStreamProvider } from './context/audioStreamContext.jsx';
 import CollaborativeEditorTest from './pages/CollaborativeEditorTest.jsx';
+import StreamingNarrativeTest from './pages/StreamingNarrativeTest.jsx';
 
 // Auth0 Callback Component
 // Note: The actual redirect after login is handled by onRedirectCallback in Auth0Provider
@@ -280,6 +281,7 @@ const AppWithAuth0 = () => {
               </AudioStreamProvider>
             } />
             <Route path="/test/collaborative-editor" element={<CollaborativeEditorTest />} />
+            <Route path="/test/streaming-narrative" element={<StreamingNarrativeTest />} />
 
             {/* Legacy route redirects */}
             <Route path="/player" element={<Navigate to="/" replace />} />

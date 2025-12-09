@@ -795,11 +795,22 @@ function App() {
       setTimeout(() => setSessionHistoryInfo(sessionId, null), 10000);
     }
 
-    // If this was a streamed response, reload chat history from backend and merge with local messages
+    // If this was a streamed response, add the streamed content to history, then clear streaming state.
+    // Don't reload from backend - we have the content right here in transformed data.
     const wasStreamed = Boolean(transformed?.streamed || structured?.streamed);
     if (wasStreamed) {
-      logCampaignStartTrace('Reloading history after streamed update', { sessionId });
-      reloadHistoryAfterStream(sessionId);
+      // Get the final streamed content to add to history
+      const dmMessageText = transformed?.narrative || transformed?.answer || '';
+      if (dmMessageText.trim()) {
+        logCampaignStartTrace('Adding streamed message to history', { sessionId, textLength: dmMessageText.length });
+        addDMMessage(sessionId, dmMessageText.trim(), {
+          hasAudio: Boolean(transformed?.audio),
+          structuredContent: transformed || null,
+          isStreamed: true,
+        });
+      }
+      // Now clear the streaming display
+      clearStreaming(sessionId);
     }
 
     const existingMessages =
