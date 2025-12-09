@@ -121,6 +121,8 @@ class RunwareImageService(ImageProvider):
         self.api_key = os.environ.get('RUNWARE_API_KEY')
         self.client = None
         self._connect_lock = asyncio.Lock()  # Prevent concurrent connection attempts
+        # Semaphore to serialize requests - Runware WebSocket doesn't handle concurrent requests well
+        self._request_semaphore = asyncio.Semaphore(1)
 
         # Configuration from environment with fallbacks to defaults
         self.timeout = int(os.getenv('RUNWARE_TIMEOUT', self.DEFAULT_TIMEOUT))
@@ -292,6 +294,45 @@ class RunwareImageService(ImageProvider):
                 "provider": "runware"
             }
 
+        # Use semaphore to serialize requests - WebSocket doesn't handle concurrent requests well
+        logger.debug(f"🎨 Runware: Waiting for semaphore (prompt: {prompt[:50]}...)")
+        async with self._request_semaphore:
+            logger.debug(f"🎨 Runware: Acquired semaphore, starting generation")
+            return await self._generate_image_impl(
+                prompt=prompt,
+                width=width,
+                height=height,
+                n=n,
+                response_format=response_format,
+                negative_prompt=negative_prompt,
+                seed=seed,
+                guidance_scale=guidance_scale,
+                num_inference_steps=num_inference_steps,
+                model=model,
+                scheduler=scheduler,
+                clip_skip=clip_skip,
+                output_quality=output_quality,
+                **kwargs
+            )
+
+    async def _generate_image_impl(
+        self,
+        prompt: str,
+        width: int = 1024,
+        height: int = 1024,
+        n: int = 1,
+        response_format: str = "b64_json",
+        negative_prompt: Optional[str] = None,
+        seed: Optional[int] = None,
+        guidance_scale: Optional[float] = None,
+        num_inference_steps: Optional[int] = None,
+        model: Optional[str] = None,
+        scheduler: Optional[str] = None,
+        clip_skip: Optional[int] = None,
+        output_quality: Optional[int] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Internal implementation of generate_image, called within semaphore."""
         # Resolve model_key to model_id if needed
         #  If model is None, use provider's default
         if model is None:
