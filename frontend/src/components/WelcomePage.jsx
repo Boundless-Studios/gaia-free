@@ -39,6 +39,49 @@ const WelcomePage = () => {
     const [checkingAuthorization, setCheckingAuthorization] = useState(false);
     const [showRegistration, setShowRegistration] = useState(false);
 
+    // Auto-check registration status when authenticated user lands on page
+    // This ensures users with incomplete onboarding go straight to EULA
+    useEffect(() => {
+        const checkOnboardingStatus = async () => {
+            // Skip if dev bypass, not authenticated, still loading, or backend not ready
+            if (DEV_BYPASS_AUTH || !isAuthenticated || loading || !backendReady) {
+                return;
+            }
+
+            // Don't check if we're processing an invite (that has its own flow)
+            if (searchParams.get('invite')) {
+                return;
+            }
+
+            setCheckingAuthorization(true);
+
+            try {
+                const response = await fetch('/api/auth/registration-status', {
+                    headers: {
+                        Authorization: `Bearer ${await getAccessTokenSilently()}`,
+                    },
+                });
+
+                if (response.ok) {
+                    const status = await response.json();
+                    // If pending or not authorized, show registration flow immediately
+                    if (status.registration_status === 'pending' || !status.is_authorized) {
+                        setShowRegistration(true);
+                    }
+                } else if (response.status === 403) {
+                    setShowRegistration(true);
+                }
+            } catch (error) {
+                console.error('Error checking onboarding status:', error);
+                // Don't block the user on error - they can still use the buttons
+            } finally {
+                setCheckingAuthorization(false);
+            }
+        };
+
+        checkOnboardingStatus();
+    }, [DEV_BYPASS_AUTH, isAuthenticated, loading, backendReady, getAccessTokenSilently, searchParams]);
+
     // Check backend health on mount with retry logic
     useEffect(() => {
         let isMounted = true;
