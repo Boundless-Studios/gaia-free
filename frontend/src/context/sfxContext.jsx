@@ -50,6 +50,11 @@ export const SFXProvider = ({ children }) => {
   // SFX cache for deduplication (Map: cacheKey -> audioPayload)
   const [sfxCache, setSfxCache] = useState(new Map());
 
+  // Track recently played SFX to prevent duplicate playback from WebSocket broadcast
+  // Map: audioUrl -> timestamp
+  const recentlyPlayedRef = useRef(new Map());
+  const RECENTLY_PLAYED_TTL_MS = 2000; // 2 seconds
+
   // Initialize sfxService with token getter
   useEffect(() => {
     if (isAuthenticated && getAccessTokenSilently) {
@@ -196,10 +201,46 @@ export const SFXProvider = ({ children }) => {
   }, [getCacheKey]);
 
   /**
+   * Mark an SFX as recently played to prevent duplicate playback
+   * @param {string} audioUrl - The audio URL to mark
+   */
+  const markRecentlyPlayed = useCallback((audioUrl) => {
+    if (!audioUrl) return;
+    // Clean up old entries
+    const now = Date.now();
+    const recentlyPlayed = recentlyPlayedRef.current;
+    for (const [url, timestamp] of recentlyPlayed.entries()) {
+      if (now - timestamp > RECENTLY_PLAYED_TTL_MS) {
+        recentlyPlayed.delete(url);
+      }
+    }
+    // Mark this URL as recently played
+    recentlyPlayed.set(audioUrl, now);
+  }, []);
+
+  /**
+   * Check if an SFX was recently played
+   * @param {string} audioUrl - The audio URL to check
+   * @returns {boolean} True if played within TTL
+   */
+  const wasRecentlyPlayed = useCallback((audioUrl) => {
+    if (!audioUrl) return false;
+    const recentlyPlayed = recentlyPlayedRef.current;
+    const timestamp = recentlyPlayed.get(audioUrl);
+    if (!timestamp) return false;
+    const age = Date.now() - timestamp;
+    if (age > RECENTLY_PLAYED_TTL_MS) {
+      recentlyPlayed.delete(audioUrl);
+      return false;
+    }
+    return true;
+  }, []);
+
+  /**
    * Play a sound effect from a URL
    * This plays simultaneously with any existing narration audio
    */
-  const playSfx = useCallback(async (audioUrl) => {
+  const playSfx = useCallback(async (audioUrl, skipDuplicateCheck = false) => {
     if (!sfxAudioRef.current) {
       console.warn('[SFX] Audio element not available');
       return;
@@ -209,6 +250,12 @@ export const SFXProvider = ({ children }) => {
       const url = await addAuthTokenToUrl(audioUrl);
       if (!url) {
         console.error('[SFX] Failed to get audio URL');
+        return;
+      }
+
+      // Check if this SFX was recently played (unless skipping duplicate check)
+      if (!skipDuplicateCheck && wasRecentlyPlayed(audioUrl)) {
+        console.log('[SFX] Skipping duplicate playback of recently played SFX');
         return;
       }
 
@@ -228,6 +275,9 @@ export const SFXProvider = ({ children }) => {
       setIsPlaying(true);
       setLastError(null);
 
+      // Mark as recently played before playing
+      markRecentlyPlayed(audioUrl);
+
       await audio.play();
       console.log('[SFX] Sound effect playing successfully');
     } catch (error) {
@@ -235,7 +285,7 @@ export const SFXProvider = ({ children }) => {
       setLastError(error.message);
       setIsPlaying(false);
     }
-  }, [addAuthTokenToUrl]);
+  }, [addAuthTokenToUrl, wasRecentlyPlayed, markRecentlyPlayed]);
 
   /**
    * Play a sound effect from audio payload received from WebSocket/API
