@@ -45,8 +45,8 @@
 /* Close Button */
 .character-viewer-close {
   position: absolute;
-  top: -50px;
-  right: 0;
+  top: 10px;
+  right: 10px;
   width: 44px;
   height: 44px;
   background: rgba(255, 255, 255, 0.1);
