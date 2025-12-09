@@ -318,6 +318,10 @@ const AppWithAuth0 = () => {
               element={<CollaborativeEditorTest />}
             />
             <Route
+              path="/test/streaming-narrative"
+              element={<StreamingNarrativeTest />}
+            />
+            <Route
               path="/admin/debug-scene-images"
               element={<SceneImagesDebugPage />}
             />

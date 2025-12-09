@@ -780,19 +780,42 @@ function App() {
     // If this was a streamed response, add the streamed content to history, then clear streaming state.
     // Don't reload from backend - we have the content right here in transformed data.
     const wasStreamed = Boolean(transformed?.streamed || structured?.streamed);
+    console.log('🔍 handleCampaignUpdate debug:', {
+      sessionId,
+      currentCampaignId,
+      idsMatch: sessionId === currentCampaignId,
+      wasStreamed,
+      transformedStreamed: transformed?.streamed,
+      structuredStreamed: structured?.streamed,
+      hasNarrative: Boolean(transformed?.narrative),
+      narrativeLength: transformed?.narrative?.length || 0,
+      hasAnswer: Boolean(transformed?.answer),
+      answerLength: transformed?.answer?.length || 0,
+      currentMessagesCount: messages?.length || 0,
+    });
+
     if (wasStreamed) {
       // Get the final streamed content to add to history
       const dmMessageText = transformed?.narrative || transformed?.answer || '';
+      console.log('🔍 wasStreamed=true, dmMessageText:', dmMessageText?.slice(0, 100));
       if (dmMessageText.trim()) {
+        console.log('📨 BEFORE addDMMessage: messages count =', messages?.length);
         logCampaignStartTrace('Adding streamed message to history', { sessionId, textLength: dmMessageText.length });
         addDMMessage(sessionId, dmMessageText.trim(), {
           hasAudio: Boolean(transformed?.audio),
           structuredContent: transformed || null,
           isStreamed: true,
         });
+        console.log('📨 AFTER addDMMessage called (state update scheduled)');
+      } else {
+        console.log('⚠️ wasStreamed=true but no dmMessageText found!');
       }
       // Now clear the streaming display
+      console.log('🧹 BEFORE clearStreaming');
       clearStreaming(sessionId);
+      console.log('🧹 AFTER clearStreaming called (state update scheduled)');
+    } else {
+      console.log('🔍 wasStreamed=false, not adding message from handleCampaignUpdate');
     }
 
     const existingMessages =
@@ -1283,9 +1306,14 @@ function App() {
         setTimeout(() => setSessionHistoryInfo(sessionId, null), 10000);
       }
       // Only show the 'answer' field in the chat
+      // For STREAMED responses, the message will be added by handleCampaignUpdate
+      // when the campaign_updated WebSocket event arrives with the final content.
+      // Only add the message here for NON-STREAMED responses.
+      const isStreamed = Boolean(structData?.streamed);
       const answerText = (structData && structData.answer) ? structData.answer : (result.response || null);
 
-      if (answerText) {
+      if (answerText && !isStreamed) {
+        // Non-streamed response: add to history immediately
         addDMMessage(sessionId, answerText, {
           hasAudio: Boolean(structData?.audio),
           structuredContent: structData
@@ -1298,14 +1326,12 @@ function App() {
                 streaming_answer: structData.streaming_answer || null,
               }
             : null,
-          isStreamed: Boolean(structData?.streamed),
+          isStreamed: false,
         });
-
-        // Clear streaming state after adding DM message to prevent duplicate display
-        // The message is now in the history, so we don't need the streaming preview
-        if (structData?.streamed) {
-          clearStreaming(sessionId);
-        }
+      } else if (isStreamed) {
+        // Streamed response: message will be added by handleCampaignUpdate
+        // Just log for debugging
+        console.log('🔄 Streamed response - message will be added by handleCampaignUpdate');
       }
 
       // Clear player submissions after DM successfully processes a turn

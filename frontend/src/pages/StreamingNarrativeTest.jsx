@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import StreamingNarrativeView from '../components/player/StreamingNarrativeView.jsx';
+import { LoadingProvider } from '../contexts/LoadingContext';
 
 /**
  * Test page for StreamingNarrativeView component
@@ -7,7 +8,7 @@ import StreamingNarrativeView from '../components/player/StreamingNarrativeView.
  *
  * Access at: /test/streaming-narrative
  */
-const StreamingNarrativeTest = () => {
+const StreamingNarrativeTestInner = () => {
   // Message history state
   const [messages, setMessages] = useState([]);
 
@@ -44,18 +45,20 @@ const StreamingNarrativeTest = () => {
   const addDMMessage = useCallback((text, options = {}) => {
     const timestamp = options.timestamp || new Date().toISOString();
 
-    // Check for duplicates (same logic as useCampaignMessages)
+    // Check for duplicates based on content (same logic as useCampaignMessages)
     const normalizedText = text.replace(/\s+/g, ' ').trim();
 
     setMessages(prev => {
-      const hasDuplicate = prev.some(msg => {
-        if (msg.sender !== 'dm') return false;
+      // Get the last N DM messages to check for duplicates
+      const RECENT_MESSAGES_TO_CHECK = 10;
+      const recentDmMessages = prev
+        .filter(msg => msg.sender === 'dm')
+        .slice(-RECENT_MESSAGES_TO_CHECK);
+
+      // Check if this exact text already exists in recent DM messages
+      const hasDuplicate = recentDmMessages.some(msg => {
         const candidateText = (msg.text || '').replace(/\s+/g, ' ').trim();
-        if (candidateText !== normalizedText) return false;
-        // 30 second window
-        if (!msg.timestamp) return true;
-        const timeDiff = Math.abs(new Date(msg.timestamp).getTime() - new Date(timestamp).getTime());
-        return timeDiff <= 30000;
+        return candidateText === normalizedText;
       });
 
       if (hasDuplicate) {
@@ -334,5 +337,12 @@ const StreamingNarrativeTest = () => {
     </div>
   );
 };
+
+// Wrapper component with required providers
+const StreamingNarrativeTest = () => (
+  <LoadingProvider>
+    <StreamingNarrativeTestInner />
+  </LoadingProvider>
+);
 
 export default StreamingNarrativeTest;

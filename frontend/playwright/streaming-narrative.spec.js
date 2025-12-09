@@ -8,10 +8,32 @@ import { test, expect } from '@playwright/test';
 
 test.describe('StreamingNarrativeView', () => {
   test.beforeEach(async ({ page }) => {
+    // Capture console logs
+    page.on('console', msg => console.log('BROWSER:', msg.type(), msg.text()));
+    page.on('pageerror', error => console.log('PAGE ERROR:', error.message));
+
     // Navigate to the test page
-    await page.goto('/test/streaming-narrative');
-    // Wait for the component to render
-    await expect(page.getByText('StreamingNarrativeView Test')).toBeVisible();
+    console.log('Navigating to /test/streaming-narrative...');
+    await page.goto('/test/streaming-narrative', { waitUntil: 'networkidle' });
+
+    // Debug: check what page we're actually on
+    const url = page.url();
+    const title = await page.title();
+    console.log('Current URL:', url);
+    console.log('Page title:', title);
+
+    // Take a debug screenshot
+    await page.screenshot({ path: 'test-results/debug-page-load.png' });
+
+    // Check if root element has content
+    const rootHtml = await page.locator('#root').innerHTML().catch(() => 'NO ROOT');
+    console.log('Root content length:', rootHtml.length);
+    if (rootHtml.length < 100) {
+      console.log('Root content:', rootHtml);
+    }
+
+    // Wait for the component to render with longer timeout
+    await expect(page.getByText('StreamingNarrativeView Test')).toBeVisible({ timeout: 15000 });
   });
 
   test('should render the test page correctly', async ({ page }) => {
@@ -52,7 +74,8 @@ test.describe('StreamingNarrativeView', () => {
     await expect(dmCount).toContainText('DM Messages: 1');
 
     // Check that the log shows the duplicate was skipped
-    await expect(page.getByText('DUPLICATE DETECTED - skipping')).toBeVisible();
+    // Use .first() because React strict mode may cause multiple log entries
+    await expect(page.getByText('DUPLICATE DETECTED - skipping').first()).toBeVisible();
   });
 
   test('streaming content should be visible during streaming', async ({ page }) => {
