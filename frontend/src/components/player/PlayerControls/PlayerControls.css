@@ -255,11 +255,13 @@
 
 .message-content p {
   margin: 0.25rem 0;
+  white-space: pre-wrap;
 }
 
 .message-answer {
   font-weight: 500;
   color: #fbbf24;
+  white-space: pre-wrap;
 }
 
 .message-narrative {
@@ -1220,80 +1222,94 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.95);
+  background: rgba(0, 0, 0, 0.98);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   cursor: pointer;
+  padding: 2rem;
 }
 
 .modal-content {
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
-  background: rgba(26, 26, 26, 0.95);
-  border-radius: 12px;
-  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   cursor: default;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .modal-close {
-  position: absolute;
+  position: fixed;
   top: 1rem;
   right: 1rem;
-  background: rgba(0, 0, 0, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   cursor: pointer;
   transition: all 0.2s;
-  z-index: 1001;
+  z-index: 1002;
+  backdrop-filter: blur(10px);
 }
 
 .modal-close:hover {
-  background: rgba(239, 68, 68, 0.8);
+  background: rgba(239, 68, 68, 0.9);
   transform: scale(1.1);
 }
 
 .modal-image-container {
-  width: 100%;
-  max-height: 70vh;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
+  min-height: 0;
 }
 
 .modal-image {
-  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
   height: auto;
+  object-fit: contain;
   display: block;
 }
 
 .modal-info {
-  padding: 1.5rem;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.8), transparent);
+  backdrop-filter: blur(10px);
+  z-index: 1001;
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .modal-type {
-  background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
   padding: 0.25rem 0.75rem;
   border-radius: 20px;
   font-size: 0.8rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .modal-timestamp {
@@ -1302,38 +1318,38 @@
 }
 
 .modal-title {
-  margin: 0 0 1rem 0;
-  font-size: 1.2rem;
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
   color: #f3f4f6;
   font-weight: 600;
 }
 
 .modal-prompt {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
 }
 
 .modal-prompt p {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #d1d5db;
   line-height: 1.4;
 }
 
 .modal-details {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
 }
 
 .modal-details p {
   margin: 0.25rem 0;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #d1d5db;
   line-height: 1.4;
 }
@@ -1430,13 +1446,25 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .modal-content {
-    max-width: 95vw;
-    max-height: 95vh;
+  .media-modal {
+    padding: 1rem;
+  }
+
+  .modal-close {
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
   }
 
   .modal-info {
-    padding: 1rem;
+    padding: 1rem 1.5rem;
+    max-height: 50vh;
+  }
+
+  .modal-title {
+    font-size: 1rem;
   }
 }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { API_CONFIG } from '../../../config/api.js';
 import apiService from '../../../services/apiService.js';
 
@@ -239,8 +240,8 @@ const MediaGallery = ({ campaignId, recentMedia = [], refreshTrigger }) => {
         )}
       </div>
 
-      {/* Modal for selected media */}
-      {selectedMedia && (
+      {/* Modal for selected media - rendered via portal to document.body */}
+      {selectedMedia && ReactDOM.createPortal(
         <div className="media-modal" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={closeModal}>
@@ -256,38 +257,9 @@ const MediaGallery = ({ campaignId, recentMedia = [], refreshTrigger }) => {
                 />
               )}
             </div>
-
-            <div className="modal-info">
-              <div className="modal-header">
-                <span className="modal-type">
-                  {getTypeIcon(selectedMedia.type)} {selectedMedia.type.charAt(0).toUpperCase() + selectedMedia.type.slice(1)}
-                </span>
-                <span className="modal-timestamp">
-                  {formatTimestamp(selectedMedia.timestamp)}
-                </span>
-              </div>
-
-              <h3 className="modal-title">{selectedMedia.description}</h3>
-
-              {selectedMedia.imagePrompt && (
-                <div className="modal-prompt">
-                  <p><strong>Generated from:</strong> {selectedMedia.imagePrompt}</p>
-                </div>
-              )}
-
-              {(selectedMedia.size || selectedMedia.model) && (
-                <div className="modal-details">
-                  {selectedMedia.size && (
-                    <p><strong>Size:</strong> {(selectedMedia.size / 1024).toFixed(1)} KB</p>
-                  )}
-                  {selectedMedia.model && selectedMedia.model !== 'unknown' && (
-                    <p><strong>Model:</strong> {selectedMedia.model}</p>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
