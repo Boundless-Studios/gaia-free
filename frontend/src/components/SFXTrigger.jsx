@@ -42,7 +42,9 @@ const SFXTrigger = ({ phrase, sfxId = null, sessionId }) => {
       const result = await generateSoundEffect(phrase, sessionId, sfxId);
 
       if (result?.audio) {
-        console.log('[SFXTrigger] SFX generated successfully');
+        console.log('[SFXTrigger] SFX generated successfully, playing locally');
+        // Play the audio immediately for the user who triggered it
+        await playSfxFromPayload(result.audio);
         // The generateSoundEffect already caches the result
         // It will also be broadcast via WebSocket, so other clients will receive it
       } else {
