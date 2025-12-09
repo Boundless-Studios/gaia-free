@@ -3,9 +3,8 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
-  min-height: 200px;
-  max-height: none;
   min-height: 0;
+  max-height: none;
   overflow: hidden;
 }
 
@@ -235,7 +234,7 @@
   line-height: 1.5;
   color: #ffffff;
   resize: vertical;
-  min-height: 80px;
+  min-height: 15px;
   max-height: none;
   overflow-y: auto;
   vertical-align: top;
@@ -397,7 +396,7 @@
 .stacked-collaborative-editor.grid-layout .player-textarea {
   background: rgba(0, 0, 0, 0.7);
   padding: 6px 10px;
-  min-height: 120px;
+  min-height: 30px;
   max-height: 70vh;
   border-radius: 6px;
   height: auto;
@@ -448,7 +447,7 @@
   }
 
   .stacked-collaborative-editor.grid-layout .player-textarea {
-    min-height: 100px;
+    min-height: 25px;
     padding: 5px 8px;
   }
 }
