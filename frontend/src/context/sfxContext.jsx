@@ -47,6 +47,9 @@ export const SFXProvider = ({ children }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastError, setLastError] = useState(null);
 
+  // SFX cache for deduplication (Map: cacheKey -> audioPayload)
+  const [sfxCache, setSfxCache] = useState(new Map());
+
   // Initialize sfxService with token getter
   useEffect(() => {
     if (isAuthenticated && getAccessTokenSilently) {
@@ -156,6 +159,43 @@ export const SFXProvider = ({ children }) => {
   }, [ensureAbsoluteUrl, getAuthToken]);
 
   /**
+   * Generate cache key from sfxId or phrase
+   * @param {string|null} sfxId - Catalog ID
+   * @param {string} phrase - Text phrase
+   * @returns {string} Cache key
+   */
+  const getCacheKey = useCallback((sfxId, phrase) => {
+    return sfxId || phrase.toLowerCase().trim();
+  }, []);
+
+  /**
+   * Retrieve cached SFX audio payload
+   * @param {string|null} sfxId - Catalog ID
+   * @param {string} phrase - Text phrase
+   * @returns {Object|null} Cached audio payload or null
+   */
+  const getCachedSFX = useCallback((sfxId, phrase) => {
+    const key = getCacheKey(sfxId, phrase);
+    return sfxCache.get(key) || null;
+  }, [sfxCache, getCacheKey]);
+
+  /**
+   * Store SFX audio payload in cache
+   * @param {string|null} sfxId - Catalog ID
+   * @param {string} phrase - Text phrase
+   * @param {Object} audioPayload - Audio data to cache
+   */
+  const cacheSFX = useCallback((sfxId, phrase, audioPayload) => {
+    const key = getCacheKey(sfxId, phrase);
+    setSfxCache(prev => {
+      const newCache = new Map(prev);
+      newCache.set(key, audioPayload);
+      return newCache;
+    });
+    console.log('[SFX] Cached audio for:', key);
+  }, [getCacheKey]);
+
+  /**
    * Play a sound effect from a URL
    * This plays simultaneously with any existing narration audio
    */
@@ -227,9 +267,10 @@ export const SFXProvider = ({ children }) => {
    * Generate a sound effect from selected text
    * @param {string} text - Description of the sound effect
    * @param {string} sessionId - Campaign/session ID for broadcasting
+   * @param {string|null} sfxId - Optional catalog ID for caching
    * @returns {Promise<Object|null>} Generated sound effect data or null on error
    */
-  const generateSoundEffect = useCallback(async (text, sessionId) => {
+  const generateSoundEffect = useCallback(async (text, sessionId, sfxId = null) => {
     if (!text || text.trim().length === 0) {
       console.log('[SFX] No text provided for sound effect generation');
       return null;
@@ -253,7 +294,13 @@ export const SFXProvider = ({ children }) => {
       console.log('[SFX] Sound effect generation triggered', {
         sessionId,
         textLength: text.length,
+        sfxId,
       });
+
+      // Cache the result if audio is available
+      if (result?.audio) {
+        cacheSFX(sfxId, text, result.audio);
+      }
 
       return result;
     } catch (error) {
@@ -263,7 +310,7 @@ export const SFXProvider = ({ children }) => {
     } finally {
       setIsGenerating(false);
     }
-  }, []);
+  }, [cacheSFX]);
 
   /**
    * Check if SFX service is available
@@ -343,6 +390,10 @@ export const SFXProvider = ({ children }) => {
     // Generation actions
     generateSoundEffect,
     checkAvailability,
+
+    // Cache actions
+    getCachedSFX,
+    cacheSFX,
 
     // WebSocket handler
     handleSfxAvailable,
