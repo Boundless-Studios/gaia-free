@@ -18,6 +18,7 @@ import CharacterAssignmentModal from './CharacterAssignmentModal.jsx';
 import PlayerVacatedModal from './PlayerVacatedModal.jsx';
 import VoiceInputScribeV2 from '../VoiceInputScribeV2.jsx';
 import { useGameSocket } from '../../hooks/useGameSocket.js';
+import AudioPlayerBar from '../audio/AudioPlayerBar.jsx';
 
 const PLAYER_SOCKET_GLOBAL_KEY = '__gaia_player_active_socket';
 const CHARACTER_DRAFT_STORAGE_PREFIX = 'player-seat-draft';
@@ -1900,6 +1901,13 @@ const PlayerRoomShell = ({
           </div>
         )}
       </div>
+
+      {/* Audio Player Bar - shows "Tap to enable audio" on mobile when autoplay is blocked */}
+      <AudioPlayerBar
+        userAudioBlocked={audioBlocked}
+        onUnlockUserAudio={unlockAudio}
+      />
+
       <SeatSelectionModal
         open={seatModalOpen}
         onClose={() => setSeatModalOpen(false)}
