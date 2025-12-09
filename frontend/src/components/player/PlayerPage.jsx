@@ -305,27 +305,45 @@ const PlayerPage = () => {
     activeSessionIdRef.current = currentCampaignId;
   }, [currentCampaignId]);
 
-  // Auto-enable audio on first user interaction
+  // UNIFIED: Auto-enable all audio on first user interaction
+  // CRITICAL for Safari: Handler must be SYNCHRONOUS - async functions lose gesture context!
+  // Safari requires play() to be called synchronously within the user gesture handler
   useEffect(() => {
-    if (!audioStream.needsUserGesture) {
+    // Only set up listeners if audio needs to be unlocked
+    const needsUnlock = audioStream.needsUserGesture || audioBlocked;
+    if (!needsUnlock) {
       return;
     }
 
+    // IMPORTANT: This handler must NOT be async - Safari loses gesture context with async
     const handleUserInteraction = () => {
-      audioStream.resumePlayback();
+      console.log('🎵 [PLAYER] User interaction - unlocking all audio (sync handler)');
+
+      // Call both unlock functions SYNCHRONOUSLY - they return promises but
+      // the critical play() call happens synchronously inside them
+      if (audioBlocked) {
+        // unlockAudio() calls play() synchronously, returns promise for result
+        unlockAudio();
+      }
+      if (audioStream.needsUserGesture) {
+        // resumePlayback() calls play() synchronously, returns promise for result
+        audioStream.resumePlayback();
+      }
     };
 
     // Listen for any user interaction to auto-enable audio
-    document.addEventListener('click', handleUserInteraction, { once: true });
-    document.addEventListener('keydown', handleUserInteraction, { once: true });
-    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+    // Use capture phase to ensure we get the event first
+    const options = { once: true, capture: true };
+    document.addEventListener('click', handleUserInteraction, options);
+    document.addEventListener('keydown', handleUserInteraction, options);
+    document.addEventListener('touchstart', handleUserInteraction, options);
 
     return () => {
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
+      document.removeEventListener('click', handleUserInteraction, options);
+      document.removeEventListener('keydown', handleUserInteraction, options);
+      document.removeEventListener('touchstart', handleUserInteraction, options);
     };
-  }, [audioStream]);
+  }, [audioStream, audioBlocked, unlockAudio]);
 
   // Load simple campaigns to map IDs to names for display
   // Removed: No longer fetching all campaign names, will get name from single campaign load.
@@ -482,24 +500,8 @@ const PlayerPage = () => {
     campaignId: currentCampaignId,
   });
 
-  // On iOS, try to unlock audio on any user interaction with the page
-  useEffect(() => {
-    const handleUserInteraction = () => {
-      if (audioBlocked) {
-        console.log('🎵 [PLAYER] User interaction detected, attempting to unlock audio');
-        unlockAudio();
-      }
-    };
-
-    // Add listeners for common user interactions
-    document.addEventListener('touchstart', handleUserInteraction, { passive: true });
-    document.addEventListener('click', handleUserInteraction, { passive: true });
-
-    return () => {
-      document.removeEventListener('touchstart', handleUserInteraction);
-      document.removeEventListener('click', handleUserInteraction);
-    };
-  }, [audioBlocked, unlockAudio]);
+  // NOTE: Audio unlock is now handled by the unified handler above (lines 308-347)
+  // This eliminates the need for separate handlers that could conflict on iOS
 
   // Load campaign from URL session ID
   useEffect(() => {
