@@ -1091,7 +1091,6 @@
       "triggers": [
         "footsteps creak",
         "wooden floorboards",
-        "floorboards",
         "steps on wood"
       ],
       "label": "Footsteps (Wood)",
@@ -1366,18 +1365,6 @@
       ],
       "label": "Fire Roar",
       "priority": 8,
-      "category": "fire"
-    },
-    {
-      "id": "hearth_fire",
-      "triggers": [
-        "hearthfire burns",
-        "hearth fire burns",
-        "hearthfire crackles",
-        "hearth fire crackles"
-      ],
-      "label": "Hearth Fire",
-      "priority": 7,
       "category": "fire"
     },
     {
