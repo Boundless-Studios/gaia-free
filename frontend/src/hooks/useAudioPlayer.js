@@ -6,6 +6,28 @@ const MUTE_STORAGE_KEY = 'gaiaAudioMuted';
 const DEFAULT_VOLUME = 1.0;
 
 /**
+ * Create an Audio element with iOS Safari compatibility attributes.
+ * iOS Safari requires playsinline to prevent fullscreen mode and
+ * to properly handle autoplay restrictions.
+ */
+const createAudioElement = () => {
+  if (typeof Audio === 'undefined') {
+    return null;
+  }
+  const audio = new Audio();
+  // iOS Safari requires these attributes for proper playback
+  audio.setAttribute('playsinline', '');
+  audio.setAttribute('webkit-playsinline', '');
+  // Prevent iOS from trying to AirPlay by default
+  audio.setAttribute('x-webkit-airplay', 'deny');
+  // Allow cross-origin audio (needed for streaming from API)
+  audio.crossOrigin = 'anonymous';
+  // Preload metadata for faster start
+  audio.preload = 'auto';
+  return audio;
+};
+
+/**
  * Shared audio player hook
  *
  * Provides common audio player functionality used by both AudioQueueContext
@@ -17,7 +39,7 @@ const DEFAULT_VOLUME = 1.0;
  */
 export const useAudioPlayer = () => {
   const { getAccessTokenSilently, isAuthenticated } = useAuth();
-  const audioRef = useRef(typeof Audio !== 'undefined' ? new Audio() : null);
+  const audioRef = useRef(createAudioElement());
 
   // Mute state with localStorage initialization
   const [isMuted, setIsMuted] = useState(() => {

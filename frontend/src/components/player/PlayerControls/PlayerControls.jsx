@@ -28,7 +28,10 @@ const PlayerControls = ({
   pendingObservations = [],
   onCopyObservation = null,
   // Secondary player observation submission
-  onSubmitObservation = null
+  onSubmitObservation = null,
+  // Audio unlock props
+  userAudioBlocked = false,
+  onUnlockUserAudio = null
 }) => {
   const [activeTab, setActiveTab] = useState('voice');
   const [recentMedia, setRecentMedia] = useState([]);
@@ -282,6 +285,8 @@ const PlayerControls = ({
                     showMicButton={audioPermissionState === 'granted'}
                     voiceLevel={voiceActivityLevel}
                     showInlineSubmit={isActivePlayer}
+                    audioNeedsUnlock={userAudioBlocked}
+                    onUnlockAudio={onUnlockUserAudio}
                   />
                 </div>
               </div>

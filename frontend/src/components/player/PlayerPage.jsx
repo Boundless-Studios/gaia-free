@@ -305,28 +305,6 @@ const PlayerPage = () => {
     activeSessionIdRef.current = currentCampaignId;
   }, [currentCampaignId]);
 
-  // Auto-enable audio on first user interaction
-  useEffect(() => {
-    if (!audioStream.needsUserGesture) {
-      return;
-    }
-
-    const handleUserInteraction = () => {
-      audioStream.resumePlayback();
-    };
-
-    // Listen for any user interaction to auto-enable audio
-    document.addEventListener('click', handleUserInteraction, { once: true });
-    document.addEventListener('keydown', handleUserInteraction, { once: true });
-    document.addEventListener('touchstart', handleUserInteraction, { once: true });
-
-    return () => {
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-    };
-  }, [audioStream]);
-
   // Load simple campaigns to map IDs to names for display
   // Removed: No longer fetching all campaign names, will get name from single campaign load.
 
@@ -474,13 +452,44 @@ const PlayerPage = () => {
   }, []);
 
   // User audio queue playback (shared hook) - uses WebSocket for reliable acknowledgment
-  const { fetchUserAudioQueue } = useUserAudioQueue({
+  const { fetchUserAudioQueue, audioBlocked, unlockAudio } = useUserAudioQueue({
     user,
     audioStream,
     apiService,
     socketEmit: socketEmitWrapper,
     campaignId: currentCampaignId,
   });
+
+  // UNIFIED: Auto-enable all audio on first user interaction
+  // CRITICAL for Safari: Handler must be SYNCHRONOUS - async functions lose gesture context!
+  useEffect(() => {
+    const needsUnlock = audioStream.needsUserGesture || audioBlocked;
+    if (!needsUnlock) {
+      return;
+    }
+
+    // IMPORTANT: This handler must NOT be async - Safari loses gesture context with async
+    const handleUserInteraction = () => {
+      console.log('🎵 [PLAYER] User interaction - unlocking all audio (sync handler)');
+      if (audioBlocked) {
+        unlockAudio();
+      }
+      if (audioStream.needsUserGesture) {
+        audioStream.resumePlayback();
+      }
+    };
+
+    const options = { once: true, capture: true };
+    document.addEventListener('click', handleUserInteraction, options);
+    document.addEventListener('keydown', handleUserInteraction, options);
+    document.addEventListener('touchstart', handleUserInteraction, options);
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction, options);
+      document.removeEventListener('keydown', handleUserInteraction, options);
+      document.removeEventListener('touchstart', handleUserInteraction, options);
+    };
+  }, [audioStream, audioBlocked, unlockAudio]);
 
   // Load campaign from URL session ID
   useEffect(() => {
@@ -1304,6 +1313,9 @@ const PlayerPage = () => {
         setCollabPlayerId={setCollabPlayerId}
         assignedPlayerName={assignedPlayerName}
         setAssignedPlayerName={setAssignedPlayerName}
+        // Audio unlock props (for iOS mobile support)
+        audioBlocked={audioBlocked}
+        unlockAudio={unlockAudio}
       />
     </RoomProvider>
   );
@@ -1346,6 +1358,9 @@ const PlayerRoomShell = ({
   setCollabPlayerId,
   assignedPlayerName,
   setAssignedPlayerName,
+  // Audio unlock props (for iOS mobile support)
+  audioBlocked,
+  unlockAudio,
 }) => {
   const {
     playerSeats,
@@ -1878,6 +1893,9 @@ const PlayerRoomShell = ({
               pendingObservations={pendingObservations}
               onCopyObservation={handleCopyObservation}
               onSubmitObservation={handleSubmitObservation}
+              // Audio unlock props (for iOS mobile support)
+              userAudioBlocked={audioBlocked}
+              onUnlockUserAudio={unlockAudio}
             />
           </div>
         )}

@@ -17,6 +17,7 @@ CLAUDE_BASE_URL = os.getenv("CLAUDE_BASE_URL") or "https://api.anthropic.com/v1"
 # Parasail configuration
 PARASAIL_API_KEY = os.getenv("PARASAIL_API_KEY")
 PARASAIL_BASE_URL = "https://api.parasail.io/v1"
+# Default Parasail model - use string to avoid circular import with model_manager
 PARASAIL_MODEL = "parasail-kimi-k2-instruct-low-latency"
 
 class ClaudeModelProvider(ModelProvider):

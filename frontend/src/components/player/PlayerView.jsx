@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import PlayerAndTurnList from '../PlayerAndTurnList/PlayerAndTurnList';
 import PlayerNarrativeView from './PlayerNarrativeView/PlayerNarrativeView.jsx';
 import PlayerControls from './PlayerControls/PlayerControls.jsx';
-import AudioPlayerBar from '../audio/AudioPlayerBar.jsx';
 import CombatStatusView from '../CombatStatusView.jsx';
 import './PlayerView.css';
 
@@ -38,7 +37,10 @@ const PlayerView = ({
   pendingObservations = [],
   onCopyObservation = null,
   // Secondary player observation submission
-  onSubmitObservation = null
+  onSubmitObservation = null,
+  // Audio unlock props (for iOS mobile support)
+  userAudioBlocked = false,
+  onUnlockUserAudio = null,
 }) => {
   // Debug: Log observations props received by PlayerView
   console.log('👁️ PlayerView render:', {
@@ -235,7 +237,6 @@ const PlayerView = ({
 
         {/* Bottom Panel: Player Controls */}
         <div className="player-view-controls" data-testid="player-controls">
-          <AudioPlayerBar sessionId={campaignId} />
           <PlayerControls
             campaignId={campaignId}
             structuredData={gameState}
@@ -265,6 +266,9 @@ const PlayerView = ({
             onCopyObservation={onCopyObservation}
             // Secondary player observation submission
             onSubmitObservation={onSubmitObservation}
+            // Audio unlock props (for inline indicator)
+            userAudioBlocked={userAudioBlocked}
+            onUnlockUserAudio={onUnlockUserAudio}
           />
         </div>
       </div>

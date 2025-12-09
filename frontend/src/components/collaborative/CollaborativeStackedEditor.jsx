@@ -43,6 +43,9 @@ const CollaborativeStackedEditor = forwardRef(({
   voiceLevel = 0,
   // Show inline submit button in player's own section
   showInlineSubmit = false,
+  // Audio unlock props
+  audioNeedsUnlock = false,
+  onUnlockAudio = null,
 }, ref) => {
   const [isConnected, setIsConnected] = useState(false);
   // playerContents: { [playerId]: string } - each player's text content
@@ -584,6 +587,15 @@ const CollaborativeStackedEditor = forwardRef(({
                       >
                         {isTranscribing ? '🎤' : '🔇'}
                       </button>
+                      {audioNeedsUnlock && onUnlockAudio && (
+                        <button
+                          className="audio-unlock-inline-editor"
+                          onClick={onUnlockAudio}
+                          title="Tap to enable audio"
+                        >
+                          🔊
+                        </button>
+                      )}
                       {isTranscribing && (
                         <div
                           className="voice-level-indicator"
