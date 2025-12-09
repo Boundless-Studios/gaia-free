@@ -34,25 +34,15 @@ class VoiceRegistry:
     
     # ElevenLabs voice mappings
     ELEVENLABS_VOICES = {
-        "priyanka": Voice(
-            id="priyanka",
-            name="Priyanka",
+        "nathaniel": Voice(
+            id="nathaniel",
+            name="Nathaniel",
             provider=VoiceProvider.ELEVENLABS,
-            provider_voice_id="BpjGufoPiobT79j2vtj4",
-            description="Warm and expressive female voice",
-            gender="female",
-            style="friendly",
-            character_role="Innkeeper"
-        ),
-        "caleb": Voice(
-            id="caleb",
-            name="Caleb",
-            provider=VoiceProvider.ELEVENLABS,
-            provider_voice_id="pNInz6obpgDQGcFmaJgB",
-            description="Confident male voice",
+            provider_voice_id="AeRdCCKzvd23BpJoofzx",
+            description="Calm English",
             gender="male",
-            style="confident",
-            character_role="Warrior"
+            style="storyteller",
+            character_role="DM/Narrator"
         ),
         "cornelius": Voice(
             id="cornelius",
@@ -64,56 +54,46 @@ class VoiceRegistry:
             style="authoritative",
             character_role="Noble NPC"
         ),
-        "alice": Voice(
-            id="alice",
-            name="Alice",
+        "priyanka": Voice(
+            id="priyanka",
+            name="Priyanka",
             provider=VoiceProvider.ELEVENLABS,
-            provider_voice_id="Xb7hH8MSUJpSbSDYk0k2",
-            description="Clear and articulate female voice",
+            provider_voice_id="BpjGufoPiobT79j2vtj4",
+            description="Warm and expressive female voice",
             gender="female",
-            style="professional",
-            character_role="Merchant"
+            style="friendly",
+            character_role="Innkeeper"
         ),
-        "mr-attractive": Voice(
-            id="mr-attractive",
-            name="Mr. Attractive",
+        "rob": Voice(
+            id="rob",
+            name="Rob",
             provider=VoiceProvider.ELEVENLABS,
-            provider_voice_id="Gwf9mOMZG8bkPbhsbOVc",
-            description="Moderate Japanese",
+            provider_voice_id="CsbTapRVtZdcBs3vBbQe",
+            description="Worker voice",
             gender="male",
-            style="professional",
-            character_role="Wise Sage"
+            style="casual",
+            character_role="Worker"
         ),
-        "nathaniel": Voice(
-            id="nathaniel",
-            name="Nathaniel",
+        "emmaline": Voice(
+            id="emmaline",
+            name="Emmaline",
             provider=VoiceProvider.ELEVENLABS,
-            provider_voice_id="AeRdCCKzvd23BpJoofzx",
-            description="Calm English",
+            provider_voice_id="nDJIICjR9zfJExIFeSCN",
+            description="Spirited and energetic voice",
+            gender="female",
+            style="spirited",
+            character_role="Spirited"
+        ),
+        "oxley": Voice(
+            id="oxley",
+            name="Oxley",
+            provider=VoiceProvider.ELEVENLABS,
+            provider_voice_id="2gPFXx8pN3Avh27Dw5Ma",
+            description="Dark and menacing voice",
             gender="male",
-            style="storyteller",
-            character_role="DM/Narrator"
+            style="sinister",
+            character_role="Evil"
         ),
-        "almee-whisper": Voice(
-            id="almee-whisper",
-            name="Almee Whisper",
-            provider=VoiceProvider.ELEVENLABS,
-            provider_voice_id="GL7nHO5mDrxcHlJPJK5T",
-            description="Freaky Soft",
-            gender="female",
-            style="storyteller",
-            character_role="Mysterious Figure"
-        ),
-        "jen-soft": Voice(
-            id="jen-soft",
-            name="Jen Soft",
-            provider=VoiceProvider.ELEVENLABS,
-            provider_voice_id="HzVnxqtdk9eqrcwfxD57",
-            description="Gentle and Soft",
-            gender="female",
-            style="narrator",
-            character_role="Young Adventurer"
-        )
     }
     
     # OpenAI voice mappings (if needed in the future)
