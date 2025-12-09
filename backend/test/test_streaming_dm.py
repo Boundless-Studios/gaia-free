@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.src.gaia.infra.llm.model_manager import PreferredModels
+from gaia.infra.llm.model_manager import PreferredModels
 
 # Add backend to path
 backend_path = Path(__file__).parent.parent

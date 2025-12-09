@@ -1323,6 +1323,9 @@ const PlayerPage = () => {
         setCollabPlayerId={setCollabPlayerId}
         assignedPlayerName={assignedPlayerName}
         setAssignedPlayerName={setAssignedPlayerName}
+        // Audio unlock props (for iOS mobile support)
+        audioBlocked={audioBlocked}
+        unlockAudio={unlockAudio}
       />
     </RoomProvider>
   );
@@ -1365,6 +1368,9 @@ const PlayerRoomShell = ({
   setCollabPlayerId,
   assignedPlayerName,
   setAssignedPlayerName,
+  // Audio unlock props (for iOS mobile support)
+  audioBlocked,
+  unlockAudio,
 }) => {
   const {
     playerSeats,

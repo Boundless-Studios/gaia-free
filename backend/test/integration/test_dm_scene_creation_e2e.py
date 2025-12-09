@@ -8,7 +8,7 @@ import pytest
 import logging
 from unittest.mock import Mock
 
-from backend.src.gaia.infra.llm.model_manager import PreferredModels
+from gaia.infra.llm.model_manager import PreferredModels
 from gaia_private.session.streaming_dm_runner import StreamingDMRunner
 from gaia_private.session.scene.scene_integration import SceneIntegration
 from gaia.engine.dm_context import DMContext
