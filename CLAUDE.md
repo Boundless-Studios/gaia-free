@@ -66,6 +66,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    ```
 
 2. **Restart running containers** (apply changes without rebuilding):
+The game has hot reload enabled for backend and frontend changes. you should not need to restart to see the changes reflected. you can ask the user if they want to restart, but dont auto restart.
    ```bash
    docker restart gaia-frontend-dev
    docker restart gaia-backend-dev
