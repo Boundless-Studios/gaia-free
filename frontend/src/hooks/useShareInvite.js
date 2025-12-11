@@ -99,6 +99,42 @@ export function useShareInvite(currentCampaignId, setInfoBanner) {
   }, [shareState.token, setInfoBanner]);
 
   /**
+   * Fetch invite token and immediately copy link to clipboard
+   * Used for Share button click and auto-copy after campaign creation
+   */
+  const fetchAndCopyInviteLink = useCallback(
+    async (campaignIdOverride = null) => {
+      const targetCampaignId = campaignIdOverride || currentCampaignId;
+      if (!targetCampaignId) {
+        setInfoBanner('Select a campaign before sharing.');
+        return;
+      }
+      try {
+        const response = await apiService.createSessionInvite(targetCampaignId, {
+          regenerate: false,
+        });
+        const token = response.invite_token;
+        if (token) {
+          const link = `${window.location.origin}/?invite=${token}`;
+          await navigator.clipboard.writeText(link);
+          setInfoBanner('Invite link copied to clipboard!');
+          setShareState({
+            loading: false,
+            token,
+            expiresAt: response.expires_at || null,
+            error: null,
+            copied: true,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch/copy invite link:', err);
+        setInfoBanner('Failed to copy invite link.');
+      }
+    },
+    [currentCampaignId, setInfoBanner]
+  );
+
+  /**
    * Computed invite link URL
    */
   const inviteLink =
@@ -117,6 +153,7 @@ export function useShareInvite(currentCampaignId, setInfoBanner) {
     // Operations
     fetchToken: fetchInviteToken,
     copyInviteLink: handleCopyInviteLink,
+    fetchAndCopyInviteLink,
 
     // Computed
     inviteLink,

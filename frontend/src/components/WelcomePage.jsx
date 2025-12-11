@@ -507,6 +507,22 @@ const WelcomePage = () => {
                         </button>
                     </div>
                 </main>
+
+                {/* ElevenLabs Grant Logo */}
+                <div className="absolute bottom-4 right-4 z-10">
+                    <a
+                        href="https://elevenlabs.io/startup-grants"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="opacity-80 hover:opacity-100 transition-opacity duration-200"
+                    >
+                        <img
+                            src="https://eleven-public-cdn.elevenlabs.io/payloadcms/cy7rxce8uki-IIElevenLabsGrants%201.webp"
+                            alt="ElevenLabs"
+                            style={{ width: '250px' }}
+                        />
+                    </a>
+                </div>
             </div>
 
             {/* Campaign Manager Modal (for DM) */}

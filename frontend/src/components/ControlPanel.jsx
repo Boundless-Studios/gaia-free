@@ -27,13 +27,11 @@ const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRe
   const sortVoicesByCharacterRole = (voices) => {
     const characterRoleOrder = [
       'DM/Narrator',
-      'Noble NPC', 
-      'Merchant',
+      'Noble NPC',
       'Innkeeper',
-      'Warrior',
-      'Wise Sage',
-      'Mysterious Figure',
-      'Young Adventurer'
+      'Worker',
+      'Spirited',
+      'Evil'
     ];
     
     return voices.sort((a, b) => {

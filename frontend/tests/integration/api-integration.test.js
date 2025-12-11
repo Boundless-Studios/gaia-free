@@ -173,7 +173,7 @@ describe('API Integration Tests', () => {
     it('fetches available voices', async () => {
       const mockVoices = [
         { id: 'nathaniel', name: 'Nathaniel', role: 'DM' },
-        { id: 'alice', name: 'Alice', role: 'Merchant' }
+        { id: 'priyanka', name: 'Priyanka', role: 'Innkeeper' }
       ]
 
       mockFetch.mockResolvedValueOnce({
