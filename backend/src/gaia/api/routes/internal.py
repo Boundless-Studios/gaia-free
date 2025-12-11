@@ -106,7 +106,7 @@ class SceneAnalysisRequest(BaseModel):
     """Request model for scene analysis."""
     user_input: str
     campaign_id: Optional[str] = None
-    model: Optional[str] = ModelName.DEEPSEEK_3_1.value
+    model: Optional[str] = ModelName.DEEPSEEK_3_2.value
     context: Optional[Dict[str, Any]] = None
     include_previous_scenes: bool = True
     num_previous_scenes: int = 2
@@ -156,7 +156,7 @@ async def analyze_scene(
     """
     try:
         # Resolve the model to ensure it's available
-        resolved_model = resolve_model(request.model or ModelName.DEEPSEEK_3_1.value)
+        resolved_model = resolve_model(request.model or ModelName.DEEPSEEK_3_2.value)
         logger.info(f"Analyzing scene with model: {resolved_model}")
         
         # Get or create analyzer
