@@ -268,7 +268,7 @@ async def lifespan(app: FastAPI):
         if str(scripts_dir) not in sys.path:
             sys.path.insert(0, str(scripts_dir))
 
-        from scripts.startup.check_pending_registrations import check_and_notify_pending_registrations
+        from scripts.backend.startup.check_pending_registrations import check_and_notify_pending_registrations
         await check_and_notify_pending_registrations()
     except Exception as e:
         logger.warning(f"Failed to check pending registrations: {e}", exc_info=True)
@@ -301,7 +301,7 @@ async def lifespan(app: FastAPI):
     # Initialize room seats for campaigns seeded from filesystem
     # This runs after SessionRegistry._seed_db_from_memory() has populated campaign_sessions
     try:
-        from scripts.startup.initialize_campaign_rooms import initialize_campaign_rooms
+        from scripts.backend.startup.initialize_campaign_rooms import initialize_campaign_rooms
         room_init_stats = await initialize_campaign_rooms()
         if room_init_stats.get("campaigns_initialized", 0) > 0:
             logger.info(
