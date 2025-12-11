@@ -246,9 +246,9 @@ async def test_combat_initiator_mixin(mock_load_prompt_text):
 async def test_scene_categorizer_mixin(mock_load_prompt_text):
     """Test PromptCacheMixin behavior for SceneCategorizer."""
     from gaia_private.agents.scene_analyzer.scene_categorizer import SceneCategorizer
-    from gaia.infra.llm.model_manager import ModelName
+    from gaia.infra.llm.model_manager import PreferredModels
 
-    agent = SceneCategorizer(model=ModelName.DEEPSEEK_3_1.value)
+    agent = SceneCategorizer(model=PreferredModels.DEEPSEEK.value)
 
     assert agent.agent_type == "scene_categorizer"
     assert agent.prompt_key == "system_prompt"
@@ -263,9 +263,9 @@ async def test_scene_categorizer_mixin(mock_load_prompt_text):
 async def test_combat_exit_analyzer_mixin(mock_load_prompt_text):
     """Test PromptCacheMixin behavior for CombatExitAnalyzer."""
     from gaia_private.agents.scene_analyzer.combat_exit_analyzer import CombatExitAnalyzer
-    from gaia.infra.llm.model_manager import ModelName
+    from gaia.infra.llm.model_manager import PreferredModels
 
-    agent = CombatExitAnalyzer(model=ModelName.DEEPSEEK_3_1.value)
+    agent = CombatExitAnalyzer(model=PreferredModels.DEEPSEEK.value)
 
     assert agent.agent_type == "combat_exit_analyzer"
     assert agent.prompt_key == "system_prompt"
@@ -280,9 +280,9 @@ async def test_combat_exit_analyzer_mixin(mock_load_prompt_text):
 async def test_complexity_analyzer_mixin(mock_load_prompt_text):
     """Test PromptCacheMixin behavior for ComplexityAnalyzer."""
     from gaia_private.agents.scene_analyzer.complexity_analyzer import ComplexityAnalyzer
-    from gaia.infra.llm.model_manager import ModelName
+    from gaia.infra.llm.model_manager import PreferredModels
 
-    agent = ComplexityAnalyzer(model=ModelName.DEEPSEEK_3_1.value)
+    agent = ComplexityAnalyzer(model=PreferredModels.DEEPSEEK.value)
 
     assert agent.agent_type == "complexity_analyzer"
     assert agent.prompt_key == "system_prompt"
@@ -297,9 +297,9 @@ async def test_complexity_analyzer_mixin(mock_load_prompt_text):
 async def test_next_agent_recommender_mixin(mock_load_prompt_text):
     """Test PromptCacheMixin behavior for NextAgentRecommender."""
     from gaia_private.agents.scene_analyzer.next_agent_recommender import NextAgentRecommender
-    from gaia.infra.llm.model_manager import ModelName
+    from gaia.infra.llm.model_manager import PreferredModels
 
-    agent = NextAgentRecommender(model=ModelName.DEEPSEEK_3_1.value)
+    agent = NextAgentRecommender(model=PreferredModels.DEEPSEEK.value)
 
     assert agent.agent_type == "next_agent_recommender"
     assert agent.prompt_key == "system_prompt"
@@ -314,9 +314,9 @@ async def test_next_agent_recommender_mixin(mock_load_prompt_text):
 async def test_tool_selector_mixin(mock_load_prompt_text):
     """Test PromptCacheMixin behavior for ToolSelector."""
     from gaia_private.agents.scene_analyzer.tool_selector import ToolSelector
-    from gaia.infra.llm.model_manager import ModelName
+    from gaia.infra.llm.model_manager import PreferredModels
 
-    agent = ToolSelector(model=ModelName.DEEPSEEK_3_1.value)
+    agent = ToolSelector(model=PreferredModels.DEEPSEEK.value)
 
     assert agent.agent_type == "tool_selector"
     assert agent.prompt_key == "system_prompt"
@@ -331,9 +331,9 @@ async def test_tool_selector_mixin(mock_load_prompt_text):
 async def test_special_considerations_mixin(mock_load_prompt_text):
     """Test PromptCacheMixin behavior for SpecialConsiderations."""
     from gaia_private.agents.scene_analyzer.special_considerations import SpecialConsiderations
-    from gaia.infra.llm.model_manager import ModelName
+    from gaia.infra.llm.model_manager import PreferredModels
 
-    agent = SpecialConsiderations(model=ModelName.DEEPSEEK_3_1.value)
+    agent = SpecialConsiderations(model=PreferredModels.DEEPSEEK.value)
 
     assert agent.agent_type == "special_considerations"
     assert agent.prompt_key == "system_prompt"
