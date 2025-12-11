@@ -68,6 +68,30 @@ class SocketIOBroadcaster:
         else:
             self._campaign_states.pop(session_id, None)
 
+    async def set_active_campaign(self, campaign_id: str, broadcast_data: Optional[Dict] = None) -> None:
+        """Set the active campaign and broadcast activation to connected clients.
+
+        Args:
+            campaign_id: The campaign ID to activate
+            broadcast_data: Optional structured data to broadcast with activation
+        """
+        self.logger.info(f"📢 Setting active campaign: {campaign_id}")
+
+        # Cache the campaign state for late joiners
+        if broadcast_data:
+            self.set_cached_campaign_state(campaign_id, broadcast_data)
+
+        # Broadcast campaign activation to all clients in the room
+        await self.broadcast_campaign_update(
+            session_id=campaign_id,
+            event_type="campaign_activated",
+            data={
+                "campaign_id": campaign_id,
+                "structured_data": broadcast_data,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
+
     # =========================================================================
     # Broadcast Methods
     # =========================================================================
