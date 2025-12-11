@@ -48,20 +48,20 @@ const SceneImagesMiniGallery = ({
     }
   }, [campaignId]);
 
-  // Set up polling
+  // Set up polling - only when actively generating
   useEffect(() => {
     if (!campaignId || !isVisible) return;
 
     // Initial fetch
     fetchLatestImages();
 
-    // Set up polling
-    pollingIntervalRef.current = setInterval(() => {
-      // Only poll if we're still generating or don't have images
-      if (!imageSet || imageSet.status === 'generating') {
+    // Only set up polling if we're actively generating (not when null/404)
+    // This prevents continuous polling when no scene images exist
+    if (imageSet?.status === 'generating') {
+      pollingIntervalRef.current = setInterval(() => {
         fetchLatestImages();
-      }
-    }, pollingInterval);
+      }, pollingInterval);
+    }
 
     return () => {
       if (pollingIntervalRef.current) {

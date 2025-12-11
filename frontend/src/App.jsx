@@ -954,11 +954,20 @@ function App() {
         console.log('[Collab] DM registered via Socket.IO:', data);
         setCollabIsConnected(true);
       },
-      // Player action submission - add to DM's player options section
+      // Player action submission - add to DM's chat history and player options section
       player_action_submitted: (data) => {
         console.log('[DM] Received player action submission:', data);
         const { character_name, action_text, character_id, timestamp } = data;
         if (action_text && action_text.trim()) {
+          const msgTimestamp = timestamp || new Date().toISOString();
+
+          // Add to message history so DM sees the player's message in chat
+          addUserMessage(currentCampaignId, action_text.trim(), {
+            characterName: character_name || 'Player',
+            timestamp: msgTimestamp,
+          });
+
+          // Also add to playerSubmissions for the TurnView suggestions area
           setPlayerSubmissions(prev => [
             ...prev,
             {
@@ -966,7 +975,7 @@ function App() {
               characterName: character_name || 'Player',
               characterId: character_id,
               actionText: action_text.trim(),
-              timestamp: timestamp || new Date().toISOString(),
+              timestamp: msgTimestamp,
             }
           ]);
         }
