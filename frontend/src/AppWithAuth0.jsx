@@ -6,6 +6,7 @@ import { Auth0AuthProvider, DevAuthProvider, useAuth } from './contexts/Auth0Con
 import App from './App';
 import PlayerPage from './components/player/PlayerPage.jsx';
 import WelcomePage from './components/WelcomePage.jsx';
+import AboutPage from './pages/AboutPage.jsx';
 import AudioNotificationHost from './components/audio/AudioNotificationHost.jsx';
 import { getButtonClass } from './lib/tailwindComponents';
 import AuthError from './components/AuthError.jsx';
@@ -266,6 +267,7 @@ const AppWithAuth0 = () => {
           <Routes>
             {/* Landing page and session-based routes */}
             <Route path="/" element={<WelcomePage />} />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="/:sessionId/dm" element={<App />} />
             <Route path="/:sessionId/player" element={<PlayerPage />} />
 
@@ -330,6 +332,10 @@ const AppWithAuth0 = () => {
             <Route
               path="/"
               element={<WelcomePage />}
+            />
+            <Route
+              path="/about"
+              element={<AboutPage />}
             />
             <Route
               path="/:sessionId/dm"

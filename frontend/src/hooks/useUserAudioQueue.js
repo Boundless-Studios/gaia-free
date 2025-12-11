@@ -75,27 +75,39 @@ export function handleAudioPlayedConfirmation(data) {
 /**
  * Unlock audio playback by playing a silent audio on user interaction.
  * Call this on any user click/tap to ensure audio can play.
+ *
+ * iOS Safari is particularly strict about requiring user gestures for audio.
+ * This function creates a silent audio element and plays it to "prime" the
+ * browser's audio context, allowing subsequent audio playback.
  */
 export function unlockAudio() {
   if (audioUnlocked) return Promise.resolve(true);
 
   if (!sharedAudioElement) {
     sharedAudioElement = createIOSCompatibleAudio();
-    // Use a tiny silent audio data URI
+    // Use a tiny silent audio data URI (approximately 0.1s of silence)
     sharedAudioElement.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwmHAAAAAAD/+1DEAAAGAAGn9AAAIiwijW80AAQAAAT/JJ5mn//t/5J//l/kn5J+Sf/5J/t//5f5J+Sf//+X+Sf5J5J+X/8k/ygAAANtVVVV//tQxA4AAADSAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
   }
 
-  // iOS Safari may need a load() call before play()
+  // iOS Safari requires load() before play() to recognize the user gesture
   sharedAudioElement.load();
 
-  return sharedAudioElement.play()
+  // Call play() immediately - don't await anything before this to keep gesture context active
+  const playPromise = sharedAudioElement.play();
+
+  return playPromise
     .then(() => {
       audioUnlocked = true;
-      console.log('🎵 [AUDIO] Browser audio unlocked');
+      console.log('🎵 [AUDIO] Browser audio unlocked successfully');
       return true;
     })
     .catch((err) => {
-      console.warn('🎵 [AUDIO] Failed to unlock audio:', err.message);
+      // On iOS, NotAllowedError means gesture wasn't recognized - may need another tap
+      if (err.name === 'NotAllowedError') {
+        console.warn('🎵 [AUDIO] Audio unlock requires user gesture (iOS restriction)');
+      } else {
+        console.warn('🎵 [AUDIO] Failed to unlock audio:', err.name, err.message);
+      }
       return false;
     });
 }

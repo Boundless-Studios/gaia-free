@@ -305,28 +305,6 @@ const PlayerPage = () => {
     activeSessionIdRef.current = currentCampaignId;
   }, [currentCampaignId]);
 
-  // Auto-enable audio on first user interaction
-  useEffect(() => {
-    if (!audioStream.needsUserGesture) {
-      return;
-    }
-
-    const handleUserInteraction = () => {
-      audioStream.resumePlayback();
-    };
-
-    // Listen for any user interaction to auto-enable audio
-    document.addEventListener('click', handleUserInteraction, { once: true });
-    document.addEventListener('keydown', handleUserInteraction, { once: true });
-    document.addEventListener('touchstart', handleUserInteraction, { once: true });
-
-    return () => {
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-    };
-  }, [audioStream]);
-
   // Load simple campaigns to map IDs to names for display
   // Removed: No longer fetching all campaign names, will get name from single campaign load.
 
@@ -482,24 +460,36 @@ const PlayerPage = () => {
     campaignId: currentCampaignId,
   });
 
-  // On iOS, try to unlock audio on any user interaction with the page
+  // UNIFIED: Auto-enable all audio on first user interaction
+  // CRITICAL for Safari: Handler must be SYNCHRONOUS - async functions lose gesture context!
   useEffect(() => {
+    const needsUnlock = audioStream.needsUserGesture || audioBlocked;
+    if (!needsUnlock) {
+      return;
+    }
+
+    // IMPORTANT: This handler must NOT be async - Safari loses gesture context with async
     const handleUserInteraction = () => {
+      console.log('🎵 [PLAYER] User interaction - unlocking all audio (sync handler)');
       if (audioBlocked) {
-        console.log('🎵 [PLAYER] User interaction detected, attempting to unlock audio');
         unlockAudio();
+      }
+      if (audioStream.needsUserGesture) {
+        audioStream.resumePlayback();
       }
     };
 
-    // Add listeners for common user interactions
-    document.addEventListener('touchstart', handleUserInteraction, { passive: true });
-    document.addEventListener('click', handleUserInteraction, { passive: true });
+    const options = { once: true, capture: true };
+    document.addEventListener('click', handleUserInteraction, options);
+    document.addEventListener('keydown', handleUserInteraction, options);
+    document.addEventListener('touchstart', handleUserInteraction, options);
 
     return () => {
-      document.removeEventListener('touchstart', handleUserInteraction);
-      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('click', handleUserInteraction, options);
+      document.removeEventListener('keydown', handleUserInteraction, options);
+      document.removeEventListener('touchstart', handleUserInteraction, options);
     };
-  }, [audioBlocked, unlockAudio]);
+  }, [audioStream, audioBlocked, unlockAudio]);
 
   // Load campaign from URL session ID
   useEffect(() => {

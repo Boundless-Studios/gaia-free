@@ -3,9 +3,8 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
-  min-height: 200px;
-  max-height: none;
   min-height: 0;
+  max-height: none;
   overflow: hidden;
 }
 
@@ -190,6 +189,36 @@
   }
 }
 
+/* Audio unlock button - next to mic */
+.audio-unlock-inline-editor {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  background: #2563eb;
+  border: 1px solid #3b82f6;
+  color: white;
+  cursor: pointer;
+  margin-left: 4px;
+  animation: audio-pulse-editor 1.5s ease-in-out infinite;
+  transition: all 0.15s ease;
+}
+
+.audio-unlock-inline-editor:hover {
+  background: #1d4ed8;
+  transform: scale(1.05);
+}
+
+.audio-unlock-inline-editor:active {
+  transform: scale(0.95);
+}
+
+@keyframes audio-pulse-editor {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0); }
+}
+
 /* Player textarea - blends with container */
 .player-textarea {
   flex: 1;
@@ -205,7 +234,7 @@
   line-height: 1.5;
   color: #ffffff;
   resize: vertical;
-  min-height: 80px;
+  min-height: 15px;
   max-height: none;
   overflow-y: auto;
   vertical-align: top;
@@ -322,8 +351,8 @@
   grid-template-columns: repeat(auto-fit, minmax(220px, 320px));
   grid-auto-rows: minmax(140px, auto);
   grid-auto-flow: row dense;
-  gap: 12px;
-  padding: 10px 12px 10px 0;
+  gap: 8px;
+  padding: 6px 8px 6px 0;
   align-content: flex-start;
   justify-content: flex-start;
   margin-right: auto;
@@ -367,7 +396,7 @@
 .stacked-collaborative-editor.grid-layout .player-textarea {
   background: rgba(0, 0, 0, 0.7);
   padding: 6px 10px;
-  min-height: 120px;
+  min-height: 30px;
   max-height: 70vh;
   border-radius: 6px;
   height: auto;
@@ -403,4 +432,22 @@
 .inline-submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Responsive Design - iPad and similar tablets */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .stacked-collaborative-editor.grid-layout .player-sections-container {
+    gap: 6px;
+    padding: 4px 6px 4px 0;
+  }
+
+  .stacked-collaborative-editor.grid-layout .player-section {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .stacked-collaborative-editor.grid-layout .player-textarea {
+    min-height: 25px;
+    padding: 5px 8px;
+  }
 }
