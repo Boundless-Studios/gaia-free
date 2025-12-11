@@ -24,7 +24,11 @@ const StreamingNarrativeView = ({
   onImageGenerated,
   campaignId,
 }) => {
-// Check if streaming content already exists in message history to prevent duplicates
+  // Debug: Log only when messages change (not during streaming)
+  // Uncomment for detailed debugging:
+  // console.log('📜 StreamingNarrativeView render:', { messagesCount: messages.length });
+
+  // Check if streaming content already exists in message history to prevent duplicates
   const streamingTextNormalized = (narrative || playerResponse || '').replace(/\s+/g, ' ').trim();
   const streamingAlreadyInHistory = useMemo(() => {
     if (!streamingTextNormalized) return false;

@@ -12,6 +12,7 @@ from gaia.infra.llm.model_manager import (
     get_fallback_models,
     retry_with_fallback,
     ModelName,
+    PreferredModels,
     get_model_provider_for_resolved_model,
 )
 
@@ -24,18 +25,18 @@ async def verify_fallback_chain():
 
     # Test 1: DeepSeek -> Claude Sonnet 4
     print("\n1. Testing DeepSeek fallback chain:")
-    deepseek_fallbacks = get_fallback_models(ModelName.DEEPSEEK_3_1.value)
-    print(f"   Primary: {ModelName.DEEPSEEK_3_1.value}")
+    deepseek_fallbacks = get_fallback_models(PreferredModels.DEEPSEEK.value)
+    print(f"   Primary: {PreferredModels.DEEPSEEK.value}")
     print(f"   Fallbacks: {deepseek_fallbacks}")
     assert deepseek_fallbacks == [ModelName.CLAUDE_SONNET_4.value], "DeepSeek should fallback to Claude Sonnet 4"
     print("   ✅ PASS")
 
     # Test 2: Kimi -> DeepSeek -> Claude Sonnet 4
     print("\n2. Testing Kimi fallback chain:")
-    kimi_fallbacks = get_fallback_models(ModelName.PARASAIL_KIMI_K2_INSTRUCT_0905.value)
-    print(f"   Primary: {ModelName.PARASAIL_KIMI_K2_INSTRUCT_0905.value}")
+    kimi_fallbacks = get_fallback_models(PreferredModels.KIMI.value)
+    print(f"   Primary: {PreferredModels.KIMI.value}")
     print(f"   Fallbacks: {kimi_fallbacks}")
-    expected = [ModelName.DEEPSEEK_3_1.value, ModelName.CLAUDE_SONNET_4.value]
+    expected = [PreferredModels.DEEPSEEK.value, ModelName.CLAUDE_SONNET_4.value]
     assert kimi_fallbacks == expected, f"Kimi should fallback to DeepSeek then Claude, got {kimi_fallbacks}"
     print("   ✅ PASS")
 

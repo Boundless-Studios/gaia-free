@@ -50,14 +50,8 @@ const GameDashboard = forwardRef(
     playerSubmissions = [],
     onCopyPlayerSubmission = null,
   }, ref) => {
-  // Debug: Log player submissions received by GameDashboard
-  console.log('📋 GameDashboard render:', {
-    playerSubmissionsCount: playerSubmissions?.length,
-    playerSubmissions,
-    hasPlayerOptions: !!(latestStructuredData?.player_options || latestStructuredData?.turn),
-    isActivePlayer,
-    pendingObservationsCount: pendingObservations?.length
-  });
+  // Debug: Uncomment for detailed render logging
+  // console.log('📋 GameDashboard render:', { messagesCount: messages?.length });
 
   // Audio now handled by synchronized streaming via WebSocket
   const sessionForRequest = campaignId || 'default-session';

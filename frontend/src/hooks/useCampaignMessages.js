@@ -549,30 +549,26 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
       const currentTime = new Date(timestamp).getTime();
       let messageAdded = false;
 
-      // Time window for considering messages as duplicates (30 seconds)
-      const DUPLICATE_TIME_WINDOW_MS = 30 * 1000;
+      // Check for duplicates based on content, not timestamp
+      // This prevents duplicates that arrive from different sources (HTTP vs WebSocket)
+      // even if they have different timestamps
 
       setSessionMessages(sessionId, (prev) => {
-        // Check for duplicates - same text content within time window
-        const hasDuplicate = prev.some((msg) => {
-          if (msg.sender !== 'dm') {
-            return false;
-          }
+        // Get the last N DM messages to check for duplicates
+        // We limit to last 10 to allow the same text later in the conversation
+        const RECENT_MESSAGES_TO_CHECK = 10;
+        const recentDmMessages = prev
+          .filter((msg) => msg.sender === 'dm')
+          .slice(-RECENT_MESSAGES_TO_CHECK);
+
+        // Check if this exact text already exists in recent DM messages
+        const hasDuplicate = recentDmMessages.some((msg) => {
           const candidateText = normalizeMessageText(msg.text);
-          if (candidateText !== normalizedAnswer) {
-            return false;
-          }
-          // If text matches, consider it a duplicate if within time window
-          if (!msg.timestamp) {
-            // No timestamp on existing message but text matches - likely a duplicate
-            return true;
-          }
-          const msgTime = new Date(msg.timestamp).getTime();
-          return Math.abs(msgTime - currentTime) <= DUPLICATE_TIME_WINDOW_MS;
+          return candidateText === normalizedAnswer;
         });
 
         if (hasDuplicate) {
-          console.log('🔄 Skipping duplicate DM message (same text within time window)');
+          console.log('🔄 Skipping duplicate DM message (same text in recent messages)');
           return prev;
         }
 
