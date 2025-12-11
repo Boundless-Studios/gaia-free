@@ -1207,6 +1207,226 @@ async def player_action_submitted(sid: str, data: Dict[str, Any]):
 
 
 # =============================================================================
+# Turn-Based Game Events
+# =============================================================================
+
+@sio.event(namespace="/campaign")
+async def submit_turn(sid: str, data: Dict[str, Any]):
+    """Handle turn submission via WebSocket - fully async, no HTTP timeout issues.
+
+    This is the primary method for DM to submit turns. It:
+    1. Increments turn counter and immediately acknowledges
+    2. Builds and broadcasts turn input (preserving attribution)
+    3. Processes and streams LLM response
+    4. Broadcasts final response and supplementary game state events
+    5. Emits turn_complete when all processing is done
+
+    Expected data:
+        session_id: str - Campaign/session ID
+        message: str - Combined prompt for LLM
+        active_player_input: Optional[dict] - Active player's input
+        observer_inputs: Optional[list] - Observer players' inputs
+        dm_input: Optional[dict] - DM's additions
+        metadata: Optional[dict] - Additional metadata (player_character, etc.)
+    """
+    from gaia.services.turn_counter_service import turn_counter_service
+    from gaia.connection.socketio_broadcaster import socketio_broadcaster
+    from gaia.models.response_type import ResponseType
+
+    session = await get_session_data(sid)
+    session_id = data.get("session_id") or session.get("session_id")
+    user_id = session.get("user_id")
+
+    if not session_id:
+        logger.warning("[SocketIO] submit_turn without session_id | sid=%s", sid)
+        await sio.emit(
+            "turn_error",
+            {"error": "session_id required", "turn_number": 0},
+            to=sid,
+            namespace="/campaign",
+        )
+        return
+
+    turn_number = 0  # Initialize for error handling
+
+    try:
+        # 1. Increment turn counter and immediately acknowledge
+        turn_number = await turn_counter_service.increment_turn(session_id)
+        logger.info(
+            "[SocketIO] Turn started | session=%s turn=%d user=%s",
+            session_id, turn_number, user_id
+        )
+
+        await sio.emit(
+            "turn_started",
+            {"turn_number": turn_number, "session_id": session_id},
+            room=session_id,
+            namespace="/campaign",
+        )
+
+        # 2. Build and broadcast turn input
+        turn_input_content = {
+            "active_player": data.get("active_player_input"),
+            "observer_inputs": data.get("observer_inputs", []),
+            "dm_input": data.get("dm_input"),
+            "combined_prompt": data.get("message", ""),
+        }
+
+        await socketio_broadcaster.broadcast_turn_message(
+            session_id=session_id,
+            turn_number=turn_number,
+            response_index=0,
+            response_type=ResponseType.TURN_INPUT.value,
+            content=turn_input_content,
+            role="user",
+        )
+
+        # 3. Get session manager and process the turn
+        # Import here to avoid circular imports
+        from gaia.api.routes.chat import _get_player_options_service, transform_structured_data
+
+        # Access the session manager from the global app state
+        # This is set during app startup
+        session_manager = None
+        try:
+            from gaia.api.app import app
+            session_manager = getattr(app.state, "session_manager", None)
+        except Exception:
+            pass
+
+        if not session_manager:
+            raise RuntimeError("Session manager not initialized")
+
+        # Get player character context from metadata
+        player_character_payload = None
+        metadata = data.get("metadata") or {}
+        player_character = metadata.get("player_character") or metadata.get("playerCharacter")
+        if player_character and isinstance(player_character, dict):
+            player_character_payload = player_character
+
+        # Get session context
+        try:
+            from gaia_private.session.session_manager import SessionNotFoundError
+            session_context = await session_manager.get_or_create(session_id)
+        except SessionNotFoundError:
+            raise RuntimeError(f"Session '{session_id}' not found")
+
+        # Process the turn - this may take a while (streaming response)
+        response_index = 1
+        result = None
+
+        async with session_context.lock:
+            result = await session_context.orchestrator.run_campaign(
+                user_input=data.get("message", ""),
+                campaign_id=session_context.campaign_id,
+                player_character=player_character_payload,
+                broadcaster=socketio_broadcaster,
+            )
+            session_context.touch()
+
+        # 4. Process result and broadcast final response
+        if result:
+            structured_data_raw = dict(result.get("structured_data", {}) or {})
+            structured_data = transform_structured_data(structured_data_raw)
+
+            # Get the narrative/answer text for the final response
+            final_text = structured_data.answer or structured_data.narrative or ""
+            if isinstance(final_text, dict):
+                final_text = final_text.get("text", str(final_text))
+
+            # Broadcast final response
+            await socketio_broadcaster.broadcast_turn_message(
+                session_id=session_id,
+                turn_number=turn_number,
+                response_index=response_index,
+                response_type=ResponseType.FINAL.value,
+                content=final_text,
+                role="assistant",
+            )
+            response_index += 1
+
+            # 5. Broadcast supplementary game state events (all preserved from current system)
+
+            # Player options
+            player_options = structured_data.player_options
+            if player_options:
+                await socketio_broadcaster.broadcast_player_options(session_id, player_options)
+
+            # Personalized player options
+            try:
+                service = _get_player_options_service()
+                personalized_options = await service.generate_options_dict(
+                    campaign_id=session_id,
+                    structured_data=structured_data_raw,
+                )
+                if personalized_options:
+                    characters = personalized_options.get("characters", {})
+                    if characters:
+                        await socketio_broadcaster.broadcast_campaign_update(
+                            session_id,
+                            "personalized_player_options",
+                            {"personalized_player_options": personalized_options}
+                        )
+            except Exception as opts_err:
+                logger.warning("[submit_turn] Failed to generate personalized options: %s", opts_err)
+
+            # Combat state
+            combat_state = structured_data.combat_state
+            if combat_state:
+                await socketio_broadcaster.broadcast_campaign_update(
+                    session_id,
+                    "combat_state",
+                    {"combat_state": combat_state}
+                )
+
+            # Generated image
+            if "generated_image" in result:
+                await socketio_broadcaster.broadcast_image_generated(
+                    session_id,
+                    result["generated_image"]
+                )
+
+        # Clear observations that were included in this turn
+        try:
+            from gaia.services.player_options_service import get_observations_manager
+            obs_manager = get_observations_manager()
+            obs_manager.mark_all_included(session_id)
+            obs_manager.clear_included(session_id)
+        except Exception as obs_err:
+            logger.warning("[submit_turn] Failed to clear observations: %s", obs_err)
+
+        # 6. Emit turn_complete
+        await sio.emit(
+            "turn_complete",
+            {"turn_number": turn_number, "session_id": session_id},
+            room=session_id,
+            namespace="/campaign",
+        )
+
+        logger.info(
+            "[SocketIO] Turn complete | session=%s turn=%d",
+            session_id, turn_number
+        )
+
+    except Exception as e:
+        logger.error(
+            "[SocketIO] Turn error | session=%s turn=%d error=%s",
+            session_id, turn_number, str(e),
+            exc_info=True
+        )
+        await sio.emit(
+            "turn_error",
+            {
+                "turn_number": turn_number,
+                "session_id": session_id,
+                "error": str(e),
+            },
+            room=session_id,
+            namespace="/campaign",
+        )
+
+
+# =============================================================================
 # Broadcast Helpers (for use by other modules)
 # =============================================================================
 

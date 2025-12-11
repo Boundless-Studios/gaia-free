@@ -441,6 +441,127 @@ class SocketIOBroadcaster:
             {"playerId": player_id, "text": text},
         )
 
+    # =========================================================================
+    # Turn-Based Message Broadcasts
+    # =========================================================================
+
+    async def broadcast_turn_started(
+        self,
+        session_id: str,
+        turn_number: int,
+    ) -> None:
+        """Broadcast that a new turn has started.
+
+        This is sent immediately when a turn submission is received,
+        allowing the frontend to show a "processing" state.
+        """
+        await self.broadcast_campaign_update(
+            session_id,
+            "turn_started",
+            {
+                "turn_number": turn_number,
+                "session_id": session_id,
+            },
+        )
+
+    async def broadcast_turn_message(
+        self,
+        session_id: str,
+        turn_number: int,
+        response_index: int,
+        response_type: str,
+        content: Any,
+        role: str = "assistant",
+        character_name: Optional[str] = None,
+        message_id: Optional[str] = None,
+        has_audio: bool = False,
+    ) -> None:
+        """Broadcast a turn message with authoritative ordering.
+
+        Args:
+            session_id: Campaign/session ID
+            turn_number: Global turn counter (1, 2, 3...)
+            response_index: Index within turn (0 for input, 1+ for responses)
+            response_type: turn_input | streaming | final | system | private
+            content: Message content (string or structured dict for turn_input)
+            role: Message role (user | assistant | system)
+            character_name: Optional character attribution
+            message_id: Optional message ID (generated if not provided)
+            has_audio: Whether this message has associated audio
+        """
+        import uuid
+
+        await self.broadcast_campaign_update(
+            session_id,
+            "turn_message",
+            {
+                "message_id": message_id or f"msg_{uuid.uuid4().hex[:12]}",
+                "turn_number": turn_number,
+                "response_index": response_index,
+                "response_type": response_type,
+                "role": role,
+                "content": content,
+                "character_name": character_name,
+                "has_audio": has_audio,
+            },
+        )
+
+    async def broadcast_turn_complete(
+        self,
+        session_id: str,
+        turn_number: int,
+    ) -> None:
+        """Broadcast that turn processing is complete.
+
+        This signals the frontend to re-enable the submit button
+        and finalize any streaming state.
+        """
+        await self.broadcast_campaign_update(
+            session_id,
+            "turn_complete",
+            {
+                "turn_number": turn_number,
+                "session_id": session_id,
+            },
+        )
+
+    async def broadcast_turn_error(
+        self,
+        session_id: str,
+        turn_number: int,
+        error: str,
+    ) -> None:
+        """Broadcast a turn processing error.
+
+        This allows error handling without HTTP 500 responses.
+        """
+        await self.broadcast_campaign_update(
+            session_id,
+            "turn_error",
+            {
+                "turn_number": turn_number,
+                "session_id": session_id,
+                "error": error,
+            },
+        )
+
+    async def broadcast_image_generated(
+        self,
+        session_id: str,
+        image_data: Dict[str, Any],
+    ) -> None:
+        """Broadcast generated image to all clients."""
+        await self.broadcast_campaign_update(
+            session_id,
+            "image_generated",
+            {
+                "url": image_data.get("url"),
+                "local_path": image_data.get("local_path"),
+                "prompt": image_data.get("prompt"),
+                "type": image_data.get("type"),  # "scene", "moment", "portrait"
+            },
+        )
+
 
 # Singleton instance
 socketio_broadcaster = SocketIOBroadcaster()

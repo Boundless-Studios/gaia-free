@@ -1,0 +1,174 @@
+/* TurnMessage.css - Styles for turn-based message display */
+
+.turn-message {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border-left: 3px solid var(--color-border, #3a3a3a);
+  transition: border-color 0.3s ease;
+}
+
+.turn-message.streaming {
+  border-left-color: var(--color-primary, #4a9eff);
+}
+
+.turn-message.error {
+  border-left-color: var(--color-error, #ff4a4a);
+}
+
+/* Turn number badge */
+.turn-number-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #888);
+  margin-bottom: 0.75rem;
+}
+
+/* Input Section */
+.turn-input-section {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border, #3a3a3a);
+}
+
+.player-input,
+.dm-input {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.player-input:last-child,
+.dm-input:last-child {
+  margin-bottom: 0;
+}
+
+.player-input.active .input-label {
+  color: var(--color-primary, #4a9eff);
+  font-weight: 600;
+}
+
+.player-input.observer .input-label {
+  color: var(--color-text-secondary, #888);
+  font-style: italic;
+}
+
+.dm-input .input-label {
+  color: var(--color-dm, #ffa500);
+  font-weight: 600;
+}
+
+.input-label {
+  margin-right: 0.5rem;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+}
+
+.input-text {
+  color: var(--color-text, #e0e0e0);
+}
+
+/* DM Response Section */
+.dm-response-section {
+  margin-top: 0.75rem;
+}
+
+.response-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.response-label {
+  color: var(--color-dm, #ffa500);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+}
+
+.response-timestamp {
+  color: var(--color-text-secondary, #888);
+  font-size: 0.75rem;
+}
+
+.message-actions {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.message-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border, #3a3a3a);
+  border-radius: 4px;
+  color: var(--color-text-secondary, #888);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.message-action-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text, #e0e0e0);
+  border-color: var(--color-primary, #4a9eff);
+}
+
+.message-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.message-action-btn.loading {
+  color: var(--color-primary, #4a9eff);
+}
+
+/* Response content */
+.response-content {
+  color: var(--color-text, #e0e0e0);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Streaming cursor */
+.streaming-cursor {
+  display: inline-block;
+  animation: blink 0.8s step-end infinite;
+  color: var(--color-primary, #4a9eff);
+  font-weight: bold;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Error message */
+.error-message {
+  color: var(--color-error, #ff4a4a);
+  padding: 0.5rem;
+  background: rgba(255, 74, 74, 0.1);
+  border-radius: 4px;
+}
+
+/* Processing indicator */
+.processing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-secondary, #888);
+  padding: 0.5rem 0;
+}
+
+.processing-indicator svg {
+  color: var(--color-primary, #4a9eff);
+}

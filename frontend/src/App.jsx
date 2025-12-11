@@ -35,6 +35,7 @@ import { Alert } from './components/base-ui/Alert.jsx';
 import { useCampaignMessages } from './hooks/useCampaignMessages.js';
 import { useStreamingState } from './hooks/useStreamingState.js';
 import { useGameSocket } from './hooks/useGameSocket.js';
+import { useTurnBasedMessages } from './hooks/useTurnBasedMessages.js';
 import { useCampaignState } from './hooks/useCampaignState.js';
 import { useImageManagement } from './hooks/useImageManagement.js';
 import { useCampaignOperations } from './hooks/useCampaignOperations.js';
@@ -190,6 +191,19 @@ function App() {
     clearNarrativeStreaming: clearStreaming,
     clearResponseStreaming: clearStreaming,
   });
+
+  // Turn-based message management (Phase 3 migration - runs alongside existing system)
+  const {
+    turns: turnBasedMessages,
+    processingTurn,
+    isProcessing: isTurnProcessing,
+    handleTurnStarted,
+    handleTurnMessage,
+    handleTurnComplete,
+    handleTurnError,
+    loadTurnsFromHistory,
+    clearTurns,
+  } = useTurnBasedMessages(currentCampaignId);
 
   // Campaign state management via custom hook
   const {
@@ -983,6 +997,12 @@ function App() {
       // Room events - DM view doesn't need these but useGameSocket registers them
       'room.dm_joined': () => {}, // No-op: DM doesn't need to handle their own join event
       'room.dm_left': () => {},   // No-op: DM doesn't need to handle their own leave event
+
+      // Turn-based message events (Phase 3 migration - runs alongside existing system)
+      turn_started: handleTurnStarted,
+      turn_message: handleTurnMessage,
+      turn_complete: handleTurnComplete,
+      turn_error: handleTurnError,
     },
   });
 
