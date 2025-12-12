@@ -18,6 +18,7 @@ import CharacterAssignmentModal from './CharacterAssignmentModal.jsx';
 import PlayerVacatedModal from './PlayerVacatedModal.jsx';
 import VoiceInputScribeV2 from '../VoiceInputScribeV2.jsx';
 import { useGameSocket } from '../../hooks/useGameSocket.js';
+import { useTurnBasedMessages } from '../../hooks/useTurnBasedMessages.js';
 
 const PLAYER_SOCKET_GLOBAL_KEY = '__gaia_player_active_socket';
 const CHARACTER_DRAFT_STORAGE_PREFIX = 'player-seat-draft';
@@ -142,6 +143,31 @@ const PlayerPage = () => {
   const campaignMessages = currentCampaignId
     ? messagesBySession[currentCampaignId] || []
     : [];
+
+  // Turn-based messages for consistent display with DM view
+  const {
+    turns,
+    handleTurnStarted,
+    handleTurnMessage,
+    handleTurnComplete,
+    handleTurnError,
+    loadTurnsFromHistory,
+    clearTurns,
+  } = useTurnBasedMessages(currentCampaignId);
+
+  // Track previous campaign to detect campaign switches (for clearing)
+  const prevCampaignIdRef = useRef(currentCampaignId);
+  useEffect(() => {
+    // Clear turns when campaign changes
+    if (prevCampaignIdRef.current !== currentCampaignId) {
+      clearTurns();
+      prevCampaignIdRef.current = currentCampaignId;
+    }
+    // Load turns from messages
+    if (campaignMessages && campaignMessages.length > 0) {
+      loadTurnsFromHistory(campaignMessages);
+    }
+  }, [campaignMessages, currentCampaignId, loadTurnsFromHistory, clearTurns]);
 
   const handleRoomEvent = useCallback((event) => {
     setLastRoomEvent({ event, timestamp: Date.now() });
@@ -939,6 +965,11 @@ const PlayerPage = () => {
   // Socket.IO connection using useGameSocket hook
   // Create handlers that wrap data with type field for handleCampaignUpdate
   const socketHandlers = useMemo(() => ({
+    // Turn-based message events (real-time updates for history view)
+    turn_started: handleTurnStarted,
+    turn_message: handleTurnMessage,
+    turn_complete: handleTurnComplete,
+    turn_error: handleTurnError,
     // Core game events
     narrative_chunk: (data) => handleCampaignUpdate({ ...data, type: 'narrative_chunk' }),
     player_response_chunk: (data) => handleCampaignUpdate({ ...data, type: 'player_response_chunk' }),
@@ -1001,7 +1032,7 @@ const PlayerPage = () => {
       console.log('[Collab] Player registered via Socket.IO:', data);
       setCollabIsConnected(true);
     },
-  }), [handleCampaignUpdate, handleSfxAvailable, sessionId]);
+  }), [handleCampaignUpdate, handleSfxAvailable, sessionId, handleTurnStarted, handleTurnMessage, handleTurnComplete, handleTurnError]);
 
   // Use Socket.IO connection
   const {
@@ -1288,6 +1319,7 @@ const PlayerPage = () => {
         imageRefreshTriggersBySession={imageRefreshTriggersBySession}
         latestStructuredData={latestStructuredData}
         campaignMessages={campaignMessages}
+        turns={turns}
         handlePlayerAction={handlePlayerAction}
         loadCampaignData={loadCampaignData}
         streamingNarrativeBySession={streamingNarrativeBySession}
@@ -1332,6 +1364,7 @@ const PlayerRoomShell = ({
   imageRefreshTriggersBySession,
   latestStructuredData,
   campaignMessages,
+  turns,
   handlePlayerAction,
   loadCampaignData,
   streamingNarrativeBySession,
@@ -1867,6 +1900,7 @@ const PlayerRoomShell = ({
               characterData={demoCharacter}
               latestStructuredData={latestStructuredData}
               campaignMessages={campaignMessages}
+              turns={turns}
               imageRefreshTrigger={imageRefreshTriggersBySession[currentCampaignId]}
               onPlayerAction={handlePlayerAction}
               onLoadCampaignData={loadCampaignData}

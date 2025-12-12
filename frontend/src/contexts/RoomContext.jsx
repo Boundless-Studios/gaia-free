@@ -13,8 +13,9 @@ import React, {
   useRef,
 } from 'react';
 import apiService from '../services/apiService.js';
+import { loggers } from '../utils/logger.js';
 
-const CAMPAIGN_START_TRACE = '[CAMPAIGN_START_FLOW]';
+const log = loggers.room;
 
 const RoomContext = createContext(null);
 
@@ -68,10 +69,7 @@ export const RoomProvider = ({
         apiService.getRoomState(campaignId),
         apiService.getRoomSummary(campaignId),
       ]);
-      console.debug('[RoomContext] Initial room state fetched', {
-        state: stateResult,
-        summary: summaryResult,
-      });
+      log.debug('Initial room state fetched | campaign=%s', campaignId);
       const merged = {
         ...stateResult,
         owner_user_id: stateResult.owner_user_id ?? summaryResult?.owner_user_id ?? null,
@@ -82,7 +80,7 @@ export const RoomProvider = ({
       };
       setRoomState(merged);
     } catch (err) {
-      console.error('Failed to fetch room state:', err);
+      log.error('Failed to fetch room state:', err.message);
       setError(err.message || 'Failed to load room state');
     } finally {
       setLoading(false);
@@ -96,10 +94,10 @@ export const RoomProvider = ({
 
   const applySeatUpdate = useCallback((updatedSeat) => {
     if (!updatedSeat?.seat_id) {
-      console.warn('[RoomContext] applySeatUpdate missing seat_id', updatedSeat);
+      log.warn('applySeatUpdate missing seat_id');
       return;
     }
-    console.debug('[RoomContext] applySeatUpdate ->', updatedSeat);
+    log.debug('applySeatUpdate | seatId=%s', updatedSeat.seat_id);
     setRoomState(prev => {
       if (!prev || !prev.seats) return prev;
 
@@ -113,7 +111,7 @@ export const RoomProvider = ({
       });
 
       if (!didUpdate) {
-        console.warn('Seat update mismatch - seat not found, refetching full state');
+        log.warn('Seat update mismatch - seat not found, refetching full state');
         fetchRoomState();
         return prev;
       }
@@ -132,10 +130,7 @@ export const RoomProvider = ({
           nextState.owner_identity ??
           null;
         if (newOwner !== nextState.owner_user_id) {
-          console.debug('[RoomContext] DM seat owner change detected', {
-            previousOwner: nextState.owner_user_id,
-            newOwner,
-          });
+          log.debug('DM seat owner change detected | prev=%s new=%s', nextState.owner_user_id, newOwner);
         }
         nextState.owner_user_id = newOwner ?? nextState.owner_user_id ?? null;
         nextState.owner_identity = newOwnerIdentity ?? nextState.owner_identity ?? null;
@@ -147,14 +142,14 @@ export const RoomProvider = ({
 
   // WebSocket event: seat updated
   const handleSeatUpdate = useCallback((updatedSeat) => {
-    console.log('🪑 Room: Seat updated', updatedSeat);
+    log.debug('Seat updated | seatId=%s', updatedSeat?.seat_id);
     applySeatUpdate(updatedSeat);
     onRoomEvent?.({ type: 'seat_updated', data: updatedSeat });
   }, [applySeatUpdate, onRoomEvent]);
 
   // WebSocket event: DM joined
   const handleDMJoined = useCallback((data) => {
-    console.log('🎭 Room: DM joined', data);
+    log.debug('DM joined | userId=%s', data.dm_user_id || data.user_id);
     const dmUserId = data.dm_user_id || data.user_id || null;
     setRoomState(prev => {
       if (!prev || !prev.seats) return prev;
@@ -181,7 +176,7 @@ export const RoomProvider = ({
 
   // WebSocket event: DM left
   const handleDMLeft = useCallback((data) => {
-    console.log('🎭 Room: DM left', data);
+    log.debug('DM left');
 
     setRoomState(prev => {
       if (!prev || !prev.seats) return prev;
@@ -203,7 +198,7 @@ export const RoomProvider = ({
 
   // WebSocket event: player vacated
   const handlePlayerVacated = useCallback((data) => {
-    console.log('🪑 Room: Player vacated', data);
+    log.debug('Player vacated | seatId=%s', data.seat_id);
 
     const { seat_id, previous_owner } = data;
 
@@ -226,16 +221,7 @@ export const RoomProvider = ({
 
   // WebSocket event: campaign started
   const handleCampaignStarted = useCallback((data) => {
-    console.log('🚀 Room: Campaign started', data);
-    if (data?.campaign_id) {
-      console.debug(
-        `${CAMPAIGN_START_TRACE} RoomContext received room.campaign_started`,
-        {
-          sessionId: data.campaign_id,
-          payloadKeys: Object.keys(data || {}),
-        },
-      );
-    }
+    log.info('Campaign started | id=%s', data?.campaign_id);
 
     setRoomState(prev => ({
       ...prev,
@@ -243,12 +229,6 @@ export const RoomProvider = ({
       started_at: data.started_at || new Date().toISOString()
     }));
 
-    console.debug(
-      `${CAMPAIGN_START_TRACE} RoomContext dispatching campaign_started`,
-      {
-        sessionId: data?.campaign_id || null,
-      },
-    );
     onRoomEvent?.({ type: 'campaign_started', data });
   }, [onRoomEvent]);
 
@@ -273,7 +253,7 @@ export const RoomProvider = ({
     // Refresh room state when socket becomes available
     // This catches any events that fired before we subscribed (e.g., room.dm_joined on connect)
     if (socket.connected) {
-      console.debug('[RoomContext] Socket connected, refreshing room state');
+      log.debug('Socket connected, refreshing room state');
       fetchRoomState();
     }
 
@@ -329,7 +309,7 @@ export const RoomProvider = ({
             break;
         }
       } catch (err) {
-        console.error('Room: Error parsing WebSocket message', err);
+        log.error('Error parsing WebSocket message:', err.message);
       }
     };
 
@@ -354,12 +334,12 @@ export const RoomProvider = ({
     try {
       const seat = await apiService.occupySeat(campaignId, seatId);
       if (seat) {
-        console.debug('[RoomContext] Occupy seat API response', seat);
+        log.debug('Occupy seat API response | seatId=%s', seat.seat_id);
         applySeatUpdate(seat);
       }
       return seat;
     } catch (err) {
-      console.error('Failed to occupy seat:', err);
+      log.error('Failed to occupy seat:', err.message);
       throw err;
     }
   }, [campaignId, applySeatUpdate]);
@@ -368,11 +348,11 @@ export const RoomProvider = ({
     try {
       const seat = await apiService.releaseSeat(campaignId, seatId);
       if (seat) {
-        console.debug('[RoomContext] Release seat API response', seat);
+        log.debug('Release seat API response | seatId=%s', seat.seat_id);
         applySeatUpdate(seat);
       }
     } catch (err) {
-      console.error('Failed to release seat:', err);
+      log.error('Failed to release seat:', err.message);
       throw err;
     }
   }, [campaignId, applySeatUpdate]);
@@ -381,14 +361,14 @@ export const RoomProvider = ({
     try {
       const seat = await apiService.vacateSeat(campaignId, seatId, { notify_user: notifyUser });
       if (seat?.seat) {
-        console.debug('[RoomContext] Vacate seat API response', seat);
+        log.debug('Vacate seat API response | seatId=%s', seat.seat?.seat_id);
         applySeatUpdate({ ...seat.seat });
       } else if (seat) {
-        console.debug('[RoomContext] Vacate seat API response (legacy)', seat);
+        log.debug('Vacate seat API response (legacy) | seatId=%s', seat.seat_id);
         applySeatUpdate(seat);
       }
     } catch (err) {
-      console.error('Failed to vacate seat:', err);
+      log.error('Failed to vacate seat:', err.message);
       throw err;
     }
   }, [campaignId, applySeatUpdate]);
@@ -399,7 +379,7 @@ export const RoomProvider = ({
       // State updated via WebSocket event
       return result;
     } catch (err) {
-      console.error('Failed to assign character:', err);
+      log.error('Failed to assign character:', err.message);
       throw err;
     }
   }, [campaignId]);
@@ -410,7 +390,7 @@ export const RoomProvider = ({
       // State updated via WebSocket event
       return result;
     } catch (err) {
-      console.error('Failed to start campaign:', err);
+      log.error('Failed to start campaign:', err.message);
       throw err;
     }
   }, [campaignId]);
@@ -568,7 +548,7 @@ export const RoomProvider = ({
     occupySeat(dmSeat.seat_id)
       .catch((err) => {
         if (!cancelled) {
-          console.error('Auto-claim DM seat failed:', err);
+          log.error('Auto-claim DM seat failed:', err.message);
           setAutoClaimError(err.message || 'Failed to auto-claim DM seat');
         }
       })

@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import apiService from '../services/apiService.js';
+import { loggers } from '../utils/logger.js';
 
-const CAMPAIGN_STATE_TRACE = '[CAMPAIGN_STATE]';
+const log = loggers.campaign;
 
 /**
  * Transform structured data from backend into normalized frontend format
@@ -103,14 +104,7 @@ export function useCampaignState(currentCampaignId) {
         if (next === current) {
           return previous;
         }
-        console.debug(
-          `${CAMPAIGN_STATE_TRACE} setSessionStructuredData`,
-          {
-            sessionId,
-            hasNarrative: Boolean(next?.narrative || next?.answer),
-            keys: next && typeof next === 'object' ? Object.keys(next) : null,
-          },
-        );
+        log.debug('setSessionStructuredData | session=%s hasNarrative=%s', sessionId, Boolean(next?.narrative || next?.answer));
         return { ...previous, [sessionId]: next };
       });
     },

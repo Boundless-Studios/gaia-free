@@ -19,6 +19,9 @@ import { AudioStreamProvider } from './context/audioStreamContext.jsx';
 import CollaborativeEditorTest from './pages/CollaborativeEditorTest.jsx';
 import StreamingNarrativeTest from './pages/StreamingNarrativeTest.jsx';
 import TurnBasedMessagesTest from './pages/TurnBasedMessagesTest.jsx';
+import { loggers } from './utils/logger.js';
+
+const authLog = loggers.auth;
 
 // Auth0 Callback Component
 // Note: The actual redirect after login is handled by onRedirectCallback in Auth0Provider
@@ -29,19 +32,18 @@ const Auth0Callback = () => {
 
   React.useEffect(() => {
     if (!isLoading) {
-      console.log('[AUTH0_DEBUG] Callback processed, isAuthenticated:', isAuthenticated);
-      console.log('[AUTH0_DEBUG] User info:', user);
+      authLog.debug('Callback processed, isAuthenticated:', isAuthenticated);
       // If authenticated and not loading, navigate to home
       // This handles cases where onRedirectCallback doesn't fire (e.g., cached tokens)
       if (isAuthenticated) {
-        console.log('[AUTH0_DEBUG] Navigating to home after auth');
+        authLog.debug('Navigating to home after auth');
         navigate('/');
       }
     }
   }, [isAuthenticated, isLoading, user, navigate]);
-  
+
   if (error) {
-    console.error('[AUTH0_DEBUG] Callback error:', error);
+    authLog.error('Callback error:', error);
     return (
       <div className="min-h-screen bg-gaia-dark flex items-center justify-center">
         <div className="bg-gaia-light border border-gaia-error rounded-lg p-6 max-w-md">
@@ -51,8 +53,6 @@ const Auth0Callback = () => {
       </div>
     );
   }
-  
-  console.log('[AUTH0_DEBUG] Callback loading, isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
   
   return (
     <div className="min-h-screen bg-gaia-dark flex items-center justify-center">
@@ -88,13 +88,10 @@ const ProtectedRoute = ({ children }) => {
   const [registrationStatus, setRegistrationStatus] = React.useState('checking'); // checking, pending, completed
   const [showRegistration, setShowRegistration] = React.useState(false);
 
-  // Debug logging
-  console.log('[ProtectedRoute] State:', { loading, isAuthenticated, user: !!user, registrationStatus });
-
   React.useEffect(() => {
     // If not authenticated and not loading, trigger login with returnTo
     if (!loading && !isAuthenticated) {
-      console.log('[ProtectedRoute] Not authenticated, triggering login');
+      authLog.debug('Not authenticated, triggering login');
       const returnTo = location.pathname + location.search;
       login({ appState: { returnTo } });
     }
@@ -103,26 +100,23 @@ const ProtectedRoute = ({ children }) => {
   // Check registration status after authentication
   React.useEffect(() => {
     if (isAuthenticated && user) {
-      console.log('[ProtectedRoute] Authenticated, checking registration status');
+      authLog.debug('Authenticated, checking registration status');
       checkRegistrationStatus();
     }
   }, [isAuthenticated, user]);
 
   const checkRegistrationStatus = async () => {
     try {
-      console.log('[ProtectedRoute] Getting access token...');
       const token = await getAccessTokenSilently();
-      console.log('[ProtectedRoute] Got token, fetching registration status...');
       const response = await fetch('/api/auth/registration-status', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      console.log('[ProtectedRoute] Registration status response:', response.status);
 
       if (response.ok) {
         const status = await response.json();
-        console.log('[ProtectedRoute] Registration status:', status);
+        authLog.debug('Registration status:', status.registration_status);
         // Show registration flow if user hasn't completed registration OR if they're awaiting approval
         if (status.registration_status === 'pending' || !status.is_authorized) {
           setRegistrationStatus('pending');
@@ -137,11 +131,11 @@ const ProtectedRoute = ({ children }) => {
         setShowRegistration(true);
       } else {
         // Assume completed if we can't check
-        console.warn('Failed to check registration status, assuming completed');
+        authLog.warn('Failed to check registration status, assuming completed');
         setRegistrationStatus('completed');
       }
     } catch (error) {
-      console.error('Error checking registration status:', error);
+      authLog.error('Error checking registration status:', error);
       // Assume completed if we can't check
       setRegistrationStatus('completed');
     }
@@ -249,17 +243,15 @@ const AppWithAuth0 = () => {
   // NEW: Auto-enable Auth0 in dev if credentials are configured
   const requireAuth = isProduction || import.meta.env.VITE_REQUIRE_AUTH === 'true' || auth0Configured;
 
-  // Log the authentication mode
-  console.log(`🔐 Authentication mode: ${requireAuth && auth0Configured ? 'ENABLED' : 'DISABLED (Dev/Local)'}`);
-  console.log(`   Auth0 Configured: ${auth0Configured ? 'YES' : 'NO'}`);
-  console.log(`   Hostname: ${window.location.hostname}`);
-  console.log(`   Is Production: ${isProduction}`);
-  console.log(`   VITE_REQUIRE_AUTH: ${import.meta.env.VITE_REQUIRE_AUTH || 'not set'}`);
+  // Log the authentication mode (only once on mount, at info level)
+  React.useEffect(() => {
+    authLog.info(`Authentication mode: ${requireAuth && auth0Configured ? 'ENABLED' : 'DISABLED (Dev/Local)'}`);
+  }, []);
 
   // If Auth0 is not configured, render with a dev auth provider
   if (!auth0Configured) {
     if (requireAuth) {
-      console.warn('⚠️ Authentication required but Auth0 not configured. Running in bypass mode.');
+      authLog.warn('Authentication required but Auth0 not configured. Running in bypass mode.');
     }
     return (
       <Router>

@@ -1,6 +1,9 @@
 import { useCallback } from 'react';
 import apiService from '../services/apiService.js';
 import { generateUniqueId } from '../utils/idGenerator.js';
+import { loggers } from '../utils/logger.js';
+
+const log = loggers.campaign;
 
 /**
  * Custom hook to manage campaign operations (CRUD, loading, selection)
@@ -38,7 +41,7 @@ export function useCampaignOperations({
    */
   const handleSelectCampaign = useCallback(
     async (campaignId, isNewCampaign = false) => {
-      console.log('🎮 Selecting campaign:', campaignId, 'isNew:', isNewCampaign);
+      log.debug('Selecting campaign | id=%s isNew=%s', campaignId, isNewCampaign);
 
       // Don't set currentCampaignId until we successfully load the campaign
       setShowCampaignList(false);
@@ -62,16 +65,16 @@ export function useCampaignOperations({
       try {
         const data = await apiService.loadSimpleCampaign(campaignId);
         if (!data) {
-          console.error('Failed to load simple campaign');
+          log.error('Failed to load simple campaign');
           const error = new Error('Failed to load simple campaign');
           setError(error.message);
           throw error;
         }
 
-        console.log('🎮 Loaded simple campaign:', data);
+        log.debug('Loaded simple campaign | name=%s', data.name);
 
         if (!data.success || !data.activated) {
-          console.error('Failed to activate simple campaign');
+          log.error('Failed to activate simple campaign');
           const error = new Error('Failed to activate simple campaign');
           setError(error.message);
           throw error;
@@ -79,7 +82,7 @@ export function useCampaignOperations({
 
         const structuredData = data.structured_data;
         if (structuredData) {
-          console.log('🎮 Received structured data from simple campaign:', structuredData);
+          log.debug('Received structured data | keys=%s', Object.keys(structuredData).join(','));
           const transformedData = transformStructuredData(structuredData, {
             needsResponse: Boolean(data.needs_response),
             sessionId,
@@ -161,7 +164,7 @@ export function useCampaignOperations({
 
         // System message removed from chat - users already see UI state change when campaign loads
         if (!isNewCampaign) {
-          console.log(`📋 Campaign loaded: ${campaignId} (${data.message_count} messages)`);
+          log.info('Campaign loaded | id=%s messages=%d', campaignId, data.message_count);
         }
 
         const hasDmMessage = convertedMessages.some((msg) => msg.sender === 'dm');
@@ -183,7 +186,7 @@ export function useCampaignOperations({
 
         return data; // Return the loaded campaign data
       } catch (error) {
-        console.error('Error loading simple campaign:', error);
+        log.error('Error loading simple campaign:', error.message);
         setError(`Failed to load simple campaign: ${error.message}`);
 
         // On error, set to null - URL is source of truth, no restore attempt
@@ -234,18 +237,18 @@ export function useCampaignOperations({
 
     try {
       const result = await apiService.sendBlankCampaignRequest();
-      console.log('📋 Blank campaign created:', result);
+      log.debug('Blank campaign created | id=%s', result.campaign_id || result.session_id);
 
       const campaignId = result.campaign_id || result.session_id;
       if (campaignId) {
         await handleSelectCampaign(campaignId, true);
-        console.log('📋 Blank campaign activated');
+        log.debug('Blank campaign activated');
       } else {
         setError('Failed to create blank campaign - no campaign ID returned');
         setIsLoading(false);
       }
     } catch (error) {
-      console.error('❌ Failed to create blank campaign:', error);
+      log.error('Failed to create blank campaign:', error.message);
       setError(`Failed to create blank campaign: ${error.message}`);
       setIsLoading(false);
     }
@@ -260,19 +263,18 @@ export function useCampaignOperations({
       setIsLoading(true);
 
       const response = await apiService.createArenaQuickStart();
-      console.log('⚔️ Arena quick start response:', response);
+      log.debug('Arena quick start response | success=%s', response.success);
 
       if (response.success && response.campaign_id) {
         // Load the created campaign
         await handleSelectCampaign(response.campaign_id, true);
 
-        // Show success message
-        console.log('✅ Arena campaign created and loaded');
+        log.info('Arena campaign created and loaded');
       } else {
         throw new Error('Failed to create arena campaign');
       }
     } catch (error) {
-      console.error('❌ Arena quick start failed:', error);
+      log.error('Arena quick start failed:', error.message);
       setError(`Failed to start arena: ${error.message}`);
       setIsLoading(false);
     }
@@ -289,14 +291,14 @@ export function useCampaignOperations({
         return;
       }
 
-      console.log('🔗 Joining shared session with token:', inviteToken);
+      log.debug('Joining shared session with token');
       try {
         const response = await apiService.joinSessionByInvite(inviteToken);
-        console.log('✅ Successfully joined shared session:', response);
+        log.info('Successfully joined shared session | id=%s', response.session_id);
         await handleSelectCampaign(response.session_id, true);
         return { success: true, message: 'Successfully joined shared session.' };
       } catch (err) {
-        console.error('Failed to join session via invite:', err);
+        log.error('Failed to join session via invite:', err.message);
         return {
           success: false,
           error: `Failed to join shared session: ${err.message}`,

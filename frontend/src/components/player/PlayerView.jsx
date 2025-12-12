@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PlayerAndTurnList from '../PlayerAndTurnList/PlayerAndTurnList';
 import PlayerNarrativeView from './PlayerNarrativeView/PlayerNarrativeView.jsx';
 import PlayerControls from './PlayerControls/PlayerControls.jsx';
@@ -11,6 +11,7 @@ const PlayerView = ({
   characterData,
   latestStructuredData,
   campaignMessages = [],
+  turns = [],
   imageRefreshTrigger,
   onPlayerAction,
   onLoadCampaignData,
@@ -54,6 +55,35 @@ const PlayerView = ({
   const [gameState, setGameState] = useState(latestStructuredData);
   const [showCombatStatus, setShowCombatStatus] = useState(false);
   const userViewOverrideRef = useRef(false);
+
+  // Tab state management for auto-switching based on streaming
+  const [activeTab, setActiveTab] = useState('voice');
+  const [highlightInteract, setHighlightInteract] = useState(false);
+  const wasStreamingRef = useRef(false);
+
+  // Determine if currently streaming
+  const isCurrentlyStreaming = isNarrativeStreaming || isResponseStreaming;
+
+  // Auto-switch to history tab when streaming starts
+  useEffect(() => {
+    if (isCurrentlyStreaming && !wasStreamingRef.current) {
+      // Streaming just started - switch to history tab
+      setActiveTab('history');
+      setHighlightInteract(false);
+    } else if (!isCurrentlyStreaming && wasStreamingRef.current) {
+      // Streaming just ended - highlight interact tab
+      setHighlightInteract(true);
+    }
+    wasStreamingRef.current = isCurrentlyStreaming;
+  }, [isCurrentlyStreaming]);
+
+  // Clear highlight when user switches to interact tab
+  const handleTabChange = useCallback((tabId) => {
+    setActiveTab(tabId);
+    if (tabId === 'voice') {
+      setHighlightInteract(false);
+    }
+  }, []);
 
   const hasCombatStatusData = (state) => {
     if (!state || !state.combat_status) {
@@ -221,17 +251,12 @@ const PlayerView = ({
           )}
         </div>
 
-        {/* Center Panel: Narrative View */}
+        {/* Center Panel: Narrative View - shows scene image with navigation */}
         <div className="player-view-narrative" data-testid="player-narrative">
           <PlayerNarrativeView
             structuredData={gameState}
             campaignId={campaignId}
-            campaignMessages={campaignMessages}
-            onPlayerAction={handlePlayerAction}
-            streamingNarrative={streamingNarrative}
-            streamingResponse={streamingResponse}
-            isNarrativeStreaming={isNarrativeStreaming}
-            isResponseStreaming={isResponseStreaming}
+            isLoading={isCurrentlyStreaming}
           />
         </div>
 
@@ -269,6 +294,16 @@ const PlayerView = ({
             // Audio unlock props (for inline indicator)
             userAudioBlocked={userAudioBlocked}
             onUnlockUserAudio={onUnlockUserAudio}
+            // Turn-based history props
+            turns={turns}
+            streamingNarrative={streamingNarrative}
+            streamingResponse={streamingResponse}
+            isNarrativeStreaming={isNarrativeStreaming}
+            isResponseStreaming={isResponseStreaming}
+            // Controlled tab state
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            highlightInteract={highlightInteract}
           />
         </div>
       </div>

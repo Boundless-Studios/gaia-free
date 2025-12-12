@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import apiService from '../../services/apiService.js';
 import './TurnMessage.css';
 
@@ -69,11 +69,13 @@ function parseInputContributions(text) {
  * @param {Object} turn - Turn state object from useTurnBasedMessages
  * @param {string} campaignId - Campaign/session ID
  * @param {Function} onImageGenerated - Callback when image is generated
+ * @param {boolean} hideDMInput - If true, hide DM input contributions (for player view)
  */
 const TurnMessage = ({
   turn,
   campaignId,
   onImageGenerated,
+  hideDMInput = false,
 }) => {
   const {
     turn_number,
@@ -223,7 +225,12 @@ const TurnMessage = ({
           {(() => {
             // Get the combined text to parse
             const rawText = input.combined_prompt || input.active_player?.text || '';
-            const contributions = parseInputContributions(rawText);
+            let contributions = parseInputContributions(rawText);
+
+            // Filter out DM contributions if hideDMInput is true
+            if (hideDMInput) {
+              contributions = contributions.filter(c => c.label !== 'DM');
+            }
 
             // If we have parsed contributions with labels, show them
             if (contributions.length > 0 && contributions.some(c => c.label)) {
@@ -241,14 +248,23 @@ const TurnMessage = ({
             }
 
             // Fallback: show structured data if no labels in text
+            // Filter out [DM]: patterns from text if hideDMInput is true
+            const filterDMFromText = (text) => {
+              if (!hideDMInput || !text) return text;
+              // Remove [DM]: and everything after it
+              return text.replace(/\[DM\](?:\s*\([^)]*\))?:\s*.*/g, '').trim();
+            };
+
+            const activePlayerText = filterDMFromText(input.active_player?.text);
+
             return (
               <>
-                {input.active_player && (
+                {input.active_player && activePlayerText && (
                   <div className="player-input active">
                     <span className="input-label">
                       {input.active_player.character_name || 'Player'}:
                     </span>
-                    <span className="input-text">{input.active_player.text}</span>
+                    <span className="input-text">{activePlayerText}</span>
                   </div>
                 )}
                 {input.observer_inputs?.map((obs, i) => (
@@ -259,7 +275,8 @@ const TurnMessage = ({
                     <span className="input-text">{obs.text}</span>
                   </div>
                 ))}
-                {input.dm_input && input.dm_input.text && (
+                {/* Only show DM input if not hidden */}
+                {!hideDMInput && input.dm_input && input.dm_input.text && (
                   <div className="dm-input">
                     <span className="input-label">DM:</span>
                     <span className="input-text">{input.dm_input.text}</span>

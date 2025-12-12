@@ -274,12 +274,27 @@ export function useTurnBasedMessages(campaignId) {
         // Convert DM message to final response
         const dmMsg = currentDmMsgs[currentDmMsgs.length - 1];
         if (dmMsg) {
+          // Extract content from various possible formats
+          let dmContent = '';
+          if (typeof dmMsg.text === 'string' && dmMsg.text) {
+            dmContent = dmMsg.text;
+          } else if (typeof dmMsg.content === 'string' && dmMsg.content) {
+            dmContent = dmMsg.content;
+          } else if (typeof dmMsg.content === 'object' && dmMsg.content) {
+            // Handle structured content (answer or narrative)
+            dmContent = dmMsg.content.answer || dmMsg.content.narrative || '';
+          }
+          // Also check structuredContent field
+          if (!dmContent && dmMsg.structuredContent) {
+            dmContent = dmMsg.structuredContent.answer || dmMsg.structuredContent.narrative || '';
+          }
+
           turn.finalMessage = {
             message_id: dmMsg.message_id || dmMsg.id || `hist-${turnNum}-dm`,
             turn_number: turnNum,
             response_index: 2,
             role: 'assistant',
-            content: dmMsg.text || dmMsg.content || '',
+            content: dmContent,
             character_name: 'DM',
             has_audio: dmMsg.hasAudio || dmMsg.has_audio || false,
             timestamp: dmMsg.timestamp,

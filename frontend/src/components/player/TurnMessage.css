@@ -40,7 +40,7 @@
 .dm-input {
   margin-bottom: 0.5rem;
   line-height: 1.5;
-  border-left: 2px solid var(--color-primary, #4a9eff);
+  border-left: 2px solid var(--color-active-player, #ffc107);
   padding-left: 0.5rem;
   margin-left: 0.25rem;
 }
@@ -50,18 +50,20 @@
   margin-bottom: 0;
 }
 
+/* Active player: Gold */
 .player-input .input-label {
-  color: var(--color-primary, #4a9eff);
+  color: var(--color-active-player, #ffc107);
   font-weight: 600;
 }
 
+/* Observer: Blue */
 .player-input.observer {
-  border-left-color: var(--color-text-secondary, #888);
+  border-left-color: var(--color-observer, #4a9eff);
 }
 
 .player-input.observer .input-label {
-  color: var(--color-text-secondary, #888);
-  font-style: italic;
+  color: var(--color-observer, #4a9eff);
+  font-weight: 600;
 }
 
 /* DM contributions get orange styling */

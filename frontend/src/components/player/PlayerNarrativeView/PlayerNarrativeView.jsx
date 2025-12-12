@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import SceneImageDisplay from './SceneImageDisplay.jsx';
 import apiService from '../../../services/apiService.js';
 import './PlayerNarrativeView.css';
@@ -6,24 +6,10 @@ import './PlayerNarrativeView.css';
 const PlayerNarrativeView = ({
   structuredData,
   campaignId,
-  campaignMessages = [],
   isLoading,
-  streamingNarrative = '',
-  streamingResponse = '',
-  isNarrativeStreaming = false,
-  isResponseStreaming = false
 }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [images, setImages] = useState([]);
-  const narrativeHistoryRef = useRef(null);
-
-  // Auto-scroll to latest message in narrative history
-  useEffect(() => {
-    if (narrativeHistoryRef.current && structuredData?.all_narratives?.length > 0) {
-      narrativeHistoryRef.current.scrollTop = narrativeHistoryRef.current.scrollHeight;
-    }
-  }, [structuredData?.all_narratives]);
 
   // Fetch campaign images
   useEffect(() => {
@@ -44,8 +30,15 @@ const PlayerNarrativeView = ({
     }
   }, [campaignId]);
 
-  // Get the latest scene image
-  const latestImage = images.length > 0 ? images[0] : null;
+  // Get current image based on index
+  const currentImage = images.length > 0 ? images[currentImageIndex] : null;
+
+  // Reset to first image when images change
+  useEffect(() => {
+    if (images.length > 0 && currentImageIndex >= images.length) {
+      setCurrentImageIndex(0);
+    }
+  }, [images.length, currentImageIndex]);
 
   if (!structuredData) {
     return (
@@ -61,105 +54,37 @@ const PlayerNarrativeView = ({
 
   return (
     <div className="player-narrative-view" data-testid="player-narrative">
-      {/* Scene Image Display */}
+      {/* Scene Image Display with inline navigation */}
       <div className="narrative-scene-container">
         <SceneImageDisplay
-          image={latestImage}
+          image={currentImage}
           campaignId={campaignId}
-          onClick={() => {
-            setCurrentImageIndex(0);
-            setIsModalOpen(true);
-          }}
         />
 
-        {/* Narrative Text Overlay */}
-        <div className="narrative-overlay">
-          <div className="narrative-content">
-            {/* Narrative Text */}
-            <div className="narrative-text">
-              {structuredData.all_narratives && structuredData.all_narratives.length > 0 ? (
-                <div className="narrative-history" ref={narrativeHistoryRef}>
-                  {structuredData.all_narratives.map((narrative, index) => (
-                    <div key={narrative.id || index} className="narrative-entry">
-                      <p className="narrative-paragraph">
-                        {narrative.content}
-                      </p>
-                      {narrative.speaker && (
-                        <div className="narrative-speaker">
-                          — {narrative.speaker}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="story-content">
-                  {/* Show last player message immediately after submission */}
-                  {campaignMessages.length > 0 &&
-                   campaignMessages[campaignMessages.length - 1].sender === 'user' && (
-                    <div className="player-message-section">
-                      <div className="player-message-label">
-                        👤 You:
-                      </div>
-                      <p className="player-message-text">
-                        {campaignMessages[campaignMessages.length - 1].text}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Show streaming content if it exists, otherwise show final answer */}
-                  {(streamingNarrative || streamingResponse) ? (
-                    <div className="answer-section streaming">
-                      <div className="answer-label">
-                        💬 {isNarrativeStreaming ? 'Scene Description' : 'Answer'}:
-                        {structuredData.turn_info && (
-                          <span className="turn-info">
-                            Turn {structuredData.turn_info.turn_number}
-                          </span>
-                        )}
-                      </div>
-                      <p className="answer-text">
-                        {streamingNarrative || streamingResponse}
-                        {(isNarrativeStreaming || isResponseStreaming) && <span className="streaming-cursor">▮</span>}
-                      </p>
-                    </div>
-                  ) : (
-                    /* Answer Section - shown only when streaming content is cleared */
-                    structuredData.answer && (
-                      <div className="answer-section">
-                        <div className="answer-label">
-                          💬 Answer:
-                          {structuredData.turn_info && (
-                            <span className="turn-info">
-                              Turn {structuredData.turn_info.turn_number}
-                            </span>
-                          )}
-                        </div>
-                        <p className="answer-text">
-                          {structuredData.answer}
-                        </p>
-                      </div>
-                    )
-                  )}
-                </div>
-              )}
+        {/* Arrow Navigation - only show if multiple images */}
+        {images.length > 1 && (
+          <>
+            <button
+              className="scene-nav-button scene-nav-prev"
+              onClick={() => setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)}
+              disabled={currentImageIndex === 0}
+              aria-label="Previous image"
+            >
+              ‹
+            </button>
+            <button
+              className="scene-nav-button scene-nav-next"
+              onClick={() => setCurrentImageIndex((prev) => (prev + 1) % images.length)}
+              disabled={currentImageIndex === images.length - 1}
+              aria-label="Next image"
+            >
+              ›
+            </button>
+            <div className="scene-image-counter">
+              {currentImageIndex + 1} / {images.length}
             </div>
-
-          </div>
-
-          {/* Environmental Information - safely handle complex data */}
-          {structuredData.environmental_conditions && (
-            <div className="narrative-environmental">
-              <span className="environmental-icon">🌍</span>
-              <span className="environmental-text">
-                {typeof structuredData.environmental_conditions === 'string'
-                  ? structuredData.environmental_conditions
-                  : JSON.stringify(structuredData.environmental_conditions)}
-              </span>
-            </div>
-          )}
-
-        </div>
+          </>
+        )}
 
         {/* Loading overlay */}
         {isLoading && (
@@ -169,60 +94,6 @@ const PlayerNarrativeView = ({
           </div>
         )}
       </div>
-
-      {/* Full-screen Modal */}
-      {isModalOpen && (
-        <div
-          className="narrative-modal"
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="modal-close"
-              onClick={() => setIsModalOpen(false)}
-            >
-              ✕
-            </button>
-
-            {images.length > 0 && images[currentImageIndex] && (
-              <>
-                <img
-                  src={images[currentImageIndex].imageUrl || `${apiService.baseUrl}${images[currentImageIndex].path}`}
-                  alt={images[currentImageIndex].imagePrompt || 'Scene image'}
-                  className="modal-image"
-                />
-
-                {/* Navigation Controls */}
-                {images.length > 1 && (
-                  <>
-                    <button
-                      className="modal-nav-button modal-nav-prev"
-                      onClick={() => setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)}
-                      disabled={currentImageIndex === 0}
-                    >
-                      ‹
-                    </button>
-                    <button
-                      className="modal-nav-button modal-nav-next"
-                      onClick={() => setCurrentImageIndex((prev) => (prev + 1) % images.length)}
-                      disabled={currentImageIndex === images.length - 1}
-                    >
-                      ›
-                    </button>
-                    <div className="modal-image-counter">
-                      {currentImageIndex + 1} / {images.length}
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-
-          </div>
-        </div>
-      )}
     </div>
   );
 };

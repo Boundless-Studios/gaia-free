@@ -43,16 +43,14 @@ import { useShareInvite } from './hooks/useShareInvite.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
 import { useGlobalErrorHandler } from './hooks/useGlobalErrorHandler.js';
 import { useUserAudioQueue, handleAudioPlayedConfirmation } from './hooks/useUserAudioQueue.js';
+import { loggers, createLogger } from './utils/logger.js';
 
-const CAMPAIGN_START_TRACE = '[CAMPAIGN_START_FLOW]';
-
-const logCampaignStartTrace = (message, details) => {
-  if (typeof details !== 'undefined') {
-    console.log(`${CAMPAIGN_START_TRACE} ${message}`, details);
-  } else {
-    console.log(`${CAMPAIGN_START_TRACE} ${message}`);
-  }
-};
+const log = loggers.app;
+const campaignLog = loggers.campaign;
+const authLog = loggers.auth;
+const audioLog = loggers.audio;
+const collabLog = loggers.collab;
+const voiceLog = createLogger('Voice');
 
 // Simple UUID generator for message correlation
 function generateMessageId() {
@@ -71,7 +69,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("🚨 React Error Boundary caught an error:", error, errorInfo);
+    log.error("React Error Boundary caught an error:", error, errorInfo);
     this.setState({
       error: error,
       errorInfo: errorInfo
@@ -148,6 +146,8 @@ function App() {
 
   // Player action submissions (shown in DM's player options section)
   const [playerSubmissions, setPlayerSubmissions] = useState([]);
+  // Selected player submission IDs (for structured input)
+  const [selectedPlayerSubmissionIds, setSelectedPlayerSubmissionIds] = useState(new Set());
 
   // Collaborative editing state (now managed via Socket.IO)
   const [collabIsConnected, setCollabIsConnected] = useState(false);
@@ -277,17 +277,17 @@ function App() {
 
   const refreshActiveCampaignState = useCallback(async () => {
     if (!currentCampaignId) return;
-    logCampaignStartTrace('refreshActiveCampaignState invoked', {
+    campaignLog.debug('refreshActiveCampaignState invoked', {
       campaignId: currentCampaignId,
     });
     try {
       setPendingInitialNarrative(currentCampaignId, true);
       setIsLoading(true);
-      logCampaignStartTrace('Calling loadSimpleCampaign after room.campaign_started', {
+      campaignLog.debug('Calling loadSimpleCampaign after room.campaign_started', {
         campaignId: currentCampaignId,
       });
       const data = await apiService.loadSimpleCampaign(currentCampaignId);
-      logCampaignStartTrace('loadSimpleCampaign result', {
+      campaignLog.debug('loadSimpleCampaign result', {
         campaignId: currentCampaignId,
         hasStructuredData: Boolean(data?.structured_data),
         hasHistoryInfo: Boolean(data?.history_info),
@@ -298,7 +298,7 @@ function App() {
           sessionId: currentCampaignId,
         });
         if (transformed) {
-          logCampaignStartTrace('Applying structured data from refreshActiveCampaignState', {
+          campaignLog.debug('Applying structured data from refreshActiveCampaignState', {
             campaignId: currentCampaignId,
             keys: Object.keys(transformed),
           });
@@ -310,15 +310,15 @@ function App() {
         setTimeout(() => setSessionHistoryInfo(currentCampaignId, null), 10000);
       }
     } catch (err) {
-      console.error('Failed to refresh campaign after start:', err);
-      logCampaignStartTrace('refreshActiveCampaignState failed', {
+      campaignLog.error('Failed to refresh campaign after start:', err);
+      campaignLog.debug('refreshActiveCampaignState failed', {
         campaignId: currentCampaignId,
         error: err?.message,
       });
     } finally {
       setPendingInitialNarrative(currentCampaignId, false);
       setIsLoading(false);
-      logCampaignStartTrace('refreshActiveCampaignState complete', {
+      campaignLog.debug('refreshActiveCampaignState complete', {
         campaignId: currentCampaignId,
       });
     }
@@ -335,18 +335,18 @@ function App() {
     (event) => {
       if (!event || event.type !== 'campaign_started') return;
       const eventCampaignId = event.data?.campaign_id;
-      logCampaignStartTrace('handleRoomEvent received campaign_started', {
+      campaignLog.debug('handleRoomEvent received campaign_started', {
         eventCampaignId,
         currentCampaignId,
       });
       if (!currentCampaignId || eventCampaignId !== currentCampaignId) {
-        logCampaignStartTrace('Ignoring campaign_started event for mismatched session', {
+        campaignLog.debug('Ignoring campaign_started event for mismatched session', {
           eventCampaignId,
           currentCampaignId,
         });
         return;
       }
-      logCampaignStartTrace('Triggering refreshActiveCampaignState after campaign_started', {
+      campaignLog.debug('Triggering refreshActiveCampaignState after campaign_started', {
         campaignId: currentCampaignId,
       });
       refreshActiveCampaignState();
@@ -380,10 +380,10 @@ function App() {
       window.getAuthToken = async () => {
         try {
           const token = await getAccessTokenSilently();
-          console.log('🔑 Auth Token:', token);
+          authLog.debug('Auth Token:', token);
           return token;
         } catch (error) {
-          console.error('Failed to get token:', error);
+          authLog.error('Failed to get token:', error);
           return null;
         }
       };
@@ -406,24 +406,19 @@ function App() {
 
   // Set up Auth0 access token provider for apiService
   useEffect(() => {
-    console.log('🔐 App.jsx: Setting up Auth0 access token provider');
-    console.log('🔐 getAccessTokenSilently function available:', !!getAccessTokenSilently);
+    authLog.debug('Setting up Auth0 access token provider');
     // Pass a wrapper that always uses the current Auth0 context
     apiService.setTokenProvider(async () => {
       if (typeof getAccessTokenSilently !== 'function') {
         return null;
       }
-      const authErrorLog = (label, error) => {
-        console.warn(`🔐 Token wrapper: ${label}`, error);
-      };
       try {
-        console.log('🔐 Token wrapper: Fetching token from current Auth0 context');
         const token = await getAccessTokenSilently();
         if (token) {
           return token;
         }
       } catch (error) {
-        authErrorLog('Primary token fetch failed', error);
+        authLog.warn('Primary token fetch failed', error);
       }
 
       // Fallback: explicitly request token with audience/scope if configured
@@ -431,7 +426,7 @@ function App() {
       const scope = import.meta.env.VITE_AUTH0_SCOPE || 'openid profile email offline_access';
       if (audience) {
         try {
-          console.log('🔐 Token wrapper: Fetching token with audience fallback');
+          authLog.debug('Fetching token with audience fallback');
           const token = await getAccessTokenSilently({
             authorizationParams: {
               audience,
@@ -442,7 +437,7 @@ function App() {
             return token;
           }
         } catch (error) {
-          authErrorLog('Audience fallback token fetch failed', error);
+          authLog.warn('Audience fallback token fetch failed', error);
         }
       }
       return null;
@@ -459,7 +454,7 @@ function App() {
 
   // Set up auth error handler for automatic logout on token expiration
   useEffect(() => {
-    console.log('🔐 App.jsx: Setting up auth error callback');
+    authLog.debug('Setting up auth error callback');
     apiService.setAuthErrorCallback(handleAuthError);
   }, [handleAuthError]);
   
@@ -506,7 +501,7 @@ function App() {
   
   // Log which service is being used
   useEffect(() => {
-    console.log(`📡 Using ${API_CONFIG.USE_OPENAPI ? 'OpenAPI/JSON' : 'Protobuf'} service for communication`);
+    log.debug(`Using ${API_CONFIG.USE_OPENAPI ? 'OpenAPI/JSON' : 'Protobuf'} service for communication`);
   }, []);
 
   const [showCampaignSetup, setShowCampaignSetup] = useState(false);
@@ -524,7 +519,7 @@ function App() {
   useEffect(() => {
     if (currentCampaignId) {
       localStorage.setItem('lastCampaignId', currentCampaignId);
-      console.log('💾 Saved campaign ID to localStorage:', currentCampaignId);
+      campaignLog.debug('Saved campaign ID to localStorage:', currentCampaignId);
       
       // Update page title with campaign name
       if (campaignName) {
@@ -604,7 +599,7 @@ function App() {
     if (socketEmitRef.current) {
       socketEmitRef.current(...args);
     } else {
-      console.warn('🎵 [USER_QUEUE] Socket emit not available yet, skipping:', args[0]);
+      audioLog.warn('Socket emit not available yet, skipping:', args[0]);
     }
   }, []);
 
@@ -621,7 +616,7 @@ function App() {
   useEffect(() => {
     const handleUserInteraction = () => {
       if (audioBlocked) {
-        console.log('🎵 [DM] User interaction detected, attempting to unlock audio');
+        audioLog.debug('User interaction detected, attempting to unlock audio');
         unlockAudio();
       }
     };
@@ -642,11 +637,11 @@ function App() {
     const targetSessionId = campaign_id || sessionId;
 
     if (!targetSessionId) {
-      console.warn('🎵 [DM] audio_available missing campaign_id');
+      audioLog.warn('audio_available missing campaign_id');
       return;
     }
 
-    console.log('🎵 [DM] Audio available, fetching user queue for campaign:', targetSessionId);
+    audioLog.debug('Audio available, fetching user queue for campaign:', targetSessionId);
     fetchUserAudioQueue(targetSessionId);
   }, [fetchUserAudioQueue]);
 
@@ -656,24 +651,23 @@ function App() {
     const targetSessionId = campaign_id || sessionId;
 
     // NOTE: Don't call fetchUserAudioQueue here - audio_available already handles it
-    // This event is now just logged for debugging purposes
-    console.log('[AUDIO_DEBUG] 📥 Frontend received audio_stream_started | session=%s (no-op, audio_available handles queue)',
+    audioLog.debug('Received audio_stream_started | session=%s (no-op, audio_available handles queue)',
       targetSessionId);
   }, []);
 
   // Handle synchronized audio stream stop
   const handleAudioStreamStopped = useCallback((data, sessionId) => {
-    console.log('🎵 [AUDIO STREAM] Received audio_stream_stopped:', data);
+    audioLog.debug('Received audio_stream_stopped:', data);
 
     const { campaign_id } = data;
     const targetSessionId = campaign_id || sessionId;
 
     if (!targetSessionId) {
-      console.warn('[AUDIO STREAM] Missing campaign_id for stream stop');
+      audioLog.warn('Missing campaign_id for stream stop');
       return;
     }
 
-    console.log(`[AUDIO STREAM] Stopping stream for session ${targetSessionId}`);
+    audioLog.debug(`Stopping stream for session ${targetSessionId}`);
     audioStream.stopStream();
   }, [audioStream]);
 
@@ -692,7 +686,7 @@ function App() {
   }, [audioStream]);
 
   const handlePlaybackQueueUpdated = useCallback((data) => {
-    console.log('[AUDIO_DEBUG] 📊 Playback queue updated:', {
+    audioLog.debug('Playback queue updated:', {
       pendingCount: data.pending_count,
       currentRequest: data.current_request,
       campaignId: data.campaign_id,
@@ -710,7 +704,7 @@ function App() {
     if (!campaignSessionId) return;
 
     const content = data.content || '';
-    logCampaignStartTrace('narrative_chunk received', {
+    campaignLog.debug('narrative_chunk received', {
       sessionId: campaignSessionId,
       length: content.length,
       isFinal: data.is_final,
@@ -727,7 +721,7 @@ function App() {
     if (!campaignSessionId) return;
 
     const content = data.content || '';
-    logCampaignStartTrace('response_chunk received', {
+    campaignLog.debug('response_chunk received', {
       sessionId: campaignSessionId,
       length: content.length,
       isFinal: data.is_final,
@@ -762,7 +756,7 @@ function App() {
     const sessionId = data.campaign_id || data.session_id || sessionIdForSocket;
     const structured = data.structured_data;
     if (!sessionId || !structured) {
-      logCampaignStartTrace('handleCampaignUpdate missing structured data', {
+      campaignLog.debug('handleCampaignUpdate missing structured data', {
         sessionId,
         eventType: data.type,
         hasStructuredData: Boolean(structured),
@@ -770,7 +764,7 @@ function App() {
       setPendingInitialNarrative(sessionId, false);
       return;
     }
-    logCampaignStartTrace('handleCampaignUpdate invoked', {
+    campaignLog.debug('handleCampaignUpdate invoked', {
       sessionId,
       eventType: data.type,
       hasStructuredData: Boolean(structured),
@@ -789,7 +783,7 @@ function App() {
 
     if (transformed) {
       setSessionStructuredData(sessionId, transformed);
-      logCampaignStartTrace('Structured data applied via handleCampaignUpdate', {
+      campaignLog.debug('Structured data applied via handleCampaignUpdate', {
         sessionId,
         hasNarrative: Boolean(transformed?.narrative || transformed?.answer),
       });
@@ -828,42 +822,29 @@ function App() {
     // If this was a streamed response, add the streamed content to history, then clear streaming state.
     // Don't reload from backend - we have the content right here in transformed data.
     const wasStreamed = Boolean(transformed?.streamed || structured?.streamed);
-    console.log('🔍 handleCampaignUpdate debug:', {
+    campaignLog.debug('handleCampaignUpdate debug:', {
       sessionId,
       currentCampaignId,
-      idsMatch: sessionId === currentCampaignId,
       wasStreamed,
-      transformedStreamed: transformed?.streamed,
-      structuredStreamed: structured?.streamed,
       hasNarrative: Boolean(transformed?.narrative),
       narrativeLength: transformed?.narrative?.length || 0,
-      hasAnswer: Boolean(transformed?.answer),
-      answerLength: transformed?.answer?.length || 0,
-      currentMessagesCount: messages?.length || 0,
     });
 
     if (wasStreamed) {
       // Get the final streamed content to add to history
       const dmMessageText = transformed?.narrative || transformed?.answer || '';
-      console.log('🔍 wasStreamed=true, dmMessageText:', dmMessageText?.slice(0, 100));
       if (dmMessageText.trim()) {
-        console.log('📨 BEFORE addDMMessage: messages count =', messages?.length);
-        logCampaignStartTrace('Adding streamed message to history', { sessionId, textLength: dmMessageText.length });
+        campaignLog.debug('Adding streamed message to history', { sessionId, textLength: dmMessageText.length });
         addDMMessage(sessionId, dmMessageText.trim(), {
           hasAudio: Boolean(transformed?.audio),
           structuredContent: transformed || null,
           isStreamed: true,
         });
-        console.log('📨 AFTER addDMMessage called (state update scheduled)');
       } else {
-        console.log('⚠️ wasStreamed=true but no dmMessageText found!');
+        campaignLog.warn('wasStreamed=true but no dmMessageText found');
       }
       // Now clear the streaming display
-      console.log('🧹 BEFORE clearStreaming');
       clearStreaming(sessionId);
-      console.log('🧹 AFTER clearStreaming called (state update scheduled)');
-    } else {
-      console.log('🔍 wasStreamed=false, not adding message from handleCampaignUpdate');
     }
 
     const existingMessages =
@@ -881,7 +862,7 @@ function App() {
     if (dmAnswer) {
       setPendingInitialNarrative(sessionId, false);
     }
-    logCampaignStartTrace('handleCampaignUpdate completed', {
+    campaignLog.debug('handleCampaignUpdate completed', {
       sessionId,
       needsResponse: shouldShowResume,
       pendingInitialCleared: Boolean(dmAnswer),
@@ -940,14 +921,14 @@ function App() {
       audio_played_confirmed: handleAudioPlayedConfirmation,
       // Collaborative editing events (replacing old collab WebSocket)
       player_list: (data) => {
-        console.log('[Collab] player_list RAW data:', JSON.stringify(data, null, 2));
+        collabLog.debug('player_list received:', data.players?.length, 'players');
         if (Array.isArray(data.players)) {
           // Transform from backend format {playerId, playerName} to {id, name}
           const normalized = data.players.map(p => {
             const id = p.playerId || p.id;
             const name = p.playerName || p.name;
             if (!id) {
-              console.error('[Collab] player_list: Player missing playerId:', p);
+              collabLog.error('player_list: Player missing playerId:', p);
             }
             return {
               id,
@@ -955,19 +936,18 @@ function App() {
               isConnected: p.isConnected ?? true,
             };
           });
-          console.log('[Collab] player_list normalized:', normalized);
           setCollabPlayers(normalized);
         }
       },
       initial_state: (data) => {
-        console.log('[Collab] initial_state RAW data:', JSON.stringify(data, null, 2));
+        collabLog.debug('initial_state received:', data.allPlayers?.length, 'players');
         if (Array.isArray(data.allPlayers)) {
           // Transform from backend format to {id, name}
           const normalized = data.allPlayers.map(p => {
             const id = p.playerId || p.id;
             const name = p.playerName || p.name;
             if (!id) {
-              console.error('[Collab] initial_state: Player missing playerId:', p);
+              collabLog.error('initial_state: Player missing playerId:', p);
             }
             return {
               id,
@@ -975,28 +955,23 @@ function App() {
               isConnected: p.isConnected ?? true,
             };
           });
-          console.log('[Collab] initial_state normalized:', normalized);
           setCollabPlayers(normalized);
         }
       },
       registered: (data) => {
-        console.log('[Collab] DM registered via Socket.IO:', data);
+        collabLog.debug('DM registered via Socket.IO:', data);
         setCollabIsConnected(true);
       },
-      // Player action submission - add to DM's chat history and player options section
+      // Player action submission - add to playerSubmissions suggestions area (NOT to chat)
+      // Chat messages are only added when the DM includes player suggestions in their submission
       player_action_submitted: (data) => {
-        console.log('[DM] Received player action submission:', data);
+        log.debug('Received player action submission:', data);
         const { character_name, action_text, character_id, timestamp } = data;
         if (action_text && action_text.trim()) {
           const msgTimestamp = timestamp || new Date().toISOString();
 
-          // Add to message history so DM sees the player's message in chat
-          addUserMessage(currentCampaignId, action_text.trim(), {
-            characterName: character_name || 'Player',
-            timestamp: msgTimestamp,
-          });
-
-          // Also add to playerSubmissions for the TurnView suggestions area
+          // Add to playerSubmissions for the TurnView suggestions area
+          // NOT to chat history - DM decides what to include in their message
           setPlayerSubmissions(prev => [
             ...prev,
             {
@@ -1064,8 +1039,8 @@ function App() {
     };
     // Socket.IO handles buffering/reconnection automatically
     dmEmit('audio_played', payload);
-    console.log('[AUDIO_DEBUG] 📤 Sent audio_played acknowledgment via Socket.IO | campaign=%s chunk_ids=%s token=%s',
-      resolvedCampaignId, JSON.stringify(chunkIds), dmConnectionToken ? 'present' : 'missing');
+    audioLog.debug('Sent audio_played acknowledgment | campaign=%s chunks=%d',
+      resolvedCampaignId, chunkIds?.length || 0);
   }, [dmEmit, dmConnectionToken, currentCampaignId]);
 
   useEffect(() => {
@@ -1078,11 +1053,10 @@ function App() {
       const chunkIds = detail.chunkIds;
       const campaignId = detail.campaignId || currentCampaignId;
 
-      console.log('[AUDIO_DEBUG] 🏁 Frontend stream completed | campaign=%s chunk_count=%d chunk_ids=%s',
-        campaignId, (chunkIds || []).length, JSON.stringify(chunkIds));
+      audioLog.debug('Stream completed | campaign=%s chunk_count=%d',
+        campaignId, (chunkIds || []).length);
 
       if (!chunkIds || !chunkIds.length) {
-        console.log('[AUDIO_DEBUG] No chunk IDs to acknowledge');
         return;
       }
 
@@ -1129,16 +1103,14 @@ function App() {
       const chunkId = detail.chunk_id;
       const sessionId = detail.campaign_id || currentCampaignId;
 
-      console.log('[AUDIO_DEBUG] 🎵 Queued audio played | session=%s chunk_id=%s',
-        sessionId, chunkId);
+      audioLog.debug('Queued audio played | session=%s chunk_id=%s', sessionId, chunkId);
 
       if (!chunkId) {
-        console.log('[AUDIO_DEBUG] No chunk ID to acknowledge');
         return;
       }
 
       if (!dmSocket?.connected) {
-        console.warn('[AUDIO_DEBUG] ⚠️ Cannot acknowledge chunk - DM socket unavailable');
+        audioLog.warn('Cannot acknowledge chunk - DM socket unavailable');
         return;
       }
 
@@ -1148,8 +1120,7 @@ function App() {
         connection_token: dmConnectionToken || undefined,
       };
       dmEmit('audio_played', payload);
-      console.log('[AUDIO_DEBUG] 📤 Sent queued audio acknowledgment | session=%s chunk_id=%s token=%s',
-        sessionId, chunkId, dmConnectionToken ? 'present' : 'missing');
+      audioLog.debug('Sent queued audio acknowledgment | session=%s chunk_id=%s', sessionId, chunkId);
     };
 
     window.addEventListener('gaia:audio-played', handleQueuedAudioPlayed);
@@ -1164,15 +1135,15 @@ function App() {
   // Voice transcription handler - writes to collaborative editor via Socket.IO
   // NOTE: Must be defined AFTER useGameSocket hook since it uses dmIsConnected and dmEmit
   const handleVoiceTranscription = useCallback((transcribedText, metadata) => {
-    console.log('🎤 [DM] Voice transcription received:', transcribedText, metadata);
+    voiceLog.debug('Transcription received:', transcribedText?.slice(0, 50));
 
     if (!isTranscribingRef.current) {
-      console.warn('🎤 [DM] Ignoring transcription because mic is not active');
+      voiceLog.warn('Ignoring transcription because mic is not active');
       return;
     }
 
     if (!dmIsConnected) {
-      console.warn('🎤 [DM] Socket.IO not connected, voice text not sent');
+      voiceLog.warn('Socket.IO not connected, voice text not sent');
       return;
     }
 
@@ -1181,7 +1152,7 @@ function App() {
       is_partial: metadata?.is_partial ?? false
     });
 
-    console.log('🎤 [DM] Sent voice_transcription via Socket.IO, is_partial:', metadata?.is_partial);
+    voiceLog.debug('Sent voice_transcription, is_partial:', metadata?.is_partial);
   }, [dmIsConnected, dmEmit]);
 
   // Toggle DM voice transcription on/off
@@ -1195,13 +1166,13 @@ function App() {
     const sendVoiceSessionStart = () => {
       if (dmIsConnected) {
         dmEmit('voice_session_start', {});
-        console.log('🎤 [DM] Sent voice_session_start via Socket.IO');
+        voiceLog.debug('Sent voice_session_start via Socket.IO');
       }
     };
 
     if (audioPermissionState !== 'granted') {
       try {
-        console.log('🎤 [DM] Requesting microphone permission for transcription...');
+        voiceLog.debug('Requesting microphone permission for transcription...');
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
@@ -1217,7 +1188,7 @@ function App() {
         sendVoiceSessionStart();
         setIsTranscribing(true);
       } catch (error) {
-        console.error('❌ [DM] Microphone permission denied:', error);
+        voiceLog.error('Microphone permission denied:', error);
         setAudioPermissionState('denied');
         localStorage.setItem('audioPermissionState', 'denied');
       }
@@ -1235,16 +1206,12 @@ function App() {
 
   // Debug logging for isLoading changes
   useEffect(() => {
-    console.log("🔄 isLoading changed to:", isLoading);
+    log.debug("isLoading changed to:", isLoading);
   }, [isLoading]);
 
   // Debug logging
   useEffect(() => {
-    console.log("🎮 App component mounted");
-    // Service debugging (commented out)
-    // console.log("🎮 Message service:", messageService);
-    // console.log("🎮 Using OpenAPI:", API_CONFIG.USE_OPENAPI);
-    console.log("🎮 Current state:", {
+    log.debug("App state:", {
       messages: messages.length,
       isLoading,
       hasStructuredData: !!latestStructuredData
@@ -1335,7 +1302,7 @@ function App() {
 
     const sessionId = currentCampaignId;
 
-    console.log("🎮 handleSendMessage called with:", message);
+    log.debug("handleSendMessage called");
     setIsLoading(true);
     setError(null);
     setSessionNeedsResume(sessionId, false);
@@ -1347,9 +1314,8 @@ function App() {
     addUserMessage(sessionId, message, { messageId, characterName: fallbackCharacterName });
     
     try {
-      console.log("🎮 Calling message service with campaign ID:", sessionId);
+      log.debug("Calling message service with campaign ID:", sessionId);
       const result = await messageService.sendMessage(message, sessionId);
-      console.log("🎮 Message service result:", result);
       const structData = result.structuredData || result.structured_data || null;
       setSessionStructuredData(sessionId, structData);
       // Audio handled via synchronized streaming (audio_stream_started WebSocket message)
@@ -1393,15 +1359,15 @@ function App() {
         });
       } else if (isStreamed) {
         // Streamed response: message will be added by handleCampaignUpdate
-        // Just log for debugging
-        console.log('🔄 Streamed response - message will be added by handleCampaignUpdate');
+        log.debug('Streamed response - message will be added by handleCampaignUpdate');
       }
 
       // Clear player submissions after DM successfully processes a turn
       // This prevents stale submissions from persisting in the DM view
       setPlayerSubmissions([]);
+      setSelectedPlayerSubmissionIds(new Set());
     } catch (error) {
-      console.error("❌ Error in handleSendMessage:", error);
+      log.error("Error in handleSendMessage:", error);
       setError(`Failed to send message: ${error.message}`);
       // Add error message to chat
       addSystemError(sessionId, error.message);
@@ -1430,25 +1396,20 @@ function App() {
       addContextMessage(sessionId, contextText);
 
       // Send to backend to add to conversation history without DM response
-      console.log('Sending context to backend:', contextText);
+      log.debug('Sending context to backend');
       const result = await messageService.addContext(
         contextText,
         sessionId
       );
 
       if (result.success) {
-        console.log('✅ Context saved to campaign history');
+        log.debug('Context saved to campaign history');
       }
     } catch (error) {
-      console.error('Failed to add context:', error);
+      log.error('Failed to add context:', error);
       setError(`Failed to add context: ${error.message}`);
     }
   };
-
-  // Show error if any
-  if (error) {
-    console.log("❌ App error:", error);
-  }
 
   // Track campaigns we've already attempted to load to prevent retry loops
   const attemptedCampaigns = useRef(new Set());
@@ -1459,11 +1420,11 @@ function App() {
       if (sessionId && sessionId !== currentCampaignId) {
         // Check if we've already tried and failed to load this campaign
         if (attemptedCampaigns.current.has(sessionId)) {
-          console.log('⚠️ Already attempted to load campaign:', sessionId, '- skipping retry');
+          campaignLog.debug('Already attempted to load campaign:', sessionId, '- skipping retry');
           return;
         }
 
-        console.log('📍 Loading campaign from URL:', sessionId);
+        campaignLog.debug('Loading campaign from URL:', sessionId);
 
         // Mark this campaign as attempted BEFORE calling handleSelectCampaign
         attemptedCampaigns.current.add(sessionId);
@@ -1472,12 +1433,12 @@ function App() {
           const campaignData = await handleSelectCampaign(sessionId, false); // isNewCampaign = false
           if (campaignData) {
             setCampaignName(campaignData.name || sessionId);
-            console.log('✅ Successfully loaded campaign from URL:', sessionId);
+            campaignLog.debug('Successfully loaded campaign from URL:', sessionId);
             // Remove from attempted set on success so user can retry later
             attemptedCampaigns.current.delete(sessionId);
           }
         } catch (error) {
-          console.error('❌ Failed to load campaign from URL:', error);
+          campaignLog.error('Failed to load campaign from URL:', error);
 
           // Handle different error types with user-friendly messages
           if (error.message?.includes('404') || error.message?.includes('not found')) {
@@ -1668,9 +1629,18 @@ function App() {
                 collabIsConnected={collabIsConnected}
                 // Player submissions (from player action submissions)
                 playerSubmissions={playerSubmissions}
-                onCopyPlayerSubmission={(submission) => {
-                  // Remove the submission after copying
-                  setPlayerSubmissions(prev => prev.filter(s => s.id !== submission.id));
+                selectedPlayerSubmissionIds={selectedPlayerSubmissionIds}
+                onTogglePlayerSubmission={(submission) => {
+                  // Toggle selection state for this submission
+                  setSelectedPlayerSubmissionIds(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(submission.id)) {
+                      newSet.delete(submission.id);
+                    } else {
+                      newSet.add(submission.id);
+                    }
+                    return newSet;
+                  });
                 }}
                 />
               </RoomProvider>

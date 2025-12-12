@@ -15,6 +15,8 @@ import TurnMessage from './TurnMessage.jsx';
  * 2. Shows streaming content within the current turn
  * 3. Proper ordering via turn_number instead of timestamps
  * 4. Scroll to bottom behavior - follows streaming text as it comes in
+ * 5. Optional reversed order (newest first) for player history view
+ * 6. Optional hiding of DM input contributions
  */
 const TurnBasedNarrativeView = ({
   narrative,
@@ -24,6 +26,8 @@ const TurnBasedNarrativeView = ({
   turns = [],
   onImageGenerated,
   campaignId,
+  reversed = false,
+  hideDMInput = false,
 }) => {
   const containerRef = useRef(null);
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
@@ -48,12 +52,16 @@ const TurnBasedNarrativeView = ({
     const container = containerRef.current;
     if (!container) return;
     const behavior = options.behavior || 'smooth';
+
+    // For reversed view, "bottom" is actually top (newest content)
+    const targetScroll = reversed ? 0 : container.scrollHeight;
+
     if (typeof container.scrollTo === 'function') {
-      container.scrollTo({ top: container.scrollHeight, behavior });
+      container.scrollTo({ top: targetScroll, behavior });
     } else {
-      container.scrollTop = container.scrollHeight;
+      container.scrollTop = targetScroll;
     }
-  }, []);
+  }, [reversed]);
 
   // Auto-scroll on new turns or streaming content changes
   useEffect(() => {
@@ -87,15 +95,28 @@ const TurnBasedNarrativeView = ({
   // Only show separate streaming if we have content AND it's not already in a turn
   const showStreamingInLatestTurn = streamingText && !latestTurnHasStreaming;
 
+  // Order turns based on reversed prop
+  const orderedTurns = useMemo(() => {
+    if (reversed) {
+      return [...turns].reverse();
+    }
+    return turns;
+  }, [turns, reversed]);
+
   return (
-    <div className="streaming-narrative-container" ref={containerRef}>
+    <div className={`streaming-narrative-container ${reversed ? 'reversed' : ''}`} ref={containerRef}>
       {/* Turn-Based Message History */}
       {turns.length > 0 || showStreamingInLatestTurn ? (
         <div className="message-history turn-based">
-          {turns.map((turn, index) => {
-            const isLastTurn = index === turns.length - 1;
-            // Inject streaming content into the last turn if it doesn't have its own
-            const turnWithStreaming = isLastTurn && showStreamingInLatestTurn
+          {orderedTurns.map((turn, index) => {
+            // In reversed mode, the "latest" turn is at index 0
+            // In normal mode, the "latest" turn is at the end
+            const isLatestTurn = reversed
+              ? index === 0
+              : index === orderedTurns.length - 1;
+
+            // Inject streaming content into the latest turn if it doesn't have its own
+            const turnWithStreaming = isLatestTurn && showStreamingInLatestTurn
               ? {
                   ...turn,
                   streamingText: turn.streamingText || streamingText,
@@ -109,6 +130,7 @@ const TurnBasedNarrativeView = ({
                 turn={turnWithStreaming}
                 campaignId={campaignId}
                 onImageGenerated={onImageGenerated}
+                hideDMInput={hideDMInput}
               />
             );
           })}
@@ -127,6 +149,7 @@ const TurnBasedNarrativeView = ({
               }}
               campaignId={campaignId}
               onImageGenerated={onImageGenerated}
+              hideDMInput={hideDMInput}
             />
           )}
         </div>

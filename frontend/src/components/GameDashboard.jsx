@@ -49,7 +49,8 @@ const GameDashboard = forwardRef(
     onCopyObservation = null, // Callback for primary player to copy an observation
     // Player submissions (from player action submissions)
     playerSubmissions = [],
-    onCopyPlayerSubmission = null,
+    selectedPlayerSubmissionIds = new Set(),
+    onTogglePlayerSubmission = null,
   }, ref) => {
   // Debug: Uncomment for detailed render logging
   // console.log('📋 GameDashboard render:', { messagesCount: messages?.length });
@@ -201,27 +202,6 @@ const GameDashboard = forwardRef(
     }
   }, [collabWebSocket, onInputChange, inputMessage]);
 
-  // Handle copying a player submission to the DM's input
-  const handleCopyPlayerSubmission = useCallback((submission) => {
-    if (!submission) return;
-
-    // Format: "[CharacterName]: action text"
-    const formattedAction = `[${submission.characterName}]: ${submission.actionText}`;
-
-    if (collabWebSocket && collabEditorRef.current?.insertText) {
-      // Using collaborative editor - insert via ref
-      collabEditorRef.current.insertText(formattedAction);
-    } else if (onInputChange) {
-      // Fallback to regular input - append to existing message
-      const separator = inputMessage.trim() ? '\n\n' : '';
-      onInputChange({ target: { value: inputMessage + separator + formattedAction } });
-    }
-
-    // Remove the submission after copying
-    if (onCopyPlayerSubmission) {
-      onCopyPlayerSubmission(submission);
-    }
-  }, [collabWebSocket, onInputChange, inputMessage, onCopyPlayerSubmission]);
 
   const streamingPanel = (
     <div className="dashboard-streaming-panel">
@@ -403,7 +383,8 @@ const GameDashboard = forwardRef(
                 onCopyToChat={handleCopyPlayerOptionToChat}
                 turnInfo={latestStructuredData.turn_info}
                 playerSubmissions={playerSubmissions}
-                onCopyPlayerSubmission={handleCopyPlayerSubmission}
+                selectedPlayerSubmissionIds={selectedPlayerSubmissionIds}
+                onTogglePlayerSubmission={onTogglePlayerSubmission}
                 isDMView={true}
               />
             ) : (

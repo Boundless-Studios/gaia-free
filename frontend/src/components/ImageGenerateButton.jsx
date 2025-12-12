@@ -5,7 +5,10 @@ import { Button } from './base-ui/Button';
 import { Input } from './base-ui/Input';
 import { Select } from './base-ui/Select';
 import { useLoading, LoadingTypes } from '../contexts/LoadingContext';
+import { createLogger } from '../utils/logger.js';
 import './ImageGenerateButton.css';
+
+const log = createLogger('ImageGen');
 
 const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) => {
     const { setLoading } = useLoading();
@@ -52,22 +55,21 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
         try {
             setIsLoadingModels(true);
             setLoading(LoadingTypes.MODEL_LOADING, true);
-            console.log('Fetching image models from:', `${API_CONFIG.BACKEND_URL}/api/image-models`);
+            log.debug('Fetching image models');
             
             const data = await apiService.getImageModels();
-            console.log('Image models response:', data);
             
             if (data.models && Array.isArray(data.models)) {
                 setModels(data.models);
                 setSelectedModel(data.current_model);
-                console.log(`Loaded ${data.models.length} models, current: ${data.current_model}`);
+                log.debug('Loaded %d models | current=%s', data.models.length, data.current_model);
             } else {
-                console.error('Invalid response format - models is not an array:', data);
+                log.error('Invalid response format - models is not an array');
                 setModels([]);
                 setSelectedModel(null);
             }
         } catch (err) {
-            console.error('Failed to load image models:', err);
+            log.error('Failed to load image models:', err.message);
             setModels([]);
             setSelectedModel(null);
         } finally {
@@ -82,18 +84,17 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
             
             if (data) {
                 setSelectedModel(modelKey);
-                console.log(`Switched to image model: ${data.model.name}`);
+                log.debug('Switched to model: %s', data.model.name);
             }
         } catch (err) {
-            console.error('Failed to switch image model:', err);
+            log.error('Failed to switch image model:', err.message);
         }
     };
 
     const processNextInQueue = async () => {
-        console.log('[ImageGen] processNextInQueue called, queue length:', queueRef.current.length, 'processing:', processingRef.current);
-        
+        log.debug('processNextInQueue | queueLen=%d processing=%s', queueRef.current.length, processingRef.current);
+
         if (queueRef.current.length === 0 || processingRef.current) {
-            console.log('[ImageGen] Skipping - empty queue or already processing');
             return;
         }
 
@@ -107,10 +108,9 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
         setQueuedTypes(queueRef.current.map(item => item.type));
         // Update global loading context with queue count
         setLoading(LoadingTypes.IMAGE_GENERATION, true, remainingQueueSize);
-        console.log('[ImageGen] Processing prompt:', nextItem.prompt, 'Type:', nextItem.type, 'Model:', selectedModel, 'Remaining in queue:', queueRef.current.length);
+        log.debug('Processing | type=%s model=%s remaining=%d', nextItem.type, selectedModel, remainingQueueSize);
         
         try {
-            console.log('Generating image for:', nextItem.prompt, 'Type:', nextItem.type, 'Model:', selectedModel);
             
             const requestBody = {
                 prompt: nextItem.prompt,
@@ -131,10 +131,8 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
             const data = await apiService.generateImage(requestBody);
             
             clearTimeout(timeoutId);
-            
-            if (data) {
-                console.log('Image generation response:', data);
 
+            if (data) {
                 if (data.success && data.image) {
                     // Format the image data to match the expected structure
                     const imageData = {
@@ -143,35 +141,28 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
                         generated_image_prompt: data.image.prompt || data.image.original_prompt || nextItem.prompt,
                         generated_image_type: nextItem.type
                     };
-                    console.log('ImageGenerateButton - formatted imageData:', imageData);
+                    log.debug('Image generated | type=%s', nextItem.type);
                     if (onImageGenerated) {
                         onImageGenerated(imageData);
                     }
                 } else {
-                    // Log failure details
-                    console.error('[ImageGen] Image generation failed:', {
-                        success: data.success,
-                        hasImage: !!data.image,
-                        error: data.error || 'Unknown error',
-                        fullResponse: data
-                    });
+                    log.error('Image generation failed | error=%s', data.error || 'Unknown error');
                 }
             } else {
-                console.error('[ImageGen] No response data received from API');
+                log.error('No response data received from API');
             }
         } catch (error) {
-            console.error('Failed to generate image:', error);
+            log.error('Failed to generate image:', error.message);
         }
         
         processingRef.current = false;
         
         // Check if there are more items in queue
-        console.log('[ImageGen] Finished processing, queue length:', queueRef.current.length);
         if (queueRef.current.length > 0) {
-            console.log('[ImageGen] More items in queue, scheduling next processing');
+            log.debug('More items in queue, scheduling next');
             setTimeout(processNextInQueue, 100);
         } else {
-            console.log('[ImageGen] Queue empty, stopping');
+            log.debug('Queue empty');
             setIsGenerating(false);
             setLoading(LoadingTypes.IMAGE_GENERATION, false, 0);
             setQueuedTypes([]);
@@ -183,14 +174,12 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
         const selectedText = selection ? selection.toString().trim() : '';
 
         if (!selectedText) {
-            console.log('[ImageGen] No text selected, skipping');
             return;
         }
-        
+
         // Check if this text is already being processed or in queue
         if (processingRef.current && queueRef.current.length === 0) {
-            // If we're processing and queue is empty, the current item might be the same
-            console.log('[ImageGen] Already processing, adding to queue');
+            log.debug('Already processing, adding to queue');
         }
         
         // Trigger click animation
@@ -212,7 +201,7 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
         setQueueSize(currentQueueSize);
         // Update queued types display
         setQueuedTypes(queueRef.current.map(item => item.type));
-        console.log('[ImageGen] Added to queue:', selectedText, 'Type:', finalType, 'Queue size:', currentQueueSize);
+        log.debug('Added to queue | type=%s size=%d', finalType, currentQueueSize);
 
         // Update global loading context immediately with new queue size
         if (processingRef.current) {
@@ -222,10 +211,7 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
 
         // Start processing if not already
         if (!processingRef.current) {
-            console.log('[ImageGen] Starting processing');
             processNextInQueue();
-        } else {
-            console.log('[ImageGen] Already processing, item queued with type:', finalType);
         }
     };
     
@@ -238,16 +224,14 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
             // Generate with the specified type directly, without changing state
             const selection = window.getSelection();
             const selectedText = selection ? selection.toString().trim() : '';
-            
+
             if (!selectedText) {
-                console.log('[ImageGen] No text selected for keyboard shortcut');
                 return;
             }
-            
+
             // Check if this text is already being processed or in queue
             if (processingRef.current && queueRef.current.length === 0) {
-                // If we're processing and queue is empty, the current item might be the same
-                console.log('[ImageGen] Already processing, adding to queue');
+                log.debug('Already processing, adding to queue');
             }
             
             // Trigger click animation
@@ -265,7 +249,7 @@ const ImageGenerateButton = forwardRef(({ onImageGenerated, campaignId }, ref) =
             const currentQueueSize = queueRef.current.length;
             setQueueSize(currentQueueSize);
             setQueuedTypes(queueRef.current.map(item => item.type));
-            console.log('[ImageGen] Added to queue via keyboard shortcut:', selectedText, 'Type:', newImageType, 'Queue size:', currentQueueSize);
+            log.debug('Added to queue via shortcut | type=%s size=%d', newImageType, currentQueueSize);
 
             // Update global loading context immediately with new queue size
             if (processingRef.current) {

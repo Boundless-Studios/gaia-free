@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import CollaborativeStackedEditor from '../../collaborative/CollaborativeStackedEditor.jsx';
 import MediaGallery from './MediaGallery.jsx';
+import TurnBasedNarrativeView from '../TurnBasedNarrativeView.jsx';
 import './PlayerControls.css';
 
 const PlayerControls = ({
@@ -31,9 +32,22 @@ const PlayerControls = ({
   onSubmitObservation = null,
   // Audio unlock props
   userAudioBlocked = false,
-  onUnlockUserAudio = null
+  onUnlockUserAudio = null,
+  // Turn-based history props
+  turns = [],
+  isStreaming = false,
+  streamingNarrative = '',
+  streamingResponse = '',
+  isNarrativeStreaming = false,
+  isResponseStreaming = false,
+  // Controlled tab state
+  activeTab: controlledActiveTab = null,
+  onTabChange = null,
+  highlightInteract = false,
 }) => {
-  const [activeTab, setActiveTab] = useState('voice');
+  // Use controlled tab if provided, otherwise internal state
+  const [internalActiveTab, setInternalActiveTab] = useState('voice');
+  const activeTab = controlledActiveTab !== null ? controlledActiveTab : internalActiveTab;
   const [recentMedia, setRecentMedia] = useState([]);
   const [collabEditorConnected, setCollabEditorConnected] = useState(false);
   // Brief confirmation popup for observation submission
@@ -60,7 +74,11 @@ const PlayerControls = ({
 
   // Handle tab switching
   const handleTabSwitch = (tabId) => {
-    setActiveTab(tabId);
+    if (onTabChange) {
+      onTabChange(tabId);
+    } else {
+      setInternalActiveTab(tabId);
+    }
   };
 
   // Fetch recent media
@@ -407,49 +425,17 @@ const PlayerControls = ({
       name: 'History',
       icon: '📜',
       component: (
-        <div className="campaign-history-panel">
-          {campaignMessages.length > 0 ? (
-            <div className="history-content">
-              <div className="history-scroll">
-                {campaignMessages.slice().reverse().map((msg, index) => (
-                  <div key={msg.message_id || index} className={`message-entry ${msg.role}`}>
-                    <div className="message-header">
-                      <span className="message-role">
-                        {msg.role === 'assistant' ? '🎭 DM' : '👤 Player'}
-                        {msg.role === 'assistant' && msg.content?.turn_info?.character_name && (
-                          <> • {msg.content.turn_info.character_name}</>
-                        )}
-                        {msg.role === 'assistant' && msg.content?.turn_info?.turn_number && (
-                          <> • Turn {msg.content.turn_info.turn_number}</>
-                        )}
-                      </span>
-                      <span className="message-time">
-                        {new Date(msg.timestamp).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <div className="message-content">
-                      {msg.role === 'assistant' && typeof msg.content === 'object' && msg.content !== null ? (
-                        <div>
-                          {msg.content.answer && (
-                            <p className="message-answer">{msg.content.answer}</p>
-                          )}
-                          {!msg.content.answer && (
-                            <p>{JSON.stringify(msg.content)}</p>
-                          )}
-                        </div>
-                      ) : (
-                        <p>{typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="no-history">
-              <p>No campaign history available yet.</p>
-            </div>
-          )}
+        <div className="campaign-history-panel turn-based-history">
+          <TurnBasedNarrativeView
+            turns={turns}
+            narrative={streamingNarrative}
+            playerResponse={streamingResponse}
+            isNarrativeStreaming={isNarrativeStreaming}
+            isResponseStreaming={isResponseStreaming}
+            campaignId={campaignId}
+            reversed={true}
+            hideDMInput={true}
+          />
         </div>
       )
     },
@@ -465,7 +451,7 @@ const PlayerControls = ({
         />
       )
     }
-  ], [campaignId, collabWebSocket, collabPlayerId, collabPlayerName, collabAllPlayers, isMyTurn, handleCollabSubmit, handlePlayerOption, recentMedia, imageRefreshTrigger, collabEditorConnected, playerOptions, isActivePlayer, pendingObservations, selectedObservationIds, toggleObservationSelection, submissionConfirmation, isTranscribing, onToggleTranscription, audioPermissionState, voiceActivityLevel, collabEditorRef, isInCombat, campaignMessages]);
+  ], [campaignId, collabWebSocket, collabPlayerId, collabPlayerName, collabAllPlayers, isMyTurn, handleCollabSubmit, handlePlayerOption, recentMedia, imageRefreshTrigger, collabEditorConnected, playerOptions, isActivePlayer, pendingObservations, selectedObservationIds, toggleObservationSelection, submissionConfirmation, isTranscribing, onToggleTranscription, audioPermissionState, voiceActivityLevel, collabEditorRef, isInCombat, turns, streamingNarrative, streamingResponse, isNarrativeStreaming, isResponseStreaming]);
 
   return (
     <div className="player-controls" data-testid="player-controls">
@@ -474,7 +460,7 @@ const PlayerControls = ({
         {tabs.map(tab => (
           <button
             key={tab.id}
-            className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+            className={`tab-button ${activeTab === tab.id ? 'active' : ''} ${tab.id === 'voice' && highlightInteract ? 'highlight-pulse' : ''}`}
             onClick={() => handleTabSwitch(tab.id)}
             title={tab.name}
           >
