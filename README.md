@@ -122,6 +122,3 @@ We welcome contributions from the community! Please read our [Contributing Guide
 - How to fork and submit pull requests
 - The Contributor License Agreement (CLA) process
 - Best practices for contributing to this project
-
-**Note:** All contributors must sign a CLA when opening their first Pull Request. This is a volunteer-only opportunity with no compensation or employment offered.
-
