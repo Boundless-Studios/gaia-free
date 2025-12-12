@@ -540,7 +540,7 @@ class TTSService:
         text = ' '.join(text.split())
         return text.strip()
 
-    async def _create_elevenlabs_audio(self, chunk_text, voice_id, model_id="eleven_multilingual_v2") -> bytes:
+    async def _create_elevenlabs_audio(self, chunk_text, voice_id, model_id="eleven_v3") -> bytes:
         if not self.elevenlabs_available or not self.elevenlabs_api_key:
             logger.error("ElevenLabs streaming requested but client/API key not configured")
             return b""
