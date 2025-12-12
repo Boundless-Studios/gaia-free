@@ -151,6 +151,18 @@ check-private: ## Check if private setup is complete
 # Database Management (staging and prod share the same database)
 # =============================================================================
 
+.PHONY: db
+db: ## Connect to production database console
+	./scripts/private/db_console.sh prod
+
+.PHONY: db-local
+db-local: ## Connect to local development database console
+	./scripts/private/db_console.sh local
+
+.PHONY: db-stg
+db-stg: ## Connect to staging database console
+	./scripts/private/db_console.sh stg
+
 # Migration number is required: make db-migrate MIGRATION=19
 MIGRATION ?=
 

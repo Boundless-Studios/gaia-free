@@ -254,173 +254,85 @@ export function useTurnBasedMessages(campaignId) {
 
   /**
    * Load existing turns from backend history.
-   * Called when loading a campaign to restore turn state.
-   * Supports both new format (with turn_number) and legacy format (user/dm pairs).
+   * Messages must have turn_number and response_type fields.
    * @param {Array} messages - Array of messages from backend
-   * @param {number} backendCurrentTurn - Optional current turn from backend (authoritative source)
+   * @param {number} backendCurrentTurn - Current turn from backend (authoritative source)
+   * @param {boolean} isBackendProcessing - Whether backend is currently processing a turn (from campaign_state)
    */
-  const loadTurnsFromHistory = useCallback((messages, backendCurrentTurn = null) => {
+  const loadTurnsFromHistory = useCallback((messages, backendCurrentTurn = null, isBackendProcessing = false) => {
     console.log('📚 loadTurnsFromHistory called with', messages?.length, 'messages');
     if (!Array.isArray(messages) || messages.length === 0) {
       console.log('📚 loadTurnsFromHistory: no messages to process');
       return;
     }
 
+    // Debug: Log first 3 messages to see their structure
+    console.log('📚 Sample messages:', messages.slice(0, 3).map(m => ({
+      turn_number: m.turn_number,
+      response_type: m.response_type,
+      role: m.role,
+      has_content: !!m.content,
+    })));
+
     const turns = {};
     let maxTurn = 0;
+    let skippedCount = 0;
 
-    // Check if messages have turn_number (new format)
-    const hasNewFormat = messages.some(msg => msg.turn_number != null);
-    console.log('📚 loadTurnsFromHistory: hasNewFormat=', hasNewFormat, 'sample message:', messages[0]);
+    // Process messages with turn_number and response_type
+    messages.forEach(msg => {
+      const turnNumber = msg.turn_number;
+      if (turnNumber == null) {
+        skippedCount++;
+        return;
+      }
 
-    if (hasNewFormat) {
-      // New format: messages have turn_number and response_type
-      messages.forEach(msg => {
-        const turnNumber = msg.turn_number;
-        if (turnNumber == null) return;
+      maxTurn = Math.max(maxTurn, turnNumber);
 
-        maxTurn = Math.max(maxTurn, turnNumber);
-
-        if (!turns[turnNumber]) {
-          turns[turnNumber] = {
-            turn_number: turnNumber,
-            input: null,
-            streamingText: '',
-            finalMessage: null,
-            isStreaming: false,
-            error: null,
-          };
-        }
-
-        const responseType = msg.response_type;
-        if (responseType === 'turn_input') {
-          turns[turnNumber].input = msg.content;
-        } else if (responseType === 'final') {
-          turns[turnNumber].finalMessage = msg;
-        }
-      });
-
-      // Mark incomplete turns as streaming (have input but no final response)
-      // This handles the case where we reload during backend processing
-      Object.values(turns).forEach(turn => {
-        if (turn.input && !turn.finalMessage) {
-          turn.isStreaming = true;
-        }
-      });
-    } else {
-      // Legacy format: convert user/dm message pairs to turns
-      let turnNum = 0;
-      let currentUserMsg = null;
-      let currentDmMsgs = [];
-
-      const processTurnGroup = () => {
-        if (turnNum === 0) return;
-
-        const turn = {
-          turn_number: turnNum,
+      if (!turns[turnNumber]) {
+        turns[turnNumber] = {
+          turn_number: turnNumber,
           input: null,
           streamingText: '',
           finalMessage: null,
           isStreaming: false,
           error: null,
         };
-
-        // Convert user message to input
-        if (currentUserMsg) {
-          turn.input = {
-            active_player: {
-              character_id: currentUserMsg.character_id || 'player',
-              character_name: currentUserMsg.character_name || currentUserMsg.characterName || 'Player',
-              text: currentUserMsg.text || currentUserMsg.content || '',
-            },
-            observer_inputs: [],
-            dm_input: null,
-            combined_prompt: currentUserMsg.text || currentUserMsg.content || '',
-          };
-        }
-
-        // Convert DM message to final response
-        const dmMsg = currentDmMsgs[currentDmMsgs.length - 1];
-        if (dmMsg) {
-          // Extract content from various possible formats
-          let dmContent = '';
-          if (typeof dmMsg.text === 'string' && dmMsg.text) {
-            dmContent = dmMsg.text;
-          } else if (typeof dmMsg.content === 'string' && dmMsg.content) {
-            dmContent = dmMsg.content;
-          } else if (typeof dmMsg.content === 'object' && dmMsg.content) {
-            // Handle structured content (answer or narrative)
-            dmContent = dmMsg.content.answer || dmMsg.content.narrative || '';
-          }
-          // Also check structuredContent field
-          if (!dmContent && dmMsg.structuredContent) {
-            dmContent = dmMsg.structuredContent.answer || dmMsg.structuredContent.narrative || '';
-          }
-
-          turn.finalMessage = {
-            message_id: dmMsg.message_id || dmMsg.id || `hist-${turnNum}-dm`,
-            turn_number: turnNum,
-            response_index: 2,
-            role: 'assistant',
-            content: dmContent,
-            character_name: 'DM',
-            has_audio: dmMsg.hasAudio || dmMsg.has_audio || false,
-            timestamp: dmMsg.timestamp,
-          };
-        }
-
-        turns[turnNum] = turn;
-        maxTurn = Math.max(maxTurn, turnNum);
-      };
-
-      messages.forEach((msg) => {
-        const isUser = msg.sender === 'user' || msg.role === 'user';
-        const isDM = msg.sender === 'dm' || msg.role === 'assistant';
-
-        if (isUser) {
-          // New user message starts a new turn
-          if (currentUserMsg || currentDmMsgs.length > 0) {
-            processTurnGroup();
-          }
-          turnNum++;
-          currentUserMsg = msg;
-          currentDmMsgs = [];
-        } else if (isDM) {
-          // DM message belongs to current turn
-          currentDmMsgs.push(msg);
-        }
-      });
-
-      // Process final turn group
-      if (currentUserMsg || currentDmMsgs.length > 0) {
-        processTurnGroup();
       }
 
-      // Mark incomplete turns as streaming (have input but no final response)
-      Object.values(turns).forEach(turn => {
-        if (turn.input && !turn.finalMessage) {
-          turn.isStreaming = true;
-        }
-      });
-    }
+      const responseType = msg.response_type;
+      if (responseType === 'turn_input') {
+        turns[turnNumber].input = msg.content;
+      } else if (responseType === 'final') {
+        turns[turnNumber].finalMessage = msg;
+      }
+    });
 
-    // Use backend's current_turn as authoritative source if provided, otherwise use calculated max
+    // Use backend's current_turn as authoritative source
     const finalTurn = backendCurrentTurn != null ? Math.max(backendCurrentTurn, maxTurn) : maxTurn;
-    console.log('📚 loadTurnsFromHistory: created', Object.keys(turns).length, 'turns, maxTurn=', maxTurn, 'backendCurrentTurn=', backendCurrentTurn, 'finalTurn=', finalTurn);
+    console.log('📚 loadTurnsFromHistory: created', Object.keys(turns).length, 'turns, maxTurn=', maxTurn, 'backendCurrentTurn=', backendCurrentTurn, 'finalTurn=', finalTurn, 'skipped=', skippedCount, 'isBackendProcessing=', isBackendProcessing);
 
-    // If backendCurrentTurn indicates a turn in progress that we don't have messages for,
-    // create a placeholder turn so we show a processing indicator
-    if (backendCurrentTurn != null && backendCurrentTurn > maxTurn && !turns[backendCurrentTurn]) {
-      console.log('📚 Creating placeholder for in-progress turn:', backendCurrentTurn);
-      turns[backendCurrentTurn] = {
-        turn_number: backendCurrentTurn,
-        input: null,
-        streamingText: '',
-        finalMessage: null,
-        isStreaming: true,  // Show processing indicator
-        error: null,
-      };
+    // ONLY mark the current turn as streaming if backend says it's processing
+    // Historical incomplete turns (e.g., turn 2 interrupted) should NOT show as streaming
+    if (isBackendProcessing && backendCurrentTurn != null) {
+      // Backend is actively processing - mark the current turn as streaming
+      if (turns[backendCurrentTurn]) {
+        turns[backendCurrentTurn].isStreaming = true;
+        console.log('📚 Marking turn', backendCurrentTurn, 'as streaming (backend is processing)');
+      } else {
+        // Create placeholder for in-progress turn
+        console.log('📚 Creating placeholder for in-progress turn:', backendCurrentTurn);
+        turns[backendCurrentTurn] = {
+          turn_number: backendCurrentTurn,
+          input: null,
+          streamingText: '',
+          finalMessage: null,
+          isStreaming: true,
+          error: null,
+        };
+      }
     }
+    // Note: We no longer infer streaming state from missing finalMessage
+    // Historical incomplete turns are displayed as-is without streaming indicator
 
     latestTurnRef.current = finalTurn;
     setTurnsByNumber(turns);

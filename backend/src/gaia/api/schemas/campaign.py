@@ -235,6 +235,8 @@ class PlayerCampaignMessage(BaseModel):
     role: str
     content: Any  # Can be string or dict
     agent_name: Optional[str] = None
+    turn_number: Optional[int] = None  # Turn number from DB turn_events
+    response_type: Optional[str] = None  # 'turn_input' or 'final' for frontend turn ordering
 
 
 class PlayerCampaignResponse(BaseModel):
@@ -249,6 +251,7 @@ class PlayerCampaignResponse(BaseModel):
     structured_data: Optional[StructuredGameData] = None
     messages: List[PlayerCampaignMessage] = []
     message_count: int = 0
+    current_turn: int = 0  # Current turn number from DB turn_events
 
 
 class ActiveCampaignResponse(BaseModel):

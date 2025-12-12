@@ -92,7 +92,14 @@ const TurnMessage = ({
   const audioRef = useRef(null);
 
   // Determine what text to display
-  const displayText = finalMessage?.content || streamingText || '';
+  // Content can be a string (from WebSocket streaming) or an object with narrative field (from DB)
+  const getFinalMessageText = () => {
+    if (!finalMessage?.content) return '';
+    if (typeof finalMessage.content === 'string') return finalMessage.content;
+    if (finalMessage.content.narrative) return finalMessage.content.narrative;
+    return '';
+  };
+  const displayText = getFinalMessageText() || streamingText || '';
   const hasContent = displayText.length > 0;
 
   // Format timestamp

@@ -328,17 +328,17 @@ class CampaignRepository:
             event_metadata: Additional metadata
 
         Returns:
-            Created TurnEvent or None if campaign not found
+            Created TurnEvent or None on error
         """
         try:
+            # Ensure campaign exists in DB (auto-create if needed)
+            campaign = await self.get_or_create_campaign(
+                external_campaign_id=external_campaign_id,
+                environment="dev",  # Default to dev
+            )
+            campaign_id = campaign.campaign_id
+
             async with self.db_manager.get_async_session() as session:
-                # Get campaign UUID
-                campaign_id = await self._get_campaign_uuid_in_session(
-                    session, external_campaign_id
-                )
-                if not campaign_id:
-                    logger.warning(f"Campaign not found: {external_campaign_id}")
-                    return None
 
                 event = TurnEvent(
                     campaign_id=campaign_id,
@@ -529,7 +529,8 @@ class CampaignRepository:
                 result = await session.execute(stmt)
                 max_index = result.scalar()
 
-                return (max_index or -1) + 1
+                # max_index can be 0 (valid), None (no events), or positive
+                return (max_index + 1) if max_index is not None else 0
 
         except SQLAlchemyError as e:
             logger.error(f"Error getting next event index: {e}")

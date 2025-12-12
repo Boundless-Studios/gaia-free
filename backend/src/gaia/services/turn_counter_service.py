@@ -245,9 +245,11 @@ class TurnCounterService:
                     dm_input=dm_input,
                     combined_prompt=combined_prompt,
                 )
-                logger.debug(f"[TurnCounter] Added turn_input event: {campaign_id} turn {turn_number}")
+                logger.info(f"[TurnCounter] ✅ Added turn_input event: {campaign_id} turn {turn_number}")
+            else:
+                logger.error(f"[TurnCounter] ❌ Repository not available for turn_input event: {campaign_id}")
         except Exception as e:
-            logger.warning(f"[TurnCounter] Failed to add turn_input event: {e}")
+            logger.error(f"[TurnCounter] ❌ Failed to add turn_input event for {campaign_id} turn {turn_number}: {e}", exc_info=True)
 
     async def add_assistant_response_event(
         self,
@@ -276,9 +278,11 @@ class TurnCounterService:
                     content=content,
                     event_index=event_index,
                 )
-                logger.debug(f"[TurnCounter] Added assistant event: {campaign_id} turn {turn_number}")
+                logger.info(f"[TurnCounter] ✅ Added assistant event: {campaign_id} turn {turn_number}")
+            else:
+                logger.error(f"[TurnCounter] ❌ Repository not available for assistant event: {campaign_id}")
         except Exception as e:
-            logger.warning(f"[TurnCounter] Failed to add assistant event: {e}")
+            logger.error(f"[TurnCounter] ❌ Failed to add assistant event for {campaign_id} turn {turn_number}: {e}", exc_info=True)
 
     async def reset_campaign(self, campaign_id: str) -> None:
         """Reset all counters for a campaign (for testing or cleanup)."""

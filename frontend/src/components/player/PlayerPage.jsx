@@ -137,8 +137,9 @@ const PlayerPage = () => {
   const [isNarrativeStreamingBySession, setIsNarrativeStreamingBySession] = useState({});
   const [isResponseStreamingBySession, setIsResponseStreamingBySession] = useState({});
 
-  // Track backend-authoritative turn counter per session
+  // Track backend-authoritative turn counter and processing state per session
   const [backendTurnBySession, setBackendTurnBySession] = useState({});
+  const [isProcessingBySession, setIsProcessingBySession] = useState({});
 
   const latestStructuredData = currentCampaignId
     ? structuredDataBySession[currentCampaignId] ?? null
@@ -149,6 +150,9 @@ const PlayerPage = () => {
   const backendCurrentTurn = currentCampaignId
     ? backendTurnBySession[currentCampaignId] ?? null
     : null;
+  const isBackendProcessing = currentCampaignId
+    ? isProcessingBySession[currentCampaignId] ?? false
+    : false;
 
   // Turn-based messages for consistent display with DM view
   const {
@@ -174,6 +178,7 @@ const PlayerPage = () => {
       campaignMessagesCount: campaignMessages?.length || 0,
       turnsCount: turns?.length || 0,
       backendCurrentTurn,
+      isBackendProcessing,
     });
     // Clear turns when campaign changes
     if (prevCampaignIdRef.current !== currentCampaignId) {
@@ -181,12 +186,12 @@ const PlayerPage = () => {
       clearTurns();
       prevCampaignIdRef.current = currentCampaignId;
     }
-    // Load turns from messages with backend-authoritative turn number
+    // Load turns from messages with backend-authoritative turn number and processing state
     if (campaignMessages && campaignMessages.length > 0) {
-      console.log('📚 Loading turns from', campaignMessages.length, 'messages, backendCurrentTurn=', backendCurrentTurn);
-      loadTurnsFromHistory(campaignMessages, backendCurrentTurn);
+      console.log('📚 Loading turns from', campaignMessages.length, 'messages, backendCurrentTurn=', backendCurrentTurn, 'isBackendProcessing=', isBackendProcessing);
+      loadTurnsFromHistory(campaignMessages, backendCurrentTurn, isBackendProcessing);
     }
-  }, [campaignMessages, currentCampaignId, backendCurrentTurn, loadTurnsFromHistory, clearTurns]);
+  }, [campaignMessages, currentCampaignId, backendCurrentTurn, isBackendProcessing, loadTurnsFromHistory, clearTurns]);
 
   const handleRoomEvent = useCallback((event) => {
     setLastRoomEvent({ event, timestamp: Date.now() });
@@ -436,9 +441,17 @@ const PlayerPage = () => {
 
       const data = await apiService.readSimpleCampaign(campaignId);
       console.log('🎮 PlayerPage received from backend:', data);
+      console.log('🎮 Backend current_turn:', data?.current_turn, 'message_count:', data?.message_count);
+      if (data?.messages?.length > 0) {
+        console.log('🎮 First message sample:', {
+          turn_number: data.messages[0].turn_number,
+          response_type: data.messages[0].response_type,
+          role: data.messages[0].role,
+        });
+      }
       console.log('🎮 Backend structured_data.combat_status:', data?.structured_data?.combat_status);
 
-      // Initialize turn counter from backend (authoritative source)
+      // Initialize turn counter and processing state from backend (authoritative source)
       if (data?.current_turn != null) {
         setCurrentTurn(data.current_turn);
         // Store in state so loadTurnsFromHistory can use it
@@ -447,6 +460,12 @@ const PlayerPage = () => {
           [sessionId]: data.current_turn,
         }));
       }
+      // Store backend processing state (determines if we show streaming indicator)
+      setIsProcessingBySession(prev => ({
+        ...prev,
+        [sessionId]: data?.is_processing ?? false,
+      }));
+      console.log('🎮 Backend is_processing:', data?.is_processing);
 
       if (data && data.success && data.structured_data) {
         const transformedData = transformStructuredData(data.structured_data);

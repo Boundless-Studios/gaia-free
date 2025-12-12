@@ -14,6 +14,7 @@ import RegistrationFlow from './components/RegistrationFlow.jsx';
 import PromptManager from './components/admin/PromptManager.jsx';
 import SceneInspector from './components/admin/SceneInspector.jsx';
 import UserManagement from './components/admin/UserManagement.jsx';
+import CampaignInspector from './components/admin/CampaignInspector.jsx';
 import { AudioDebugPage } from './components/debug/AudioDebugPage.jsx';
 import { AudioStreamProvider } from './context/audioStreamContext.jsx';
 import CollaborativeEditorTest from './pages/CollaborativeEditorTest.jsx';
@@ -268,6 +269,7 @@ const AppWithAuth0 = () => {
             <Route path="/admin/prompts" element={<PromptManager />} />
             <Route path="/admin/scenes" element={<SceneInspector />} />
             <Route path="/admin/users" element={<UserManagement />} />
+            <Route path="/admin/campaigns" element={<CampaignInspector />} />
 
             {/* Debug routes */}
             <Route path="/admin/debug-audio" element={
@@ -370,6 +372,14 @@ const AppWithAuth0 = () => {
               element={
                 <ProtectedRoute>
                   <UserManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/campaigns"
+              element={
+                <ProtectedRoute>
+                  <CampaignInspector />
                 </ProtectedRoute>
               }
             />

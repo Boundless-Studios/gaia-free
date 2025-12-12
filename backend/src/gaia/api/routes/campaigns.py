@@ -21,6 +21,7 @@ from gaia.api.schemas.campaign import (
 )
 from gaia.api.schemas.chat import StructuredGameData, AudioArtifactPayload
 from gaia.services.turn_counter_service import turn_counter_service
+from gaia.infra.storage.campaign_repository import campaign_repository
 import re
 
 logger = logging.getLogger(__name__)
@@ -900,70 +901,78 @@ class CampaignService:
             "file_info": file_info
         }
 
-    def _get_campaign_data(self, campaign_id: str) -> Dict[str, Any]:
+    async def _get_campaign_data(self, campaign_id: str) -> Dict[str, Any]:
         """
-        Extract common campaign data logic shared between load and read operations.
-        
-        This method handles:
-        - Loading campaign history from disk
-        - Extracting structured data from the last assistant message
-        - Determining if the campaign needs an AI response
-        - Creating default structured data if none exists
-        
+        Load campaign data from turn_events DB table.
+
+        This fetches turn events from the database which have proper turn_number
+        and response_type fields that the frontend expects.
+
         Args:
             campaign_id: The campaign identifier
-            
+
         Returns:
-            Dictionary containing messages, structured_data, and needs_response flag
-            
-        Raises:
-            HTTPException: If campaign not found or has no history
+            Dictionary containing messages, structured_data, needs_response, and current_turn
         """
-        # Load campaign history from the campaign manager
-        messages = self.campaign_manager.load_campaign_history(campaign_id)
+        # Fetch turn events from DB (these have turn_number and type)
+        turn_events = await campaign_repository.get_turn_events(
+            external_campaign_id=campaign_id,
+            limit=500,  # Get plenty of history
+        )
+        logger.info(f"🔍 _get_campaign_data: campaign={campaign_id}, loaded {len(turn_events)} turn events from DB")
 
-        # Sort messages by timestamp to ensure chronological order
-        if messages:
-            messages.sort(key=lambda m: m.get("timestamp", "") or "")
+        # Convert turn events to message format expected by frontend
+        messages = []
+        for event in turn_events:
+            # Map event type to response_type (frontend expects 'turn_input' or 'final')
+            response_type = event.type  # turn_input, assistant, etc.
+            if response_type == "assistant":
+                response_type = "final"
 
-        # For newly created campaigns with no history, return empty data instead of error
+            msg = {
+                "message_id": str(event.event_id),
+                "turn_number": event.turn_number,
+                "response_type": response_type,
+                "role": event.role if event.role != "dm" else "assistant",
+                "content": event.content,
+                "timestamp": event.created_at.isoformat() if event.created_at else None,
+            }
+            messages.append(msg)
+
+        # For newly created campaigns with no history, return empty data
         if not messages:
-            logger.info(f"Campaign {campaign_id} has no history yet (newly created)")
+            logger.info(f"Campaign {campaign_id} has no turn events yet (newly created)")
             return {
                 "messages": [],
                 "structured_data": {},
-                "needs_response": False
+                "needs_response": False,
+                "current_turn": 0
             }
-        
+
         # Check if the last message was from the user (needs AI response)
         needs_response = False
         if messages and messages[-1].get("role") == "user":
             needs_response = True
             logger.info(f"📝 Last message was from user, campaign needs AI response")
-        
-        # Extract the last assistant message's structured data
+
+        # Extract structured data from the last assistant message
         structured_data = None
         last_dm_message = None
-        
-        # Find the last assistant message by searching backwards through history
+
         for msg in reversed(messages):
             if msg.get("role") == "assistant":
                 last_dm_message = msg
                 break
-        
-        # Extract structured data from the last DM message
+
         if last_dm_message:
             content = last_dm_message.get("content", "")
-            # If content is already a dict (structured data), use it directly
             if isinstance(content, dict):
                 structured_data = content
             else:
-                # Try to parse it as JSON
                 try:
                     import json
                     structured_data = json.loads(content)
                 except (json.JSONDecodeError, TypeError):
-                    # If not JSON, create a simple structure with the text content
                     structured_data = {
                         "answer": content,
                         "narrative": content,
@@ -972,8 +981,7 @@ class CampaignService:
                         "combat_status": None,
                         "combat_state": None
                     }
-        
-        # If no structured data found, create a default welcome message
+
         if not structured_data:
             structured_data = {
                 "answer": "Campaign loaded successfully. Please continue your adventure.",
@@ -983,20 +991,33 @@ class CampaignService:
                 "combat_status": None,
                 "combat_state": None
             }
-        
-        # Compute current turn number from messages
-        # Turn numbers are stored in messages; find the max to get current turn
-        current_turn = 0
-        for msg in messages:
-            turn_num = msg.get("turn_number")
-            if turn_num is not None and turn_num > current_turn:
-                current_turn = turn_num
+
+        # Get current turn from the max turn_number in events
+        current_turn = max((msg.get("turn_number", 0) for msg in messages), default=0)
+
+        # Fetch campaign state to get is_processing (authoritative source)
+        is_processing = False
+        try:
+            campaign_state = await campaign_repository.get_campaign_state(campaign_id)
+            if campaign_state:
+                is_processing = campaign_state.is_processing
+                # Use campaign_state.current_turn as authoritative source if available
+                if campaign_state.current_turn is not None:
+                    current_turn = max(current_turn, campaign_state.current_turn)
+                logger.info(f"🔍 Campaign state: is_processing={is_processing}, current_turn={current_turn}")
+        except Exception as e:
+            logger.warning(f"🔍 Could not fetch campaign state: {e}")
+
+        logger.info(f"🔍 _get_campaign_data: returning {len(messages)} messages, current_turn={current_turn}, is_processing={is_processing}")
+        if messages:
+            logger.info(f"🔍 First msg sample: turn={messages[0].get('turn_number')}, type={messages[0].get('response_type')}")
 
         return {
             "messages": messages,
             "structured_data": structured_data,
             "needs_response": needs_response,
-            "current_turn": current_turn
+            "current_turn": current_turn,
+            "is_processing": is_processing
         }
 
     def _build_campaign_response(self, campaign_id: str, data: Dict[str, Any], activated: bool) -> Dict[str, Any]:
@@ -1024,7 +1045,8 @@ class CampaignService:
             "messages": data["messages"],  # Include for backward compatibility
             "message_count": len(data["messages"]),
             "needs_response": data["needs_response"] if activated else False,  # Only DM view needs responses
-            "current_turn": data.get("current_turn", 0)  # Current turn number from message history
+            "current_turn": data.get("current_turn", 0),  # Current turn number from message history
+            "is_processing": data.get("is_processing", False)  # Whether a turn is currently being processed
         }
 
     async def load_simple_campaign(self, campaign_id: str, *, orchestrator=None) -> Dict[str, Any]:
@@ -1049,7 +1071,7 @@ class CampaignService:
         if hasattr(orch, 'active_campaign_id') and orch.active_campaign_id == campaign_id:
             logger.info(f"Campaign {campaign_id} is already active, skipping duplicate activation")
             # Get the common campaign data without re-activating
-            data = self._get_campaign_data(campaign_id)
+            data = await self._get_campaign_data(campaign_id)
             # Ensure turn counter is initialized even when already active
             current_turn = data.get("current_turn", 0)
             await turn_counter_service.set_turn_number(campaign_id, current_turn)
@@ -1059,7 +1081,7 @@ class CampaignService:
         activated = await orch.activate_campaign(campaign_id)
 
         # Get the common campaign data
-        data = self._get_campaign_data(campaign_id)
+        data = await self._get_campaign_data(campaign_id)
 
         # Initialize the turn counter service with the computed turn number
         current_turn = data.get("current_turn", 0)
@@ -1085,8 +1107,8 @@ class CampaignService:
             Campaign data with activated=False and needs_response=False for player view
         """
         # Get the common campaign data without activation
-        data = self._get_campaign_data(campaign_id)
-        
+        data = await self._get_campaign_data(campaign_id)
+
         # Build response without activation flags
         return self._build_campaign_response(campaign_id, data, activated=False)
 
@@ -1111,8 +1133,8 @@ class CampaignService:
             PlayerCampaignResponse with structured campaign data
         """
         # Get the raw campaign data
-        data = self._get_campaign_data(campaign_id)
-        
+        data = await self._get_campaign_data(campaign_id)
+
         # Convert structured data to StructuredGameData
         structured_data = data.get("structured_data", {})
         
@@ -1183,7 +1205,9 @@ class CampaignService:
                 timestamp=_parse_timestamp(msg.get("timestamp")),
                 role=msg.get("role") or "",
                 content=msg.get("content"),  # Can be complex object
-                agent_name=msg.get("agent_name")
+                agent_name=msg.get("agent_name"),
+                turn_number=msg.get("turn_number"),
+                response_type=msg.get("response_type"),
             )
             messages.append(player_msg)
         
@@ -1196,7 +1220,8 @@ class CampaignService:
             needs_response=False,  # Always False for player view
             structured_data=player_state,
             messages=messages,
-            message_count=len(messages)
+            message_count=len(messages),
+            current_turn=data.get("current_turn", 0),
         )
 
     async def load_structured_campaign(self, campaign_id: str) -> Dict[str, Any]:

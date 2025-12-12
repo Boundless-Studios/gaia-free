@@ -107,6 +107,9 @@ class TurnEvent(BaseModel):
         default=lambda: datetime.now(timezone.utc),
     )
 
+    # Override BaseModel's updated_at - events are immutable, no update timestamp needed
+    updated_at = None  # type: ignore
+
     # Relationship back to campaign
     campaign: Mapped["Campaign"] = relationship(
         "Campaign",

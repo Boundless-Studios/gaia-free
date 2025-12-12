@@ -1,21 +1,25 @@
 """
-Admin endpoints for managing registered users (allowlist).
+Admin endpoints for managing registered users (allowlist) and campaign inspection.
 
 Access control: restricted to users with is_admin=True in the database.
 """
 
 from typing import List, Optional, Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select
+from sqlalchemy import select, func, desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from db.src import get_async_db
 from auth.src.models import User
 from auth.src.auth0_jwt_verifier import get_auth0_verifier
+from gaia.models.campaign_db import Campaign
+from gaia.models.campaign_state_db import CampaignState
+from gaia.models.turn_event_db import TurnEvent
 
 
 security = HTTPBearer(auto_error=True)
@@ -341,4 +345,327 @@ async def test_email(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error sending email: {str(e)}"
         )
+
+
+# ============================================================================
+# Campaign Admin Response Models
+# ============================================================================
+
+
+class CampaignStateResponse(BaseModel):
+    """Response model for campaign state."""
+    state_id: str
+    campaign_id: str
+    current_turn: int
+    last_turn_started_at: Optional[str]
+    last_turn_completed_at: Optional[str]
+    is_processing: bool
+    active_turn: Optional[Dict[str, Any]]
+    version: int
+
+    @staticmethod
+    def from_model(state: CampaignState) -> "CampaignStateResponse":
+        return CampaignStateResponse(
+            state_id=str(state.state_id),
+            campaign_id=str(state.campaign_id),
+            current_turn=state.current_turn,
+            last_turn_started_at=state.last_turn_started_at.isoformat() if state.last_turn_started_at else None,
+            last_turn_completed_at=state.last_turn_completed_at.isoformat() if state.last_turn_completed_at else None,
+            is_processing=state.is_processing,
+            active_turn=state.active_turn,
+            version=state.version,
+        )
+
+
+class CampaignAdminResponse(BaseModel):
+    """Response model for campaign listing."""
+    campaign_id: str
+    external_campaign_id: str
+    environment: str
+    name: Optional[str]
+    description: Optional[str]
+    owner_id: Optional[str]
+    is_active: bool
+    created_at: Optional[str]
+    updated_at: Optional[str]
+    # Nested state summary
+    current_turn: int
+    is_processing: bool
+    event_count: int
+
+    @staticmethod
+    def from_model(campaign: Campaign, event_count: int = 0) -> "CampaignAdminResponse":
+        state = campaign.state
+        return CampaignAdminResponse(
+            campaign_id=str(campaign.campaign_id),
+            external_campaign_id=campaign.external_campaign_id,
+            environment=campaign.environment,
+            name=campaign.name,
+            description=campaign.description,
+            owner_id=campaign.owner_id,
+            is_active=campaign.is_active,
+            created_at=campaign.created_at.isoformat() if hasattr(campaign, 'created_at') and campaign.created_at else None,
+            updated_at=campaign.updated_at.isoformat() if hasattr(campaign, 'updated_at') and campaign.updated_at else None,
+            current_turn=state.current_turn if state else 0,
+            is_processing=state.is_processing if state else False,
+            event_count=event_count,
+        )
+
+
+class CampaignDetailResponse(BaseModel):
+    """Response model for campaign details with full state."""
+    campaign_id: str
+    external_campaign_id: str
+    environment: str
+    name: Optional[str]
+    description: Optional[str]
+    owner_id: Optional[str]
+    is_active: bool
+    created_at: Optional[str]
+    updated_at: Optional[str]
+    state: Optional[CampaignStateResponse]
+    event_count: int
+
+    @staticmethod
+    def from_model(campaign: Campaign, event_count: int = 0) -> "CampaignDetailResponse":
+        return CampaignDetailResponse(
+            campaign_id=str(campaign.campaign_id),
+            external_campaign_id=campaign.external_campaign_id,
+            environment=campaign.environment,
+            name=campaign.name,
+            description=campaign.description,
+            owner_id=campaign.owner_id,
+            is_active=campaign.is_active,
+            created_at=campaign.created_at.isoformat() if hasattr(campaign, 'created_at') and campaign.created_at else None,
+            updated_at=campaign.updated_at.isoformat() if hasattr(campaign, 'updated_at') and campaign.updated_at else None,
+            state=CampaignStateResponse.from_model(campaign.state) if campaign.state else None,
+            event_count=event_count,
+        )
+
+
+class TurnEventResponse(BaseModel):
+    """Response model for turn events."""
+    event_id: str
+    campaign_id: str
+    turn_number: int
+    event_index: int
+    type: str
+    role: str
+    content: Optional[Dict[str, Any]]
+    event_metadata: Dict[str, Any]
+    created_at: str
+
+    @staticmethod
+    def from_model(event: TurnEvent) -> "TurnEventResponse":
+        return TurnEventResponse(
+            event_id=str(event.event_id),
+            campaign_id=str(event.campaign_id),
+            turn_number=event.turn_number,
+            event_index=event.event_index,
+            type=event.type,
+            role=event.role,
+            content=event.content,
+            event_metadata=event.event_metadata,
+            created_at=event.created_at.isoformat(),
+        )
+
+
+class CampaignStatsResponse(BaseModel):
+    """Response model for campaign statistics."""
+    total_campaigns: int
+    active_campaigns: int
+    inactive_campaigns: int
+    campaigns_by_environment: Dict[str, int]
+    total_events: int
+    events_by_type: Dict[str, int]
+    campaigns_processing: int
+
+
+# ============================================================================
+# Campaign Admin Endpoints
+# ============================================================================
+
+
+@router.get("/campaigns/stats", response_model=CampaignStatsResponse)
+async def get_campaign_stats(db: AsyncSession = Depends(get_async_db)) -> CampaignStatsResponse:
+    """Get aggregate statistics about campaigns."""
+    # Total campaigns
+    total_result = await db.execute(select(func.count(Campaign.campaign_id)))
+    total_campaigns = total_result.scalar() or 0
+
+    # Active/inactive counts
+    active_result = await db.execute(
+        select(func.count(Campaign.campaign_id)).where(Campaign.is_active == True)
+    )
+    active_campaigns = active_result.scalar() or 0
+
+    # Campaigns by environment
+    env_result = await db.execute(
+        select(Campaign.environment, func.count(Campaign.campaign_id))
+        .group_by(Campaign.environment)
+    )
+    campaigns_by_environment = {row[0]: row[1] for row in env_result.fetchall()}
+
+    # Total events
+    events_result = await db.execute(select(func.count(TurnEvent.event_id)))
+    total_events = events_result.scalar() or 0
+
+    # Events by type
+    type_result = await db.execute(
+        select(TurnEvent.type, func.count(TurnEvent.event_id))
+        .group_by(TurnEvent.type)
+    )
+    events_by_type = {row[0]: row[1] for row in type_result.fetchall()}
+
+    # Campaigns currently processing
+    processing_result = await db.execute(
+        select(func.count(CampaignState.state_id))
+        .where(CampaignState.active_turn.isnot(None))
+    )
+    campaigns_processing = processing_result.scalar() or 0
+
+    return CampaignStatsResponse(
+        total_campaigns=total_campaigns,
+        active_campaigns=active_campaigns,
+        inactive_campaigns=total_campaigns - active_campaigns,
+        campaigns_by_environment=campaigns_by_environment,
+        total_events=total_events,
+        events_by_type=events_by_type,
+        campaigns_processing=campaigns_processing,
+    )
+
+
+@router.get("/campaigns", response_model=List[CampaignAdminResponse])
+async def list_campaigns(
+    db: AsyncSession = Depends(get_async_db),
+    environment: Optional[str] = Query(None, description="Filter by environment"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    search: Optional[str] = Query(None, description="Search by ID, name, or owner"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum results"),
+    offset: int = Query(0, ge=0, description="Results offset"),
+) -> List[CampaignAdminResponse]:
+    """List all campaigns with optional filtering."""
+    query = select(Campaign).options(selectinload(Campaign.state))
+
+    if environment:
+        query = query.where(Campaign.environment == environment)
+    if is_active is not None:
+        query = query.where(Campaign.is_active == is_active)
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.where(
+            (Campaign.external_campaign_id.ilike(search_pattern)) |
+            (Campaign.name.ilike(search_pattern)) |
+            (Campaign.owner_id.ilike(search_pattern))
+        )
+
+    query = query.order_by(desc(Campaign.campaign_id)).limit(limit).offset(offset)
+
+    result = await db.execute(query)
+    campaigns = result.scalars().all()
+
+    # Get event counts for each campaign
+    campaign_ids = [c.campaign_id for c in campaigns]
+    if campaign_ids:
+        count_result = await db.execute(
+            select(TurnEvent.campaign_id, func.count(TurnEvent.event_id))
+            .where(TurnEvent.campaign_id.in_(campaign_ids))
+            .group_by(TurnEvent.campaign_id)
+        )
+        event_counts = {row[0]: row[1] for row in count_result.fetchall()}
+    else:
+        event_counts = {}
+
+    return [
+        CampaignAdminResponse.from_model(c, event_counts.get(c.campaign_id, 0))
+        for c in campaigns
+    ]
+
+
+@router.get("/campaigns/{campaign_id}", response_model=CampaignDetailResponse)
+async def get_campaign(
+    campaign_id: str,
+    db: AsyncSession = Depends(get_async_db),
+) -> CampaignDetailResponse:
+    """Get detailed information about a specific campaign."""
+    # Try to find by external_campaign_id first, then by UUID
+    query = select(Campaign).options(selectinload(Campaign.state))
+
+    result = await db.execute(
+        query.where(Campaign.external_campaign_id == campaign_id)
+    )
+    campaign = result.scalar_one_or_none()
+
+    if not campaign:
+        # Try UUID
+        try:
+            import uuid
+            campaign_uuid = uuid.UUID(campaign_id)
+            result = await db.execute(
+                query.where(Campaign.campaign_id == campaign_uuid)
+            )
+            campaign = result.scalar_one_or_none()
+        except ValueError:
+            pass
+
+    if not campaign:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
+    # Get event count
+    count_result = await db.execute(
+        select(func.count(TurnEvent.event_id))
+        .where(TurnEvent.campaign_id == campaign.campaign_id)
+    )
+    event_count = count_result.scalar() or 0
+
+    return CampaignDetailResponse.from_model(campaign, event_count)
+
+
+@router.get("/campaigns/{campaign_id}/events", response_model=List[TurnEventResponse])
+async def get_campaign_events(
+    campaign_id: str,
+    db: AsyncSession = Depends(get_async_db),
+    turn_number: Optional[int] = Query(None, description="Filter by turn number"),
+    event_type: Optional[str] = Query(None, description="Filter by event type"),
+    role: Optional[str] = Query(None, description="Filter by role"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum results"),
+    offset: int = Query(0, ge=0, description="Results offset"),
+) -> List[TurnEventResponse]:
+    """Get turn events for a campaign."""
+    # Find the campaign first
+    result = await db.execute(
+        select(Campaign).where(Campaign.external_campaign_id == campaign_id)
+    )
+    campaign = result.scalar_one_or_none()
+
+    if not campaign:
+        try:
+            import uuid
+            campaign_uuid = uuid.UUID(campaign_id)
+            result = await db.execute(
+                select(Campaign).where(Campaign.campaign_id == campaign_uuid)
+            )
+            campaign = result.scalar_one_or_none()
+        except ValueError:
+            pass
+
+    if not campaign:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
+    # Build query for events
+    query = select(TurnEvent).where(TurnEvent.campaign_id == campaign.campaign_id)
+
+    if turn_number is not None:
+        query = query.where(TurnEvent.turn_number == turn_number)
+    if event_type:
+        query = query.where(TurnEvent.type == event_type)
+    if role:
+        query = query.where(TurnEvent.role == role)
+
+    query = query.order_by(TurnEvent.turn_number, TurnEvent.event_index).limit(limit).offset(offset)
+
+    result = await db.execute(query)
+    events = result.scalars().all()
+
+    return [TurnEventResponse.from_model(e) for e in events]
 
