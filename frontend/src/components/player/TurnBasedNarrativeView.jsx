@@ -1,0 +1,164 @@
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import './StreamingNarrativeView.css';
+import TurnMessage from './TurnMessage.jsx';
+
+/**
+ * TurnBasedNarrativeView - Displays message history using turn-based ordering
+ *
+ * This is a drop-in replacement for StreamingNarrativeView that uses the
+ * turn-based message architecture for proper message ordering.
+ *
+ * Receives turns from parent (App.jsx manages state via WebSocket turn events).
+ *
+ * Features:
+ * 1. Groups messages into turns (player input + DM response)
+ * 2. Shows streaming content within the current turn
+ * 3. Proper ordering via turn_number instead of timestamps
+ * 4. Scroll to bottom behavior - follows streaming text as it comes in
+ */
+const TurnBasedNarrativeView = ({
+  narrative,
+  playerResponse,
+  isNarrativeStreaming,
+  isResponseStreaming,
+  turns = [],
+  onImageGenerated,
+  campaignId,
+}) => {
+  const containerRef = useRef(null);
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+
+  // Track streaming content length for auto-scroll trigger
+  // This changes every time new streaming content arrives in any turn
+  const streamingContentLength = useMemo(() => {
+    return turns.reduce((total, turn) => {
+      return total + (turn.streamingText?.length || 0);
+    }, 0);
+  }, [turns]);
+
+  // Scroll handling
+  const checkScrollPosition = useCallback(() => {
+    if (!containerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setShowScrollIndicator(!isNearBottom);
+  }, []);
+
+  const scrollToBottom = useCallback((options = {}) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const behavior = options.behavior || 'smooth';
+    if (typeof container.scrollTo === 'function') {
+      container.scrollTo({ top: container.scrollHeight, behavior });
+    } else {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, []);
+
+  // Auto-scroll on new turns or streaming content changes
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      scrollToBottom({ behavior: 'smooth' });
+      setTimeout(checkScrollPosition, 500);
+    });
+  }, [turns.length, streamingContentLength, narrative, playerResponse, checkScrollPosition, scrollToBottom]);
+
+  // Scroll listener
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.addEventListener('scroll', checkScrollPosition);
+    checkScrollPosition();
+    return () => container.removeEventListener('scroll', checkScrollPosition);
+  }, [checkScrollPosition]);
+
+  const handleScrollIndicatorClick = () => {
+    scrollToBottom({ behavior: 'smooth' });
+  };
+
+  // Check if we have streaming content that isn't already in a turn
+  const streamingText = narrative || playerResponse || '';
+  const isActivelyStreaming = isNarrativeStreaming || isResponseStreaming;
+
+  // Find if the latest turn already has this streaming content
+  const latestTurn = turns.length > 0 ? turns[turns.length - 1] : null;
+  const latestTurnHasStreaming = latestTurn?.isStreaming || (latestTurn?.streamingText?.length > 0);
+
+  // Only show separate streaming if we have content AND it's not already in a turn
+  const showStreamingInLatestTurn = streamingText && !latestTurnHasStreaming;
+
+  return (
+    <div className="streaming-narrative-container" ref={containerRef}>
+      {/* Turn-Based Message History */}
+      {turns.length > 0 || showStreamingInLatestTurn ? (
+        <div className="message-history turn-based">
+          {turns.map((turn, index) => {
+            const isLastTurn = index === turns.length - 1;
+            // Inject streaming content into the last turn if it doesn't have its own
+            const turnWithStreaming = isLastTurn && showStreamingInLatestTurn
+              ? {
+                  ...turn,
+                  streamingText: turn.streamingText || streamingText,
+                  isStreaming: turn.isStreaming || isActivelyStreaming,
+                }
+              : turn;
+
+            return (
+              <TurnMessage
+                key={turn.turn_number}
+                turn={turnWithStreaming}
+                campaignId={campaignId}
+                onImageGenerated={onImageGenerated}
+              />
+            );
+          })}
+
+          {/* If no turns but streaming, show as a standalone streaming turn */}
+          {turns.length === 0 && showStreamingInLatestTurn && (
+            <TurnMessage
+              key="streaming-turn"
+              turn={{
+                turn_number: 0,
+                input: null,
+                streamingText: streamingText,
+                finalMessage: null,
+                isStreaming: isActivelyStreaming,
+                error: null,
+              }}
+              campaignId={campaignId}
+              onImageGenerated={onImageGenerated}
+            />
+          )}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <p style={{ color: '#666', textAlign: 'center', padding: '40px' }}>
+            No messages yet. Start the conversation to see turns here.
+          </p>
+        </div>
+      )}
+
+      {/* Scroll to bottom indicator */}
+      {showScrollIndicator && turns.length > 0 && (
+        <button
+          className="scroll-to-bottom-indicator"
+          onClick={handleScrollIndicatorClick}
+          aria-label="Scroll to bottom"
+          title="More content below"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M7 10L12 15L17 10"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+};
+
+export default TurnBasedNarrativeView;
