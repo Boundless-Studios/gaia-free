@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 _secrets_cache: Optional[dict] = None
 
 
+
 def _load_secrets_from_file() -> dict:
     """Load secrets from decrypted file if available.
 
