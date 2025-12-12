@@ -66,7 +66,7 @@ export function useTurnBasedMessages(campaignId) {
     setProcessingTurn(turn_number);
     latestTurnRef.current = Math.max(latestTurnRef.current, turn_number);
 
-    // Initialize turn state with isStreaming: true to show processing indicator immediately
+    // Initialize turn state
     setTurnsByNumber(prev => ({
       ...prev,
       [turn_number]: {
@@ -74,7 +74,7 @@ export function useTurnBasedMessages(campaignId) {
         input: null,
         streamingText: '',
         finalMessage: null,
-        isStreaming: true,  // Show processing state immediately
+        isStreaming: false,
         error: null,
       }
     }));

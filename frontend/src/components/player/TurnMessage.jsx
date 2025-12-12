@@ -301,8 +301,8 @@ const TurnMessage = ({
         </div>
       )}
 
-      {/* DM Response Section - only show when we have content or error, not just processing */}
-      {(hasContent || error) && (
+      {/* DM Response Section */}
+      {(hasContent || isStreaming || error) && (
         <div className="dm-response-section">
           <div className="response-header">
             <span className="response-label">DM:</span>
