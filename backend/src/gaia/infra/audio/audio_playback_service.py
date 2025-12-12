@@ -787,7 +787,7 @@ class AudioPlaybackService:
             session.commit()
 
             if result.rowcount > 0:
-                logger.info(
+                logger.debug(
                     "[AUDIO_DEBUG] 🎬 Marked request %s as GENERATING | total_chunks=%s",
                     request_id,
                     req.total_chunks,
@@ -1241,7 +1241,7 @@ class AudioPlaybackService:
                     return self.get_next_pending_request(campaign_id)
                 else:
                     # Request is still generating (total_chunks=None) - skip for now, don't fail
-                    logger.info(
+                    logger.debug(
                         "[AUDIO_DEBUG] ⏸️  Skipping request still generating chunks | request_id=%s total_chunks=%s (will retry on next auto-advance)",
                         request_obj.request_id,
                         request_obj.total_chunks,
@@ -1395,7 +1395,7 @@ class AudioPlaybackService:
                 streaming_result.status = PlaybackStatus.FAILED
                 streaming_result.completed_at = datetime.now(timezone.utc)
                 session.commit()
-                logger.info(
+                logger.debug(
                     "[AUDIO_DEBUG] 🧹 CLEANUP: Marked stuck request as FAILED | request_id=%s",
                     streaming_result.request_id,
                 )
@@ -1452,12 +1452,12 @@ class AudioPlaybackService:
                 status += "Queue is empty."
 
             # Log comprehensive queue status
-            logger.info(
+            logger.debug(
                 "[AUDIO_DEBUG] 🎵 QUEUE STATUS | campaign=%s",
                 campaign_id,
             )
             if currently_playing:
-                logger.info(
+                logger.debug(
                     "[AUDIO_DEBUG]   ▶️  CURRENTLY PLAYING: request_id=%s chunks=%d/%d text='%s'",
                     currently_playing["request_id"],
                     len(streaming_result.chunks) if streaming_result else 0,
@@ -1465,10 +1465,10 @@ class AudioPlaybackService:
                     (currently_playing.get("text") or "(no text)")[:200],
                 )
             else:
-                logger.info("[AUDIO_DEBUG]   ⚪ NO AUDIO PLAYING")
+                logger.debug("[AUDIO_DEBUG]   ⚪ NO AUDIO PLAYING")
 
             if pending_requests:
-                logger.info(
+                logger.debug(
                     "[AUDIO_DEBUG]   📋 PENDING QUEUE: %d request(s), %d total chunk(s)",
                     len(pending_requests),
                     total_pending_chunks,
@@ -1482,7 +1482,7 @@ class AudioPlaybackService:
                         (req.get("text") or "(no text)")[:150],
                     )
             else:
-                logger.info("[AUDIO_DEBUG]   📋 QUEUE EMPTY")
+                logger.debug("[AUDIO_DEBUG]   📋 QUEUE EMPTY")
 
             return {
                 "currently_playing": currently_playing,
