@@ -15,6 +15,7 @@ import PromptManager from './components/admin/PromptManager.jsx';
 import SceneInspector from './components/admin/SceneInspector.jsx';
 import UserManagement from './components/admin/UserManagement.jsx';
 import CampaignInspector from './components/admin/CampaignInspector.jsx';
+import AdminIndex from './components/admin/AdminIndex.jsx';
 import { AudioDebugPage } from './components/debug/AudioDebugPage.jsx';
 import { AudioStreamProvider } from './context/audioStreamContext.jsx';
 import CollaborativeEditorTest from './pages/CollaborativeEditorTest.jsx';
@@ -266,6 +267,7 @@ const AppWithAuth0 = () => {
             <Route path="/:sessionId/player" element={<PlayerPage />} />
 
             {/* Admin routes */}
+            <Route path="/admin" element={<AdminIndex />} />
             <Route path="/admin/prompts" element={<PromptManager />} />
             <Route path="/admin/scenes" element={<SceneInspector />} />
             <Route path="/admin/users" element={<UserManagement />} />
@@ -351,6 +353,14 @@ const AppWithAuth0 = () => {
             />
 
             {/* Admin routes */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminIndex />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/admin/prompts"
               element={

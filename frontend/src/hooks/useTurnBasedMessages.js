@@ -54,15 +54,11 @@ export function useTurnBasedMessages(campaignId) {
   const handleTurnStarted = useCallback((data) => {
     const { turn_number, session_id } = data;
 
-    console.log('🔄 handleTurnStarted called:', { turn_number, session_id, campaignId, match: session_id === campaignId });
-
     // Verify it's for our campaign (only skip if we have BOTH IDs and they don't match)
     if (session_id && campaignId && session_id !== campaignId) {
-      console.log('🔄 handleTurnStarted: session_id mismatch, skipping');
       return;
     }
 
-    console.log('🔄 handleTurnStarted: setting processingTurn to', turn_number);
     setProcessingTurn(turn_number);
     latestTurnRef.current = Math.max(latestTurnRef.current, turn_number);
 
@@ -87,11 +83,8 @@ export function useTurnBasedMessages(campaignId) {
   const handleInputReceived = useCallback((data) => {
     const { turn_number, session_id, input_text, active_player_input, dm_input } = data;
 
-    console.log('📝 handleInputReceived called:', { turn_number, session_id, input_text_length: input_text?.length });
-
     // Verify it's for our campaign (only skip if we have BOTH IDs and they don't match)
     if (session_id && campaignId && session_id !== campaignId) {
-      console.log('📝 handleInputReceived: session_id mismatch, skipping');
       return;
     }
 
@@ -113,8 +106,6 @@ export function useTurnBasedMessages(campaignId) {
         dm_input: dm_input || null,
         combined_prompt: input_text || '',
       };
-
-      console.log('📝 handleInputReceived: setting input for turn', turn_number);
 
       return {
         ...prev,
@@ -260,19 +251,9 @@ export function useTurnBasedMessages(campaignId) {
    * @param {boolean} isBackendProcessing - Whether backend is currently processing a turn (from campaign_state)
    */
   const loadTurnsFromHistory = useCallback((messages, backendCurrentTurn = null, isBackendProcessing = false) => {
-    console.log('📚 loadTurnsFromHistory called with', messages?.length, 'messages');
     if (!Array.isArray(messages) || messages.length === 0) {
-      console.log('📚 loadTurnsFromHistory: no messages to process');
       return;
     }
-
-    // Debug: Log first 3 messages to see their structure
-    console.log('📚 Sample messages:', messages.slice(0, 3).map(m => ({
-      turn_number: m.turn_number,
-      response_type: m.response_type,
-      role: m.role,
-      has_content: !!m.content,
-    })));
 
     const turns = {};
     let maxTurn = 0;
@@ -309,7 +290,6 @@ export function useTurnBasedMessages(campaignId) {
 
     // Use backend's current_turn as authoritative source
     const finalTurn = backendCurrentTurn != null ? Math.max(backendCurrentTurn, maxTurn) : maxTurn;
-    console.log('📚 loadTurnsFromHistory: created', Object.keys(turns).length, 'turns, maxTurn=', maxTurn, 'backendCurrentTurn=', backendCurrentTurn, 'finalTurn=', finalTurn, 'skipped=', skippedCount, 'isBackendProcessing=', isBackendProcessing);
 
     // ONLY mark the current turn as streaming if backend says it's processing
     // Historical incomplete turns (e.g., turn 2 interrupted) should NOT show as streaming
@@ -317,10 +297,8 @@ export function useTurnBasedMessages(campaignId) {
       // Backend is actively processing - mark the current turn as streaming
       if (turns[backendCurrentTurn]) {
         turns[backendCurrentTurn].isStreaming = true;
-        console.log('📚 Marking turn', backendCurrentTurn, 'as streaming (backend is processing)');
       } else {
         // Create placeholder for in-progress turn
-        console.log('📚 Creating placeholder for in-progress turn:', backendCurrentTurn);
         turns[backendCurrentTurn] = {
           turn_number: backendCurrentTurn,
           input: null,
@@ -335,7 +313,39 @@ export function useTurnBasedMessages(campaignId) {
     // Historical incomplete turns are displayed as-is without streaming indicator
 
     latestTurnRef.current = finalTurn;
-    setTurnsByNumber(turns);
+
+    // MERGE with existing state to preserve WebSocket-received data
+    // WebSocket events may have set input/finalMessage that aren't in the API response yet
+    setTurnsByNumber(prev => {
+      // Start with existing state to preserve WebSocket-received data
+      const merged = { ...prev };
+
+      // Merge history data into existing turns
+      Object.keys(turns).forEach(turnNum => {
+        const historyTurn = turns[turnNum];
+        const existingTurn = prev[turnNum];
+
+        if (!existingTurn) {
+          // No existing data for this turn, use history
+          merged[turnNum] = historyTurn;
+        } else {
+          // Merge: prefer WebSocket data over history for real-time fields
+          merged[turnNum] = {
+            ...historyTurn,
+            // Keep existing input if it exists (from WebSocket turn_input event)
+            input: existingTurn.input || historyTurn.input,
+            // Keep existing finalMessage if it exists (from WebSocket final event)
+            finalMessage: existingTurn.finalMessage || historyTurn.finalMessage,
+            // Keep streaming text if present
+            streamingText: existingTurn.streamingText || historyTurn.streamingText,
+            // Keep streaming state if turn is actively streaming
+            isStreaming: existingTurn.isStreaming || historyTurn.isStreaming,
+          };
+        }
+      });
+
+      return merged;
+    });
   }, []);
 
   /**
@@ -354,7 +364,6 @@ export function useTurnBasedMessages(campaignId) {
    */
   const setCurrentTurn = useCallback((turnNumber) => {
     if (turnNumber != null && turnNumber >= 0) {
-      console.log('🔢 setCurrentTurn: setting latestTurnRef to', turnNumber);
       latestTurnRef.current = turnNumber;
     }
   }, []);
@@ -369,14 +378,12 @@ export function useTurnBasedMessages(campaignId) {
     // Find the current turn to update (processing turn or latest turn)
     const turnNum = processingTurn || latestTurnRef.current;
     if (!turnNum) {
-      console.log('📺 appendStreamingText: no turn to update');
       return;
     }
 
     setTurnsByNumber(prev => {
       const turn = prev[turnNum];
       if (!turn) {
-        console.log('📺 appendStreamingText: turn not found:', turnNum);
         return prev;
       }
 

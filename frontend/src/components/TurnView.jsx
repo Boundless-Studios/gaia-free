@@ -31,13 +31,6 @@ const TurnView = ({
   // DM mode - only show player submissions, no player options
   isDMView = false,
 }) => {
-  // Debug: Log what TurnView receives
-  console.log('📋 TurnView render:', {
-    playerSubmissionsCount: playerSubmissions?.length,
-    playerSubmissions,
-    pendingObservationsCount: pendingObservations?.length,
-    isActivePlayer
-  });
   // Determine which options to display and whether user is active
   const { turnLines, isActive, characterName } = useMemo(() => {
     // If personalized options are available and we have a character ID, use those
