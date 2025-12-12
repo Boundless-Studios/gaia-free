@@ -203,6 +203,8 @@ function App() {
     handleTurnError,
     loadTurnsFromHistory,
     clearTurns,
+    appendStreamingText,
+    setCurrentTurn,
   } = useTurnBasedMessages(currentCampaignId);
 
   // Convert messages to turns when messages change
@@ -273,6 +275,7 @@ function App() {
     updateStreamingResponse,
     clearStreaming,
     setCampaignName,
+    setCurrentTurn,
   });
 
   const refreshActiveCampaignState = useCallback(async () => {
@@ -714,7 +717,11 @@ function App() {
       isStreaming: !data.is_final,
       isFinal: data.is_final,
     });
-  }, [updateStreamingNarrative]);
+    // Also update turn-based view with streaming text
+    if (content) {
+      appendStreamingText(content, data.is_final);
+    }
+  }, [updateStreamingNarrative, appendStreamingText]);
 
   const handleResponseChunk = useCallback((data, sessionId) => {
     const campaignSessionId = data.campaign_id || sessionId;
@@ -1341,54 +1348,48 @@ function App() {
     setPlayerSubmissions([]);
     setSelectedPlayerSubmissionIds(new Set());
 
+    // Use WebSocket submit_turn for better resiliency (no HTTP timeouts)
+    // Response comes via turn_started, turn_message, turn_complete events
     try {
-      log.debug("Calling message service with campaign ID:", sessionId);
-      const result = await messageService.sendMessage(message, sessionId);
-      const structData = result.structuredData || result.structured_data || null;
-      setSessionStructuredData(sessionId, structData);
-      // Audio handled via synchronized streaming (audio_stream_started WebSocket message)
-      if (structData?.audio) {
-        markLastDmMessageHasAudio(sessionId);
+      log.debug("Emitting submit_turn via WebSocket:", sessionId);
+
+      // Build the submit_turn payload
+      const turnPayload = {
+        session_id: sessionId,
+        message: message,
+        dm_input: message ? { text: message } : null,
+        active_player_input: null,
+        observer_inputs: [],
+        metadata: {
+          // Include player character context if available
+          player_character: null, // DM doesn't have a player character
+        },
+      };
+
+      // Emit via WebSocket - response will come via turn events
+      if (dmSocket && dmIsConnected) {
+        dmEmit('submit_turn', turnPayload);
+        log.debug("submit_turn emitted successfully");
+      } else {
+        throw new Error('WebSocket not connected');
       }
 
-      // Check for generated image
-      if (structData && (structData.generated_image_url || structData.generated_image_path)) {
-        handleNewImage(structData);
-      }
-      
-      // Check for history info
-      if (result.history_info) {
-        setSessionHistoryInfo(sessionId, result.history_info);
-        // Auto-hide after 10 seconds
-        setTimeout(() => setSessionHistoryInfo(sessionId, null), 10000);
-      }
-      // Only show the 'answer' field in the chat
-      // For STREAMED responses, the message will be added by handleCampaignUpdate
-      // when the campaign_updated WebSocket event arrives with the final content.
-      // Only add the message here for NON-STREAMED responses.
-      const isStreamed = Boolean(structData?.streamed);
-      const answerText = (structData && structData.answer) ? structData.answer : (result.response || null);
+      // Response handling is now done via WebSocket events:
+      // - turn_started: marks turn as processing
+      // - input_received: shows input immediately to players
+      // - turn_message (streaming): updates streaming text
+      // - turn_message (final): sets final response
+      // - turn_complete: marks turn as done
+      // - campaign_updated: updates structured data, images, etc.
+      // - turn_error: handles errors
 
-      if (answerText && !isStreamed) {
-        // Non-streamed response: add to history immediately
-        addDMMessage(sessionId, answerText, {
-          hasAudio: Boolean(structData?.audio),
-          structuredContent: structData
-            ? {
-                narrative: structData.narrative || null,
-                answer: structData.answer || answerText || null,
-                summary: structData.summary || null,
-                observations: structData.observations || null,
-                perception_checks: structData.perception_checks || null,
-                streaming_answer: structData.streaming_answer || null,
-              }
-            : null,
-          isStreamed: false,
-        });
-      } else if (isStreamed) {
-        // Streamed response: message will be added by handleCampaignUpdate
-        log.debug('Streamed response - message will be added by handleCampaignUpdate');
-      }
+      // The structured data and DM message will be handled by:
+      // - handleCampaignUpdate (campaign_updated event)
+      // - handleTurnMessage (turn_message event with final response)
+
+      // Note: isLoading will be managed by isTurnProcessing from useTurnBasedMessages
+      // which tracks processingTurn state based on turn_started/turn_complete events
+
     } catch (error) {
       log.error("Error in handleSendMessage:", error);
       setError(`Failed to send message: ${error.message}`);
@@ -1398,6 +1399,13 @@ function App() {
       setIsLoading(false);
     }
   };
+
+  // Legacy HTTP response handling removed - now handled via WebSocket events:
+  // - campaign_updated: handles structured data, images, audio
+  // - turn_message: handles final DM response text
+  // - turn_complete: marks turn as complete
+  // The old code that processed HTTP response is no longer needed since
+  // submit_turn via WebSocket triggers all the same events.
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

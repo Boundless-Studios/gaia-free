@@ -30,7 +30,8 @@ export function useCampaignOperations({
   updateStreamingNarrative,
   updateStreamingResponse,
   clearStreaming,
-  setCampaignName, // Add setCampaignName here
+  setCampaignName,
+  setCurrentTurn, // For turn counter persistence
 }) {
   /**
    * Select and load a campaign
@@ -71,7 +72,12 @@ export function useCampaignOperations({
           throw error;
         }
 
-        log.debug('Loaded simple campaign | name=%s', data.name);
+        log.debug('Loaded simple campaign | name=%s current_turn=%d', data.name, data.current_turn);
+
+        // Initialize turn counter from backend (authoritative source)
+        if (setCurrentTurn && data.current_turn != null) {
+          setCurrentTurn(data.current_turn);
+        }
 
         if (!data.success || !data.activated) {
           log.error('Failed to activate simple campaign');
@@ -155,6 +161,11 @@ export function useCampaignOperations({
               structuredContent,
               sender: msg.role === 'assistant' ? 'dm' : msg.role,
               timestamp: msg.timestamp || new Date().toISOString(),
+              // Preserve turn-based fields for proper ordering
+              turn_number: msg.turn_number,
+              response_type: msg.response_type,
+              role: msg.role,
+              content: msg.content,
             };
           });
           setSessionMessages(sessionId, convertedMessages);
@@ -215,6 +226,8 @@ export function useCampaignOperations({
       updateStreamingNarrative,
       updateStreamingResponse,
       clearStreaming,
+      setCampaignName,
+      setCurrentTurn,
     ]
   );
 

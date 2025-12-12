@@ -56,8 +56,8 @@ export function useTurnBasedMessages(campaignId) {
 
     console.log('🔄 handleTurnStarted called:', { turn_number, session_id, campaignId, match: session_id === campaignId });
 
-    // Verify it's for our campaign
-    if (session_id && session_id !== campaignId) {
+    // Verify it's for our campaign (only skip if we have BOTH IDs and they don't match)
+    if (session_id && campaignId && session_id !== campaignId) {
       console.log('🔄 handleTurnStarted: session_id mismatch, skipping');
       return;
     }
@@ -78,6 +78,53 @@ export function useTurnBasedMessages(campaignId) {
         error: null,
       }
     }));
+  }, [campaignId]);
+
+  /**
+   * Handle input_received event - immediately populate turn with submitted input.
+   * This provides faster feedback than turn_message for the input text.
+   */
+  const handleInputReceived = useCallback((data) => {
+    const { turn_number, session_id, input_text, active_player_input, dm_input } = data;
+
+    console.log('📝 handleInputReceived called:', { turn_number, session_id, input_text_length: input_text?.length });
+
+    // Verify it's for our campaign (only skip if we have BOTH IDs and they don't match)
+    if (session_id && campaignId && session_id !== campaignId) {
+      console.log('📝 handleInputReceived: session_id mismatch, skipping');
+      return;
+    }
+
+    // Update turn with the input content immediately
+    setTurnsByNumber(prev => {
+      const turn = prev[turn_number] || {
+        turn_number,
+        input: null,
+        streamingText: '',
+        finalMessage: null,
+        isStreaming: false,
+        error: null,
+      };
+
+      // Build the input structure from the received data
+      const inputContent = {
+        active_player: active_player_input || null,
+        observer_inputs: [],
+        dm_input: dm_input || null,
+        combined_prompt: input_text || '',
+      };
+
+      console.log('📝 handleInputReceived: setting input for turn', turn_number);
+
+      return {
+        ...prev,
+        [turn_number]: {
+          ...turn,
+          input: inputContent,
+          isStreaming: true, // Mark as streaming so the UI shows it's processing
+        }
+      };
+    });
   }, [campaignId]);
 
   /**
@@ -160,8 +207,8 @@ export function useTurnBasedMessages(campaignId) {
   const handleTurnComplete = useCallback((data) => {
     const { turn_number, session_id } = data;
 
-    // Verify it's for our campaign
-    if (session_id && session_id !== campaignId) return;
+    // Verify it's for our campaign (only skip if we have BOTH IDs and they don't match)
+    if (session_id && campaignId && session_id !== campaignId) return;
 
     // Clear processing state if this was the processing turn
     setProcessingTurn(prev => prev === turn_number ? null : prev);
@@ -188,8 +235,8 @@ export function useTurnBasedMessages(campaignId) {
   const handleTurnError = useCallback((data) => {
     const { turn_number, session_id, error } = data;
 
-    // Verify it's for our campaign
-    if (session_id && session_id !== campaignId) return;
+    // Verify it's for our campaign (only skip if we have BOTH IDs and they don't match)
+    if (session_id && campaignId && session_id !== campaignId) return;
 
     // Clear processing state
     setProcessingTurn(prev => prev === turn_number ? null : prev);
@@ -209,15 +256,22 @@ export function useTurnBasedMessages(campaignId) {
    * Load existing turns from backend history.
    * Called when loading a campaign to restore turn state.
    * Supports both new format (with turn_number) and legacy format (user/dm pairs).
+   * @param {Array} messages - Array of messages from backend
+   * @param {number} backendCurrentTurn - Optional current turn from backend (authoritative source)
    */
-  const loadTurnsFromHistory = useCallback((messages) => {
-    if (!Array.isArray(messages) || messages.length === 0) return;
+  const loadTurnsFromHistory = useCallback((messages, backendCurrentTurn = null) => {
+    console.log('📚 loadTurnsFromHistory called with', messages?.length, 'messages');
+    if (!Array.isArray(messages) || messages.length === 0) {
+      console.log('📚 loadTurnsFromHistory: no messages to process');
+      return;
+    }
 
     const turns = {};
     let maxTurn = 0;
 
     // Check if messages have turn_number (new format)
     const hasNewFormat = messages.some(msg => msg.turn_number != null);
+    console.log('📚 loadTurnsFromHistory: hasNewFormat=', hasNewFormat, 'sample message:', messages[0]);
 
     if (hasNewFormat) {
       // New format: messages have turn_number and response_type
@@ -335,7 +389,10 @@ export function useTurnBasedMessages(campaignId) {
       }
     }
 
-    latestTurnRef.current = maxTurn;
+    // Use backend's current_turn as authoritative source if provided, otherwise use calculated max
+    const finalTurn = backendCurrentTurn != null ? Math.max(backendCurrentTurn, maxTurn) : maxTurn;
+    console.log('📚 loadTurnsFromHistory: created', Object.keys(turns).length, 'turns, maxTurn=', maxTurn, 'backendCurrentTurn=', backendCurrentTurn, 'finalTurn=', finalTurn);
+    latestTurnRef.current = finalTurn;
     setTurnsByNumber(turns);
   }, []);
 
@@ -347,6 +404,50 @@ export function useTurnBasedMessages(campaignId) {
     setProcessingTurn(null);
     latestTurnRef.current = 0;
   }, []);
+
+  /**
+   * Set the current turn number directly (from backend authoritative source).
+   * This should be called when loading a campaign to initialize the turn counter.
+   * @param {number} turnNumber - The turn number from backend
+   */
+  const setCurrentTurn = useCallback((turnNumber) => {
+    if (turnNumber != null && turnNumber >= 0) {
+      console.log('🔢 setCurrentTurn: setting latestTurnRef to', turnNumber);
+      latestTurnRef.current = turnNumber;
+    }
+  }, []);
+
+  /**
+   * Append streaming text to the current processing turn.
+   * Used to integrate narrative_chunk events into the turn-based view.
+   * @param {string} text - Text chunk to append
+   * @param {boolean} isFinal - Whether this is the final chunk
+   */
+  const appendStreamingText = useCallback((text, isFinal = false) => {
+    // Find the current turn to update (processing turn or latest turn)
+    const turnNum = processingTurn || latestTurnRef.current;
+    if (!turnNum) {
+      console.log('📺 appendStreamingText: no turn to update');
+      return;
+    }
+
+    setTurnsByNumber(prev => {
+      const turn = prev[turnNum];
+      if (!turn) {
+        console.log('📺 appendStreamingText: turn not found:', turnNum);
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [turnNum]: {
+          ...turn,
+          streamingText: (turn.streamingText || '') + (text || ''),
+          isStreaming: !isFinal,
+        }
+      };
+    });
+  }, [processingTurn]);
 
   /**
    * Get ordered list of turns for rendering.
@@ -382,10 +483,13 @@ export function useTurnBasedMessages(campaignId) {
     handleTurnMessage,
     handleTurnComplete,
     handleTurnError,
+    handleInputReceived,
 
     // Actions
     loadTurnsFromHistory,
     clearTurns,
+    appendStreamingText,
+    setCurrentTurn,
   };
 }
 

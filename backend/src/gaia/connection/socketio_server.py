@@ -1264,6 +1264,27 @@ async def submit_turn(sid: str, data: Dict[str, Any]):
             namespace="/campaign",
         )
 
+        # Immediately broadcast input_received so players can see the input and switch to History tab
+        # This happens before LLM processing starts, giving players immediate feedback
+        combined_prompt = data.get("message", "")
+        await sio.emit(
+            "input_received",
+            {
+                "turn_number": turn_number,
+                "session_id": session_id,
+                "input_text": combined_prompt,
+                "active_player_input": data.get("active_player_input"),
+                "dm_input": data.get("dm_input"),
+            },
+            room=session_id,
+            namespace="/campaign",
+        )
+
+        logger.info(
+            "[SocketIO] Input received broadcast | session=%s turn=%d input_length=%d",
+            session_id, turn_number, len(combined_prompt)
+        )
+
         # 2. Build and broadcast turn input
         turn_input_content = {
             "active_player": data.get("active_player_input"),

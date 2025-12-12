@@ -196,6 +196,8 @@ export function useGameSocket({
         'turn_message',
         'turn_complete',
         'turn_error',
+        // Input received event (immediate feedback when DM submits)
+        'input_received',
       ];
 
       gameEvents.forEach((event) => {

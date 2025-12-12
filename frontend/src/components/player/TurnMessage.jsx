@@ -220,9 +220,9 @@ const TurnMessage = ({
       <div className="turn-number-badge">Turn {turn_number}</div>
 
       {/* Input Section - shows who contributed to this turn */}
-      {input && (
+      {(input || isStreaming) && (
         <div className="turn-input-section">
-          {(() => {
+          {input ? (() => {
             // Get the combined text to parse
             const rawText = input.combined_prompt || input.active_player?.text || '';
             let contributions = parseInputContributions(rawText);
@@ -292,7 +292,12 @@ const TurnMessage = ({
                 )}
               </>
             );
-          })()}
+          })() : (
+            // Fallback when streaming but no input yet
+            <div className="player-input pending">
+              <span className="input-text">Processing turn...</span>
+            </div>
+          )}
         </div>
       )}
 

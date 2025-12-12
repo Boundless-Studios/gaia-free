@@ -282,6 +282,9 @@ export const RoomProvider = ({
     const ws = webSocketRef?.current;
     if (!ws) return;
 
+    // Skip if this isn't a real WebSocket (Socket.IO shim doesn't have addEventListener)
+    if (typeof ws.addEventListener !== 'function') return;
+
     // Add room event listeners
     const handleMessage = (event) => {
       try {

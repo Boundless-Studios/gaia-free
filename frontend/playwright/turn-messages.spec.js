@@ -17,15 +17,15 @@ test.describe('Turn-Based Messages', () => {
   });
 
   test('page loads and shows connection status', async ({ page }) => {
-    // Should show connection status
-    const statusBar = page.locator('text=Connected').or(page.locator('text=Disconnected'));
-    await expect(statusBar).toBeVisible();
+    // Should show connection status (with emoji prefixes)
+    const statusBar = page.locator('text=/Connected|Disconnected/');
+    await expect(statusBar.first()).toBeVisible();
 
     // Should show session ID
-    await expect(page.locator('text=Session:')).toBeVisible();
+    await expect(page.locator('text=/Session:/i')).toBeVisible();
 
     // Should show current turn
-    await expect(page.locator('text=Current Turn:')).toBeVisible();
+    await expect(page.locator('text=/Current Turn:/i')).toBeVisible();
   });
 
   test('simulate turn locally works', async ({ page }) => {
@@ -34,51 +34,66 @@ test.describe('Turn-Based Messages', () => {
     await expect(simulateBtn).toBeVisible();
     await simulateBtn.click();
 
-    // Wait for turn to appear
-    await expect(page.locator('text=Turn 1')).toBeVisible({ timeout: 5000 });
+    // Wait for turn to appear (badge shows "Turn 1")
+    await expect(page.locator('.turn-number-badge:has-text("Turn 1")')).toBeVisible({ timeout: 5000 });
 
-    // Should show the turn input
-    await expect(page.locator('.turn-input-section')).toBeVisible();
+    // Wait for simulation to complete - check debug state shows isProcessing: false
+    // This indicates the turn has fully completed (streaming finished)
+    const debugState = page.locator('[data-testid="debug-state"]');
+    await expect(debugState).toContainText('"isProcessing": false', { timeout: 15000 });
 
-    // Should show streaming and then final response
-    await expect(page.locator('.dm-response-section')).toBeVisible({ timeout: 10000 });
+    // Now sections should be fully populated (use .first() since embedded PlayerView also has these)
+    await expect(page.locator('.turn-input-section').first()).toBeVisible();
+    await expect(page.locator('.dm-response-section').first()).toBeVisible();
 
-    // Event log should show turn events
-    const eventLog = page.locator('.turn-test-page >> text=turn_started');
-    // Note: This checks if turn_started appears in the log
+    // Should contain the player input (note: shows "Player:" as label)
+    await expect(page.locator('.turn-input-section').first()).toContainText('I approach the mysterious door');
   });
 
   test('multiple simulated turns maintain order', async ({ page }) => {
     const simulateBtn = page.locator('button:has-text("Simulate Turn (Local)")');
+    const debugState = page.locator('[data-testid="debug-state"]');
+    // Scope to main test area (before embedded PlayerView section)
+    const mainTestArea = page.locator('h3:has-text("Turn Messages")').locator('..');
 
     // Simulate first turn
     await simulateBtn.click();
-    await expect(page.locator('text=Turn 1')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.turn-number-badge:has-text("Turn 1")').first()).toBeVisible({ timeout: 5000 });
 
-    // Wait for first turn to complete
-    await page.waitForTimeout(3000);
+    // Wait for first turn to fully complete (isProcessing becomes false)
+    await expect(debugState).toContainText('"isProcessing": false', { timeout: 15000 });
 
-    // Simulate second turn
+    // Now button should be enabled again - simulate second turn
     await simulateBtn.click();
-    await expect(page.locator('text=Turn 2')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.turn-number-badge:has-text("Turn 2")').first()).toBeVisible({ timeout: 5000 });
 
-    // Both turns should be visible
-    await expect(page.locator('.turn-message')).toHaveCount(2);
+    // Wait for second turn to complete
+    await expect(debugState).toContainText('"turnsCount": 2', { timeout: 15000 });
+
+    // Both turns should be visible in the main test area
+    await expect(mainTestArea.locator('.turn-message')).toHaveCount(2);
   });
 
   test('clear turns works', async ({ page }) => {
     const simulateBtn = page.locator('button:has-text("Simulate Turn (Local)")');
     const clearBtn = page.locator('button:has-text("Clear Turns")');
+    const debugState = page.locator('[data-testid="debug-state"]');
 
     // Simulate a turn
     await simulateBtn.click();
-    await expect(page.locator('text=Turn 1')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.turn-number-badge:has-text("Turn 1")')).toBeVisible({ timeout: 5000 });
+
+    // Wait for turn to fully complete (isProcessing becomes false)
+    await expect(debugState).toContainText('"isProcessing": false', { timeout: 15000 });
 
     // Clear turns
     await clearBtn.click();
 
-    // Should show no turns message
-    await expect(page.locator('text=No turns yet')).toBeVisible();
+    // Should show no turns message (partial text match)
+    await expect(page.locator('text=/No turns yet/i')).toBeVisible({ timeout: 2000 });
+
+    // Debug state should show turnsCount: 0
+    await expect(debugState).toContainText('"turnsCount": 0');
   });
 
   test('debug state updates correctly', async ({ page }) => {

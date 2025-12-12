@@ -65,6 +65,20 @@ const TurnBasedMessagesTestInner = () => {
     }
   }, [testLog]);
 
+  // Turn-based messages hook - MUST be before any code that uses its values
+  const {
+    turns,
+    turnsByNumber,
+    processingTurn,
+    currentTurnNumber,
+    isProcessing,
+    handleTurnStarted,
+    handleTurnMessage,
+    handleTurnComplete,
+    handleTurnError,
+    clearTurns,
+  } = useTurnBasedMessages(sessionId);
+
   // Tab switching simulation (mirrors PlayerView logic)
   // This tests if isProcessing correctly triggers tab switches
   const isAnyTurnStreaming = turns.some(turn => turn.isStreaming);
@@ -101,20 +115,6 @@ const TurnBasedMessagesTestInner = () => {
     }
     wasProcessingRef.current = isCurrentlyProcessing;
   }, [isCurrentlyProcessing, isProcessing, isNarrativeStreaming, isAnyTurnStreaming]);
-
-  // Turn-based messages hook
-  const {
-    turns,
-    turnsByNumber,
-    processingTurn,
-    currentTurnNumber,
-    isProcessing,
-    handleTurnStarted,
-    handleTurnMessage,
-    handleTurnComplete,
-    handleTurnError,
-    clearTurns,
-  } = useTurnBasedMessages(sessionId);
 
   // WebSocket connection with turn handlers
   const {

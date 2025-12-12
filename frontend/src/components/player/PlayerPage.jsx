@@ -152,20 +152,31 @@ const PlayerPage = () => {
     handleTurnMessage,
     handleTurnComplete,
     handleTurnError,
+    handleInputReceived,
     loadTurnsFromHistory,
     clearTurns,
+    appendStreamingText,
+    setCurrentTurn,
   } = useTurnBasedMessages(currentCampaignId);
 
   // Track previous campaign to detect campaign switches (for clearing)
   const prevCampaignIdRef = useRef(currentCampaignId);
   useEffect(() => {
+    console.log('📚 Turns loading effect:', {
+      currentCampaignId,
+      prevCampaignId: prevCampaignIdRef.current,
+      campaignMessagesCount: campaignMessages?.length || 0,
+      turnsCount: turns?.length || 0,
+    });
     // Clear turns when campaign changes
     if (prevCampaignIdRef.current !== currentCampaignId) {
+      console.log('📚 Campaign changed, clearing turns');
       clearTurns();
       prevCampaignIdRef.current = currentCampaignId;
     }
     // Load turns from messages
     if (campaignMessages && campaignMessages.length > 0) {
+      console.log('📚 Loading turns from', campaignMessages.length, 'messages');
       loadTurnsFromHistory(campaignMessages);
     }
   }, [campaignMessages, currentCampaignId, loadTurnsFromHistory, clearTurns]);
@@ -419,6 +430,12 @@ const PlayerPage = () => {
       const data = await apiService.readSimpleCampaign(campaignId);
       console.log('🎮 PlayerPage received from backend:', data);
       console.log('🎮 Backend structured_data.combat_status:', data?.structured_data?.combat_status);
+
+      // Initialize turn counter from backend (authoritative source)
+      if (data?.current_turn != null) {
+        setCurrentTurn(data.current_turn);
+      }
+
       if (data && data.success && data.structured_data) {
         const transformedData = transformStructuredData(data.structured_data);
         console.log('🎮 PlayerPage transformed data:', transformedData);
@@ -466,7 +483,7 @@ const PlayerPage = () => {
       loadingCampaignsRef.current.delete(campaignId);
       setIsLoading(false);
     }
-  }, [setSessionMessages, setSessionStructuredData, transformStructuredData, setCampaignName]);
+  }, [setSessionMessages, setSessionStructuredData, transformStructuredData, setCampaignName, setCurrentTurn]);
 
   // Ref for socket emit - allows useUserAudioQueue to use socket before useGameSocket is called
   const socketEmitRef = useRef(null);
@@ -855,6 +872,8 @@ const PlayerPage = () => {
               ...prev,
               [sessionId]: !update.is_final
             }));
+            // Also update turn-based view with streaming text
+            appendStreamingText(update.content, update.is_final);
             if (update.is_final) {
               delete lastNarrativeChunkSignatureRef.current[sessionId];
             }
@@ -971,6 +990,26 @@ const PlayerPage = () => {
     turn_message: handleTurnMessage,
     turn_complete: handleTurnComplete,
     turn_error: handleTurnError,
+    // Input received event (immediate feedback when DM submits - includes input text)
+    // Also clears player options since the turn has advanced
+    input_received: (data) => {
+      handleInputReceived(data);
+      // Clear player options when turn advances
+      const { session_id } = data;
+      if (session_id) {
+        setStructuredDataBySession(prev => {
+          const current = prev[session_id];
+          if (!current) return prev;
+          return {
+            ...prev,
+            [session_id]: {
+              ...current,
+              personalized_player_options: null,
+            }
+          };
+        });
+      }
+    },
     // Core game events
     narrative_chunk: (data) => handleCampaignUpdate({ ...data, type: 'narrative_chunk' }),
     player_response_chunk: (data) => handleCampaignUpdate({ ...data, type: 'player_response_chunk' }),
@@ -1033,7 +1072,7 @@ const PlayerPage = () => {
       console.log('[Collab] Player registered via Socket.IO:', data);
       setCollabIsConnected(true);
     },
-  }), [handleCampaignUpdate, handleSfxAvailable, sessionId, handleTurnStarted, handleTurnMessage, handleTurnComplete, handleTurnError]);
+  }), [handleCampaignUpdate, handleSfxAvailable, sessionId, handleTurnStarted, handleTurnMessage, handleTurnComplete, handleTurnError, handleInputReceived, setStructuredDataBySession]);
 
   // Use Socket.IO connection
   const {

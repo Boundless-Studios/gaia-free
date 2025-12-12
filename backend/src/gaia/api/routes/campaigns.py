@@ -20,6 +20,7 @@ from gaia.api.schemas.campaign import (
     PlayerCampaignMessage
 )
 from gaia.api.schemas.chat import StructuredGameData, AudioArtifactPayload
+from gaia.services.turn_counter_service import turn_counter_service
 import re
 
 logger = logging.getLogger(__name__)
@@ -983,10 +984,19 @@ class CampaignService:
                 "combat_state": None
             }
         
+        # Compute current turn number from messages
+        # Turn numbers are stored in messages; find the max to get current turn
+        current_turn = 0
+        for msg in messages:
+            turn_num = msg.get("turn_number")
+            if turn_num is not None and turn_num > current_turn:
+                current_turn = turn_num
+
         return {
             "messages": messages,
             "structured_data": structured_data,
-            "needs_response": needs_response
+            "needs_response": needs_response,
+            "current_turn": current_turn
         }
 
     def _build_campaign_response(self, campaign_id: str, data: Dict[str, Any], activated: bool) -> Dict[str, Any]:
@@ -1013,7 +1023,8 @@ class CampaignService:
             "activated": activated,  # Key difference between load and read
             "messages": data["messages"],  # Include for backward compatibility
             "message_count": len(data["messages"]),
-            "needs_response": data["needs_response"] if activated else False  # Only DM view needs responses
+            "needs_response": data["needs_response"] if activated else False,  # Only DM view needs responses
+            "current_turn": data.get("current_turn", 0)  # Current turn number from message history
         }
 
     async def load_simple_campaign(self, campaign_id: str, *, orchestrator=None) -> Dict[str, Any]:
@@ -1039,14 +1050,22 @@ class CampaignService:
             logger.info(f"Campaign {campaign_id} is already active, skipping duplicate activation")
             # Get the common campaign data without re-activating
             data = self._get_campaign_data(campaign_id)
+            # Ensure turn counter is initialized even when already active
+            current_turn = data.get("current_turn", 0)
+            await turn_counter_service.set_turn_number(campaign_id, current_turn)
             return self._build_campaign_response(campaign_id, data, activated=True)
         
         # Activate the campaign in the orchestrator (loads history and characters)
         activated = await orch.activate_campaign(campaign_id)
-        
+
         # Get the common campaign data
         data = self._get_campaign_data(campaign_id)
-        
+
+        # Initialize the turn counter service with the computed turn number
+        current_turn = data.get("current_turn", 0)
+        await turn_counter_service.set_turn_number(campaign_id, current_turn)
+        logger.info(f"Initialized turn counter for {campaign_id} to {current_turn}")
+
         # Build response with activation flags
         return self._build_campaign_response(campaign_id, data, activated=True)
 

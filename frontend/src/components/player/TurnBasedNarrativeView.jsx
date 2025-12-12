@@ -108,6 +108,24 @@ const TurnBasedNarrativeView = ({
       {/* Turn-Based Message History */}
       {turns.length > 0 || showStreamingInLatestTurn ? (
         <div className="message-history turn-based">
+          {/* In reversed mode, show standalone streaming at the top (newest first) */}
+          {reversed && turns.length === 0 && showStreamingInLatestTurn && (
+            <TurnMessage
+              key="streaming-turn"
+              turn={{
+                turn_number: 0,
+                input: null,
+                streamingText: streamingText,
+                finalMessage: null,
+                isStreaming: isActivelyStreaming,
+                error: null,
+              }}
+              campaignId={campaignId}
+              onImageGenerated={onImageGenerated}
+              hideDMInput={hideDMInput}
+            />
+          )}
+
           {orderedTurns.map((turn, index) => {
             // In reversed mode, the "latest" turn is at index 0
             // In normal mode, the "latest" turn is at the end
@@ -135,8 +153,8 @@ const TurnBasedNarrativeView = ({
             );
           })}
 
-          {/* If no turns but streaming, show as a standalone streaming turn */}
-          {turns.length === 0 && showStreamingInLatestTurn && (
+          {/* In normal mode, show standalone streaming at the bottom */}
+          {!reversed && turns.length === 0 && showStreamingInLatestTurn && (
             <TurnMessage
               key="streaming-turn"
               turn={{
