@@ -3,6 +3,63 @@ import apiService from '../../services/apiService.js';
 import './TurnMessage.css';
 
 /**
+ * Parse labeled inputs from combined text format.
+ * Handles formats like "[PlayerName]: text" or "[DM]: text"
+ * @param {string} text - Combined input text
+ * @returns {Array<{label: string, text: string}>} Parsed inputs
+ */
+function parseInputContributions(text) {
+  if (!text) return [];
+
+  const contributions = [];
+  // Match patterns like [Name]: text or [Name] (role): text
+  const labelPattern = /\[([^\]]+)\](?:\s*\([^)]*\))?:\s*/g;
+
+  let lastIndex = 0;
+  let match;
+  let lastLabel = null;
+
+  while ((match = labelPattern.exec(text)) !== null) {
+    // If there was text before this match without a label, add it as unlabeled
+    if (lastIndex < match.index && lastLabel === null) {
+      const unlabeledText = text.slice(lastIndex, match.index).trim();
+      if (unlabeledText) {
+        contributions.push({ label: 'Player', text: unlabeledText });
+      }
+    }
+
+    // Store this label for the next segment
+    if (lastLabel !== null) {
+      const segmentText = text.slice(lastIndex, match.index).trim();
+      if (segmentText) {
+        contributions.push({ label: lastLabel, text: segmentText });
+      }
+    }
+
+    lastLabel = match[1];
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add the final segment
+  if (lastIndex < text.length) {
+    const remainingText = text.slice(lastIndex).trim();
+    if (remainingText) {
+      contributions.push({
+        label: lastLabel || 'Player',
+        text: remainingText
+      });
+    }
+  }
+
+  // If no labels found at all, return the whole text as a single contribution
+  if (contributions.length === 0 && text.trim()) {
+    contributions.push({ label: null, text: text.trim() });
+  }
+
+  return contributions;
+}
+
+/**
  * TurnMessage - Renders a single turn with input and response sections.
  *
  * A turn consists of:
@@ -163,33 +220,54 @@ const TurnMessage = ({
       {/* Input Section - shows who contributed to this turn */}
       {input && (
         <div className="turn-input-section">
-          {/* Active player's action */}
-          {input.active_player && (
-            <div className="player-input active">
-              <span className="input-label">
-                {input.active_player.character_name || 'Player'}:
-              </span>
-              <span className="input-text">{input.active_player.text}</span>
-            </div>
-          )}
+          {(() => {
+            // Get the combined text to parse
+            const rawText = input.combined_prompt || input.active_player?.text || '';
+            const contributions = parseInputContributions(rawText);
 
-          {/* Observer inputs */}
-          {input.observer_inputs?.map((obs, i) => (
-            <div key={i} className="player-input observer">
-              <span className="input-label">
-                {obs.character_name || 'Observer'} (observing):
-              </span>
-              <span className="input-text">{obs.text}</span>
-            </div>
-          ))}
+            // If we have parsed contributions with labels, show them
+            if (contributions.length > 0 && contributions.some(c => c.label)) {
+              return contributions.map((contrib, i) => (
+                <div
+                  key={i}
+                  className={`player-input ${contrib.label === 'DM' ? 'dm-contribution' : ''}`}
+                >
+                  <span className={`input-label ${contrib.label === 'DM' ? 'dm-label' : ''}`}>
+                    {contrib.label}:
+                  </span>
+                  <span className="input-text">{contrib.text}</span>
+                </div>
+              ));
+            }
 
-          {/* DM additions */}
-          {input.dm_input && input.dm_input.text && (
-            <div className="dm-input">
-              <span className="input-label">DM:</span>
-              <span className="input-text">{input.dm_input.text}</span>
-            </div>
-          )}
+            // Fallback: show structured data if no labels in text
+            return (
+              <>
+                {input.active_player && (
+                  <div className="player-input active">
+                    <span className="input-label">
+                      {input.active_player.character_name || 'Player'}:
+                    </span>
+                    <span className="input-text">{input.active_player.text}</span>
+                  </div>
+                )}
+                {input.observer_inputs?.map((obs, i) => (
+                  <div key={i} className="player-input observer">
+                    <span className="input-label">
+                      {obs.character_name || 'Observer'}:
+                    </span>
+                    <span className="input-text">{obs.text}</span>
+                  </div>
+                ))}
+                {input.dm_input && input.dm_input.text && (
+                  <div className="dm-input">
+                    <span className="input-label">DM:</span>
+                    <span className="input-text">{input.dm_input.text}</span>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 

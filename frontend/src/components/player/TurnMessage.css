@@ -35,10 +35,14 @@
   border-bottom: 1px solid var(--color-border, #3a3a3a);
 }
 
+/* All inputs get consistent left border styling */
 .player-input,
 .dm-input {
   margin-bottom: 0.5rem;
   line-height: 1.5;
+  border-left: 2px solid var(--color-primary, #4a9eff);
+  padding-left: 0.5rem;
+  margin-left: 0.25rem;
 }
 
 .player-input:last-child,
@@ -46,9 +50,13 @@
   margin-bottom: 0;
 }
 
-.player-input.active .input-label {
+.player-input .input-label {
   color: var(--color-primary, #4a9eff);
   font-weight: 600;
+}
+
+.player-input.observer {
+  border-left-color: var(--color-text-secondary, #888);
 }
 
 .player-input.observer .input-label {
@@ -56,7 +64,15 @@
   font-style: italic;
 }
 
-.dm-input .input-label {
+/* DM contributions get orange styling */
+.dm-input,
+.player-input.dm-contribution {
+  border-left-color: var(--color-dm, #ffa500);
+}
+
+.dm-input .input-label,
+.player-input.dm-contribution .input-label,
+.input-label.dm-label {
   color: var(--color-dm, #ffa500);
   font-weight: 600;
 }
