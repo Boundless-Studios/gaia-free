@@ -140,11 +140,6 @@ const TurnView = ({
         {/* Player submissions (from players clicking "Submit Action") */}
         {playerSubmissions.length > 0 && (
           <div className="turn-submissions-section">
-            <div className="turn-submissions-header">
-              <span className="turn-submissions-icon">📝</span>
-              <span className="turn-submissions-title">Player Submissions</span>
-              <span className="turn-submissions-count">{playerSubmissions.length}</span>
-            </div>
             <div className="turn-submissions-list">
               {playerSubmissions.map((submission) => {
                 // Parse action text to separate main action from observations

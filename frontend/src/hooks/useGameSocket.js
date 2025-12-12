@@ -191,6 +191,11 @@ export function useGameSocket({
         'room.dm_left',
         // Player action submission (notifies DM when player submits)
         'player_action_submitted',
+        // Turn-based message events (for real-time history updates)
+        'turn_started',
+        'turn_message',
+        'turn_complete',
+        'turn_error',
       ];
 
       gameEvents.forEach((event) => {

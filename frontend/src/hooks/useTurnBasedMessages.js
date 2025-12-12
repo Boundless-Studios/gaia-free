@@ -54,9 +54,15 @@ export function useTurnBasedMessages(campaignId) {
   const handleTurnStarted = useCallback((data) => {
     const { turn_number, session_id } = data;
 
-    // Verify it's for our campaign
-    if (session_id && session_id !== campaignId) return;
+    console.log('🔄 handleTurnStarted called:', { turn_number, session_id, campaignId, match: session_id === campaignId });
 
+    // Verify it's for our campaign
+    if (session_id && session_id !== campaignId) {
+      console.log('🔄 handleTurnStarted: session_id mismatch, skipping');
+      return;
+    }
+
+    console.log('🔄 handleTurnStarted: setting processingTurn to', turn_number);
     setProcessingTurn(turn_number);
     latestTurnRef.current = Math.max(latestTurnRef.current, turn_number);
 

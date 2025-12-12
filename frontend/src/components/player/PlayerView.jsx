@@ -19,6 +19,8 @@ const PlayerView = ({
   streamingResponse = '',
   isNarrativeStreaming = false,
   isResponseStreaming = false,
+  // Event-driven processing indicator (set by turn_started socket event)
+  isProcessing = false,
   // Voice input props
   audioPermissionState = 'pending',
   userEmail = null,
@@ -61,17 +63,37 @@ const PlayerView = ({
   const [highlightInteract, setHighlightInteract] = useState(false);
   const wasStreamingRef = useRef(false);
 
-  // Determine if currently streaming
-  const isCurrentlyStreaming = isNarrativeStreaming || isResponseStreaming;
+  // Check if any turn is currently streaming (from turn-based events)
+  const isAnyTurnStreaming = turns.some(turn => turn.isStreaming);
+
+  // Determine if currently streaming - check multiple event sources
+  // 1. isProcessing: Set immediately by turn_started socket event (most reliable for remote clients)
+  // 2. Turn-based streaming: turn_message events set turn.isStreaming
+  // 3. Legacy streaming: narrative_chunk/player_response_chunk events set isNarrativeStreaming/isResponseStreaming
+  const isCurrentlyStreaming = isProcessing || isNarrativeStreaming || isResponseStreaming || isAnyTurnStreaming;
+
+  // Debug logging for streaming state
+  console.log('🔄 PlayerView streaming state:', {
+    isProcessing,
+    isNarrativeStreaming,
+    isResponseStreaming,
+    isAnyTurnStreaming,
+    isCurrentlyStreaming,
+    wasStreaming: wasStreamingRef.current,
+    activeTab,
+  });
 
   // Auto-switch to history tab when streaming starts
   useEffect(() => {
+    console.log('🔄 PlayerView useEffect triggered:', { isCurrentlyStreaming, wasStreaming: wasStreamingRef.current });
     if (isCurrentlyStreaming && !wasStreamingRef.current) {
       // Streaming just started - switch to history tab
+      console.log('🔄 Switching to history tab');
       setActiveTab('history');
       setHighlightInteract(false);
     } else if (!isCurrentlyStreaming && wasStreamingRef.current) {
       // Streaming just ended - highlight interact tab
+      console.log('🔄 Highlighting interact tab');
       setHighlightInteract(true);
     }
     wasStreamingRef.current = isCurrentlyStreaming;

@@ -40,7 +40,7 @@
 .dm-input {
   margin-bottom: 0.5rem;
   line-height: 1.5;
-  border-left: 2px solid var(--color-active-player, #ffc107);
+  border-left: 2px solid var(--color-active-player, #4a9eff);
   padding-left: 0.5rem;
   margin-left: 0.25rem;
 }
@@ -50,19 +50,19 @@
   margin-bottom: 0;
 }
 
-/* Active player: Gold */
+/* Active player: Blue */
 .player-input .input-label {
-  color: var(--color-active-player, #ffc107);
+  color: var(--color-active-player, #4a9eff);
   font-weight: 600;
 }
 
-/* Observer: Blue */
+/* Observer: Gold */
 .player-input.observer {
-  border-left-color: var(--color-observer, #4a9eff);
+  border-left-color: var(--color-observer, #ffc107);
 }
 
 .player-input.observer .input-label {
-  color: var(--color-observer, #4a9eff);
+  color: var(--color-observer, #ffc107);
   font-weight: 600;
 }
 

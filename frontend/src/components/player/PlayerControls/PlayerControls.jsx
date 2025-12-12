@@ -344,7 +344,10 @@ const PlayerControls = ({
               <div className="pending-observations-section">
                 <div className="observations-header">
                   <span className="observations-icon">👁️</span>
-                  <span className="observations-title">Party Observations</span>
+                  <span className="observations-title">
+                    Party Observations
+                    <span className="observations-help" data-tooltip="Select observations to include with your action">?</span>
+                  </span>
                   <span className="observations-count">{uniqueObservations.length}</span>
                   {selectedObservationIds.size > 0 && (
                     <span className="observations-selected-badge">
@@ -352,7 +355,6 @@ const PlayerControls = ({
                     </span>
                   )}
                 </div>
-                <div className="observations-hint">Select observations to include with your action</div>
                 <div className="observations-list">
                   {uniqueObservations.map((observation, index) => {
                     const obsId = `${observation.character_id}-${observation.observation_text}`;
@@ -387,8 +389,10 @@ const PlayerControls = ({
               {!isActivePlayer && playerOptions.length > 0 && (
                 <div className="options-section-header">
                   <span className="options-section-icon">👁️</span>
-                  <span className="options-section-title">Observe & Discover</span>
-                  <span className="options-section-hint">Click to share with active player</span>
+                  <span className="options-section-title">
+                    Observe & Discover
+                    <span className="observations-help" data-tooltip="Click to share with active player">?</span>
+                  </span>
                 </div>
               )}
               {playerOptions.length > 0 ? (

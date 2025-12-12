@@ -35,7 +35,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,  // Always reuse if running (Docker dev server)
     timeout: 120000,
   },
 });

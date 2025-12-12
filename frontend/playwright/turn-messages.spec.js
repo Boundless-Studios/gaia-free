@@ -154,3 +154,107 @@ test.describe('Event Log', () => {
     await expect(eventLog).toBeVisible({ timeout: 2000 });
   });
 });
+
+test.describe('Tab Switching (PlayerView behavior)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/test/turn-messages');
+    await expect(page.locator('h1')).toContainText('Turn-Based Messages Test');
+  });
+
+  test('should display tab switch log', async ({ page }) => {
+    const tabSwitchLog = page.locator('[data-testid="tab-switch-log"]');
+    await expect(tabSwitchLog).toBeVisible();
+    await expect(tabSwitchLog).toContainText('No tab switches yet');
+  });
+
+  test('should show embedded PlayerView', async ({ page }) => {
+    const playerView = page.locator('[data-testid="embedded-player-view"]');
+    await expect(playerView).toBeVisible();
+
+    const playerViewInner = page.locator('[data-testid="player-view"]');
+    await expect(playerViewInner).toBeVisible();
+  });
+
+  test('isProcessing should become true on turn_started', async ({ page }) => {
+    const simulateBtn = page.locator('button:has-text("Simulate Turn (Local)")');
+    const stateIndicator = page.locator('[data-testid="player-view-state"]');
+
+    // Initially should be false
+    await expect(stateIndicator).toContainText('isProcessing: false');
+
+    // Start the simulation
+    await simulateBtn.click();
+
+    // Should quickly become true
+    await expect(stateIndicator).toContainText('isProcessing: true', { timeout: 1000 });
+  });
+
+  test('tab switch log should show SWITCH_TO_HISTORY on turn start', async ({ page }) => {
+    const simulateBtn = page.locator('button:has-text("Simulate Turn (Local)")');
+    const tabSwitchLog = page.locator('[data-testid="tab-switch-log"]');
+
+    // Click simulate
+    await simulateBtn.click();
+
+    // Tab switch log should show SWITCH_TO_HISTORY
+    await expect(tabSwitchLog).toContainText('SWITCH_TO_HISTORY', { timeout: 2000 });
+    await expect(tabSwitchLog).toContainText('isProcessing=true');
+  });
+
+  test('tab switch log should show HIGHLIGHT_INTERACT on turn complete', async ({ page }) => {
+    const simulateBtn = page.locator('button:has-text("Simulate Turn (Local)")');
+    const tabSwitchLog = page.locator('[data-testid="tab-switch-log"]');
+
+    // Click simulate
+    await simulateBtn.click();
+
+    // Wait for turn to complete (streaming takes ~5 seconds in simulation)
+    await expect(tabSwitchLog).toContainText('HIGHLIGHT_INTERACT', { timeout: 10000 });
+    await expect(tabSwitchLog).toContainText('Processing completed');
+  });
+
+  test('embedded PlayerView tab should switch to history during processing', async ({ page }) => {
+    const simulateBtn = page.locator('button:has-text("Simulate Turn (Local)")');
+    const playerControls = page.locator('[data-testid="player-controls"]');
+
+    // Initially, voice/Interact tab should be active
+    const voiceTab = playerControls.locator('.tab-button').filter({ hasText: /Interact/i });
+    const historyTab = playerControls.locator('.tab-button').filter({ hasText: /History/i });
+
+    // Voice tab should be active initially
+    await expect(voiceTab).toHaveClass(/active/);
+
+    // Start simulation
+    await simulateBtn.click();
+
+    // History tab should become active
+    await expect(historyTab).toHaveClass(/active/, { timeout: 2000 });
+  });
+
+  test('embedded PlayerView Interact tab should highlight when processing completes', async ({ page }) => {
+    const simulateBtn = page.locator('button:has-text("Simulate Turn (Local)")');
+    const playerControls = page.locator('[data-testid="player-controls"]');
+
+    // Get the voice/Interact tab
+    const voiceTab = playerControls.locator('.tab-button').filter({ hasText: /Interact/i });
+
+    // Start simulation
+    await simulateBtn.click();
+
+    // Wait for turn to complete
+    await page.waitForTimeout(6000);
+
+    // Voice tab should have highlight-pulse class
+    await expect(voiceTab).toHaveClass(/highlight-pulse/, { timeout: 5000 });
+  });
+
+  test('debug state shows all streaming state variables', async ({ page }) => {
+    const debugState = page.locator('[data-testid="debug-state"]');
+
+    // Should show all the new state variables
+    await expect(debugState).toContainText('isAnyTurnStreaming');
+    await expect(debugState).toContainText('isCurrentlyProcessing');
+    await expect(debugState).toContainText('simulatedTab');
+    await expect(debugState).toContainText('highlightInteract');
+  });
+});

@@ -234,17 +234,25 @@ const TurnMessage = ({
 
             // If we have parsed contributions with labels, show them
             if (contributions.length > 0 && contributions.some(c => c.label)) {
-              return contributions.map((contrib, i) => (
-                <div
-                  key={i}
-                  className={`player-input ${contrib.label === 'DM' ? 'dm-contribution' : ''}`}
-                >
-                  <span className={`input-label ${contrib.label === 'DM' ? 'dm-label' : ''}`}>
-                    {contrib.label}:
-                  </span>
-                  <span className="input-text">{contrib.text}</span>
-                </div>
-              ));
+              return contributions.map((contrib, i) => {
+                // Check if this contribution is from an observer (label contains "observes")
+                const isObserver = contrib.label && /\bobserves?\b/i.test(contrib.label);
+                const isDM = contrib.label === 'DM';
+                // Clean up the display label (remove "observes" suffix)
+                const displayLabel = contrib.label ? contrib.label.replace(/\s*observes?$/i, '').trim() : 'Player';
+
+                return (
+                  <div
+                    key={i}
+                    className={`player-input ${isDM ? 'dm-contribution' : ''} ${isObserver ? 'observer' : ''}`}
+                  >
+                    <span className={`input-label ${isDM ? 'dm-label' : ''}`}>
+                      {displayLabel}:
+                    </span>
+                    <span className="input-text">{contrib.text}</span>
+                  </div>
+                );
+              });
             }
 
             // Fallback: show structured data if no labels in text

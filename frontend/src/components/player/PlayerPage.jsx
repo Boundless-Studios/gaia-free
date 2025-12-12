@@ -147,6 +147,7 @@ const PlayerPage = () => {
   // Turn-based messages for consistent display with DM view
   const {
     turns,
+    isProcessing,
     handleTurnStarted,
     handleTurnMessage,
     handleTurnComplete,
@@ -1320,6 +1321,7 @@ const PlayerPage = () => {
         latestStructuredData={latestStructuredData}
         campaignMessages={campaignMessages}
         turns={turns}
+        isProcessing={isProcessing}
         handlePlayerAction={handlePlayerAction}
         loadCampaignData={loadCampaignData}
         streamingNarrativeBySession={streamingNarrativeBySession}
@@ -1365,6 +1367,7 @@ const PlayerRoomShell = ({
   latestStructuredData,
   campaignMessages,
   turns,
+  isProcessing,
   handlePlayerAction,
   loadCampaignData,
   streamingNarrativeBySession,
@@ -1908,6 +1911,8 @@ const PlayerRoomShell = ({
               streamingResponse={streamingResponseBySession[currentCampaignId] || ''}
               isNarrativeStreaming={isNarrativeStreamingBySession[currentCampaignId] || false}
               isResponseStreaming={isResponseStreamingBySession[currentCampaignId] || false}
+              // Event-driven processing indicator (set by turn_started socket event)
+              isProcessing={isProcessing}
               // Collaborative editing props (now via Socket.IO)
               collabWebSocket={sioSocket}
               collabPlayerId={collabPlayerId}

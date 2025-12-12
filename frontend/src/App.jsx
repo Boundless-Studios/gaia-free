@@ -1287,6 +1287,29 @@ function App() {
 
     // Ensure message is a string - allow empty string for DM "continue" action
     if (typeof message !== 'string') return;
+
+    // Include selected player submissions in the message
+    // These are player actions the DM has selected to include in this turn
+    if (selectedPlayerSubmissionIds.size > 0) {
+      const selectedSubmissions = playerSubmissions.filter(s => selectedPlayerSubmissionIds.has(s.id));
+      if (selectedSubmissions.length > 0) {
+        // Format player submissions as "[CharacterName]: action" and prepend to message
+        const playerActionsText = selectedSubmissions
+          .map(s => `[${s.characterName}]: ${s.actionText}`)
+          .join('\n');
+
+        // Combine: player actions first, then DM's additional input (if any)
+        message = message.trim()
+          ? `${playerActionsText}\n\n${message}`
+          : playerActionsText;
+
+        log.debug('Including selected player submissions in message:', {
+          count: selectedSubmissions.length,
+          combinedLength: message.length,
+        });
+      }
+    }
+
     // For non-programmatic calls (form submission), require non-empty text
     const isProgrammaticCall = typeof messageText === 'string';
     if (!isProgrammaticCall && !message.trim()) return;
@@ -1312,7 +1335,12 @@ function App() {
     const fallbackCharacterName =
       getActiveCharacterNameForSession(sessionId) || 'Player';
     addUserMessage(sessionId, message, { messageId, characterName: fallbackCharacterName });
-    
+
+    // Clear player submissions immediately on submit (not after response)
+    // This provides instant feedback to the DM that their submission was sent
+    setPlayerSubmissions([]);
+    setSelectedPlayerSubmissionIds(new Set());
+
     try {
       log.debug("Calling message service with campaign ID:", sessionId);
       const result = await messageService.sendMessage(message, sessionId);
@@ -1361,11 +1389,6 @@ function App() {
         // Streamed response: message will be added by handleCampaignUpdate
         log.debug('Streamed response - message will be added by handleCampaignUpdate');
       }
-
-      // Clear player submissions after DM successfully processes a turn
-      // This prevents stale submissions from persisting in the DM view
-      setPlayerSubmissions([]);
-      setSelectedPlayerSubmissionIds(new Set());
     } catch (error) {
       log.error("Error in handleSendMessage:", error);
       setError(`Failed to send message: ${error.message}`);

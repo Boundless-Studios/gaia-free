@@ -1,11 +1,13 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import TurnMessage from '../components/player/TurnMessage.jsx';
+import PlayerView from '../components/player/PlayerView.jsx';
 import { useTurnBasedMessages } from '../hooks/useTurnBasedMessages.js';
 import { useGameSocket } from '../hooks/useGameSocket.js';
 import { LoadingProvider } from '../contexts/LoadingContext';
 import apiService from '../services/apiService.js';
 import '../components/player/TurnMessage.css';
+import '../components/player/PlayerView.css';
 
 /**
  * Test page for Turn-Based Message system
@@ -41,6 +43,15 @@ const TurnBasedMessagesTestInner = () => {
   // Message history from API
   const [apiMessages, setApiMessages] = useState([]);
 
+  // Tab switching test (simulates PlayerView behavior)
+  const [simulatedTab, setSimulatedTab] = useState('voice');
+  const [highlightInteract, setHighlightInteract] = useState(false);
+  const wasProcessingRef = useRef(false);
+  const [tabSwitchLog, setTabSwitchLog] = useState([]);
+
+  // Toggle to show/hide embedded PlayerView
+  const [showPlayerView, setShowPlayerView] = useState(true);
+
   const log = useCallback((message, type = 'info') => {
     const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
     console.log(`[TurnTest] ${timestamp}: ${message}`);
@@ -53,6 +64,43 @@ const TurnBasedMessagesTestInner = () => {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
   }, [testLog]);
+
+  // Tab switching simulation (mirrors PlayerView logic)
+  // This tests if isProcessing correctly triggers tab switches
+  const isAnyTurnStreaming = turns.some(turn => turn.isStreaming);
+  const isCurrentlyProcessing = isProcessing || isNarrativeStreaming || isAnyTurnStreaming;
+
+  useEffect(() => {
+    const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
+    const logEntry = {
+      timestamp,
+      isProcessing,
+      isNarrativeStreaming,
+      isAnyTurnStreaming,
+      isCurrentlyProcessing,
+      wasProcessing: wasProcessingRef.current,
+    };
+
+    if (isCurrentlyProcessing && !wasProcessingRef.current) {
+      // Processing just started - switch to history tab
+      setSimulatedTab('history');
+      setHighlightInteract(false);
+      setTabSwitchLog(prev => [...prev.slice(-20), {
+        ...logEntry,
+        action: 'SWITCH_TO_HISTORY',
+        reason: isProcessing ? 'isProcessing=true' : isNarrativeStreaming ? 'isNarrativeStreaming=true' : 'turn.isStreaming=true',
+      }]);
+    } else if (!isCurrentlyProcessing && wasProcessingRef.current) {
+      // Processing just ended - highlight interact tab
+      setHighlightInteract(true);
+      setTabSwitchLog(prev => [...prev.slice(-20), {
+        ...logEntry,
+        action: 'HIGHLIGHT_INTERACT',
+        reason: 'Processing completed',
+      }]);
+    }
+    wasProcessingRef.current = isCurrentlyProcessing;
+  }, [isCurrentlyProcessing, isProcessing, isNarrativeStreaming, isAnyTurnStreaming]);
 
   // Turn-based messages hook
   const {
@@ -678,7 +726,9 @@ const TurnBasedMessagesTestInner = () => {
               color: '#888',
               overflow: 'auto',
               maxHeight: '200px',
-            }}>
+            }}
+            data-testid="debug-state"
+            >
               {JSON.stringify({
                 sessionId,
                 isConnected,
@@ -689,10 +739,123 @@ const TurnBasedMessagesTestInner = () => {
                 turnsByNumber: Object.keys(turnsByNumber).map(Number),
                 apiMessagesCount: apiMessages.length,
                 isNarrativeStreaming,
+                isAnyTurnStreaming,
+                isCurrentlyProcessing,
+                simulatedTab,
+                highlightInteract,
               }, null, 2)}
             </pre>
           </div>
+
+          {/* Tab Switch Log */}
+          <div style={{
+            padding: '15px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            borderRadius: '8px',
+            marginTop: '20px',
+          }}>
+            <h3 style={{ marginTop: 0, color: '#e0e0e0' }}>Tab Switch Log</h3>
+            <div
+              data-testid="tab-switch-log"
+              style={{
+                maxHeight: '150px',
+                overflowY: 'auto',
+                background: '#0a0a0a',
+                padding: '10px',
+                borderRadius: '4px',
+                fontFamily: 'monospace',
+                fontSize: '11px',
+              }}
+            >
+              {tabSwitchLog.length === 0 ? (
+                <div style={{ color: '#555' }}>No tab switches yet...</div>
+              ) : (
+                tabSwitchLog.map((entry, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      color: entry.action === 'SWITCH_TO_HISTORY' ? '#4aff4a' : '#ffa500',
+                      marginBottom: '4px',
+                    }}
+                  >
+                    <span style={{ color: '#555' }}>{entry.timestamp}</span>{' '}
+                    <strong>{entry.action}</strong> - {entry.reason}
+                    <br />
+                    <span style={{ color: '#666', fontSize: '10px' }}>
+                      isProcessing={String(entry.isProcessing)}, isNarrativeStreaming={String(entry.isNarrativeStreaming)}, isAnyTurnStreaming={String(entry.isAnyTurnStreaming)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Embedded PlayerView Section */}
+      <div style={{ marginTop: '30px' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '15px',
+          marginBottom: '15px',
+        }}>
+          <h2 style={{ margin: 0, color: '#e0e0e0' }}>Embedded PlayerView</h2>
+          <button
+            onClick={() => setShowPlayerView(!showPlayerView)}
+            style={{
+              padding: '6px 12px',
+              background: showPlayerView ? '#4a9eff' : '#555',
+              border: 'none',
+              borderRadius: '4px',
+              color: 'white',
+              cursor: 'pointer',
+            }}
+          >
+            {showPlayerView ? 'Hide' : 'Show'}
+          </button>
+          <span
+            data-testid="player-view-state"
+            style={{
+              padding: '4px 8px',
+              background: isProcessing ? 'rgba(74, 255, 74, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+              borderRadius: '4px',
+              fontSize: '12px',
+              color: isProcessing ? '#4aff4a' : '#888',
+            }}
+          >
+            isProcessing: {String(isProcessing)}
+          </span>
+        </div>
+
+        {showPlayerView && (
+          <div
+            style={{
+              border: '2px solid #3a3a3a',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              height: '600px',
+              background: '#1a1a1a',
+            }}
+            data-testid="embedded-player-view"
+          >
+            <PlayerView
+              campaignId={sessionId}
+              playerId="test-player"
+              characterData={{ name: playerName, id: 'test-char-1' }}
+              latestStructuredData={null}
+              campaignMessages={apiMessages}
+              turns={turns}
+              isProcessing={isProcessing}
+              streamingNarrative={streamingNarrative}
+              streamingResponse=""
+              isNarrativeStreaming={isNarrativeStreaming}
+              isResponseStreaming={false}
+              onPlayerAction={(action) => log(`PlayerView action: ${JSON.stringify(action)}`, 'event')}
+              onLoadCampaignData={handleLoadCampaign}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
