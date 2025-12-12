@@ -70,6 +70,7 @@ from gaia.api.schemas.campaign import (
     ActiveCampaignResponse,
     PlayerCampaignResponse
 )
+from gaia.infra.storage.campaign_repository import campaign_repository
 from gaia.infra.audio.voice_registry import VoiceRegistry, VoiceProvider
 from gaia.infra.audio.provider_manager import provider_manager
 from gaia.api.routes.internal import router as internal_router
@@ -1344,6 +1345,71 @@ async def get_campaign_file_info(
     if not campaign_service:
         raise HTTPException(status_code=500, detail="Campaign endpoints not initialized")
     return await campaign_service.get_campaign_file_info(campaign_id)
+
+@app.get("/api/campaigns/{campaign_id}/state")
+async def get_campaign_state(
+    campaign_id: str,
+    current_user = optional_auth()
+):
+    """Get campaign state including current turn and active turn info.
+
+    Returns:
+        Dict with current_turn, active_turn (if processing), and version.
+    """
+    state = await campaign_repository.get_campaign_state(campaign_id)
+    if not state:
+        # Return default state if campaign not yet in DB
+        return {
+            "campaign_id": campaign_id,
+            "current_turn": 0,
+            "active_turn": None,
+            "version": 1,
+            "is_processing": False,
+        }
+    return state.to_dict()
+
+@app.get("/api/campaigns/{campaign_id}/turn_events")
+async def get_turn_events(
+    campaign_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    turn_number: Optional[int] = Query(default=None, ge=0),
+    current_user = optional_auth()
+):
+    """Get turn events for a campaign (for chat history on refresh).
+
+    Args:
+        campaign_id: Campaign identifier
+        limit: Maximum events to return (default 100, max 500)
+        offset: Offset for pagination
+        turn_number: Optional filter by specific turn
+
+    Returns:
+        List of turn events with event_id, turn_number, type, role, content, created_at.
+    """
+    events = await campaign_repository.get_turn_events(
+        external_campaign_id=campaign_id,
+        limit=limit,
+        offset=offset,
+        turn_number=turn_number,
+    )
+    return {
+        "campaign_id": campaign_id,
+        "events": [
+            {
+                "event_id": str(e.event_id),
+                "turn_number": e.turn_number,
+                "event_index": e.event_index,
+                "type": e.type,
+                "role": e.role,
+                "content": e.content,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+            }
+            for e in events
+        ],
+        "limit": limit,
+        "offset": offset,
+    }
 
 # Character endpoints
 @app.get("/api/characters/pregenerated")

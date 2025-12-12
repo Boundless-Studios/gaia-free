@@ -137,12 +137,18 @@ const PlayerPage = () => {
   const [isNarrativeStreamingBySession, setIsNarrativeStreamingBySession] = useState({});
   const [isResponseStreamingBySession, setIsResponseStreamingBySession] = useState({});
 
+  // Track backend-authoritative turn counter per session
+  const [backendTurnBySession, setBackendTurnBySession] = useState({});
+
   const latestStructuredData = currentCampaignId
     ? structuredDataBySession[currentCampaignId] ?? null
     : null;
   const campaignMessages = currentCampaignId
     ? messagesBySession[currentCampaignId] || []
     : [];
+  const backendCurrentTurn = currentCampaignId
+    ? backendTurnBySession[currentCampaignId] ?? null
+    : null;
 
   // Turn-based messages for consistent display with DM view
   const {
@@ -167,6 +173,7 @@ const PlayerPage = () => {
       prevCampaignId: prevCampaignIdRef.current,
       campaignMessagesCount: campaignMessages?.length || 0,
       turnsCount: turns?.length || 0,
+      backendCurrentTurn,
     });
     // Clear turns when campaign changes
     if (prevCampaignIdRef.current !== currentCampaignId) {
@@ -174,12 +181,12 @@ const PlayerPage = () => {
       clearTurns();
       prevCampaignIdRef.current = currentCampaignId;
     }
-    // Load turns from messages
+    // Load turns from messages with backend-authoritative turn number
     if (campaignMessages && campaignMessages.length > 0) {
-      console.log('📚 Loading turns from', campaignMessages.length, 'messages');
-      loadTurnsFromHistory(campaignMessages);
+      console.log('📚 Loading turns from', campaignMessages.length, 'messages, backendCurrentTurn=', backendCurrentTurn);
+      loadTurnsFromHistory(campaignMessages, backendCurrentTurn);
     }
-  }, [campaignMessages, currentCampaignId, loadTurnsFromHistory, clearTurns]);
+  }, [campaignMessages, currentCampaignId, backendCurrentTurn, loadTurnsFromHistory, clearTurns]);
 
   const handleRoomEvent = useCallback((event) => {
     setLastRoomEvent({ event, timestamp: Date.now() });
@@ -434,6 +441,11 @@ const PlayerPage = () => {
       // Initialize turn counter from backend (authoritative source)
       if (data?.current_turn != null) {
         setCurrentTurn(data.current_turn);
+        // Store in state so loadTurnsFromHistory can use it
+        setBackendTurnBySession(prev => ({
+          ...prev,
+          [sessionId]: data.current_turn,
+        }));
       }
 
       if (data && data.success && data.structured_data) {
