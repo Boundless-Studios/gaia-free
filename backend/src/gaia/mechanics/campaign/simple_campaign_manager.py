@@ -514,14 +514,19 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
             self._character_managers[campaign_id] = CharacterManager(campaign_id)
         return self._character_managers[campaign_id]
     
-    def load_campaign_history(self, campaign_id: str) -> List[Dict[str, Any]]:
+    def load_campaign_history(self, campaign_id: str, allow_empty: bool = True) -> List[Dict[str, Any]]:
         """Load campaign chat history from disk.
-        
+
         Args:
             campaign_id: Campaign identifier
-            
+            allow_empty: If False, raises exception if no history found for existing campaign
+
         Returns:
             List of message dictionaries
+
+        Raises:
+            FileNotFoundError: If allow_empty=False and no history file exists
+            ValueError: If history file exists but is corrupted/unreadable
         """
         # Check cache first (with 1-second expiry to avoid stale data)
         import time
@@ -531,7 +536,7 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
             if cache_age < 1.0:  # 1 second cache
                 logger.debug(f"📦 Using cached history for {campaign_id} (age: {cache_age:.3f}s)")
                 return self._history_cache[campaign_id]
-        
+
         # Local path attempt
         campaign_dir = self._find_campaign_dir(campaign_id)
         if campaign_dir:
@@ -542,12 +547,18 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
                 try:
                     with open(log_file, 'r', encoding='utf-8') as f:
                         messages = json.load(f)
+                        if not isinstance(messages, list):
+                            raise ValueError(f"Expected list, got {type(messages)}")
                         self._history_cache[campaign_id] = messages
                         self._cache_timestamp[campaign_id] = current_time
                         return messages
+                except json.JSONDecodeError as e:
+                    # CRITICAL: Don't silently return [] - this corrupts data downstream
+                    logger.error(f"❌ CRITICAL: Corrupted JSON in {log_file}: {e}")
+                    raise ValueError(f"Campaign {campaign_id} has corrupted history: {e}")
                 except Exception as e:
                     logger.error(f"❌ Error loading campaign {campaign_id}: {e}")
-                    return []
+                    raise ValueError(f"Failed to load campaign {campaign_id} history: {e}")
 
         # Object store fallback (via unified store)
         if self._store:
@@ -564,18 +575,23 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
                     self._cache_timestamp[campaign_id] = current_time
                     return messages
 
+        # No history found - this is only OK for truly new campaigns
+        if not allow_empty and campaign_dir and campaign_dir.exists():
+            raise FileNotFoundError(f"Campaign {campaign_id} exists but has no history file")
+
         logger.info(f"🆕 Campaign {campaign_id} has no history yet")
         return []
     
-    def save_campaign(self, campaign_id: str, messages: List[Dict[str, Any]], 
-                     name: Optional[str] = None) -> bool:
-        """Save campaign history to disk.
-        
+    def save_campaign(self, campaign_id: str, messages: List[Dict[str, Any]],
+                     name: Optional[str] = None, force: bool = False) -> bool:
+        """Save campaign history to disk with data loss protection.
+
         Args:
             campaign_id: Campaign identifier
             messages: List of message dictionaries
             name: Optional campaign name
-            
+            force: If True, bypass safety checks (use with caution)
+
         Returns:
             True if saved successfully
         """
@@ -586,6 +602,45 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
                 logger.warning("⚠️ Campaign %s could not resolve storage directory", campaign_id)
                 return False
 
+            # Ensure required subdirectories exist
+            logs_dir = self.storage.ensure_subdir(campaign_id, "logs")
+            data_dir = self.storage.ensure_subdir(campaign_id, "data")
+            log_file = logs_dir / "chat_history.json"
+
+            # DATA LOSS PROTECTION: Check existing file before overwriting
+            new_count = len(messages) if isinstance(messages, list) else 0
+            existing_count = 0
+
+            if log_file.exists() and not force:
+                try:
+                    with open(log_file, 'r', encoding='utf-8') as f:
+                        existing_data = json.load(f)
+                        if isinstance(existing_data, list):
+                            existing_count = len(existing_data)
+                        elif isinstance(existing_data, dict) and "messages" in existing_data:
+                            existing_count = len(existing_data.get("messages", []))
+                except Exception as read_err:
+                    logger.warning(f"⚠️ Could not read existing history for safety check: {read_err}")
+
+                # Safety check: refuse to save if we'd lose more than 50% of messages
+                # Only applies when existing file has > 10 messages (avoid false positives for new campaigns)
+                if existing_count > 10 and new_count < existing_count * 0.5:
+                    logger.error(
+                        f"🛡️ DATA LOSS PREVENTION: Refusing to save {campaign_id}! "
+                        f"Would reduce messages from {existing_count} to {new_count}. "
+                        f"Use force=True to override."
+                    )
+                    return False
+
+                # Create backup before overwriting if we have significant existing data
+                if existing_count > 5:
+                    backup_file = logs_dir / f"chat_history.backup.json"
+                    try:
+                        shutil.copy2(log_file, backup_file)
+                        logger.debug(f"📦 Created backup: {backup_file}")
+                    except Exception as backup_err:
+                        logger.warning(f"⚠️ Could not create backup: {backup_err}")
+
             now_iso = datetime.now().isoformat()
             last_message_ts = None
             if isinstance(messages, list) and messages:
@@ -595,11 +650,7 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
             if not last_message_ts:
                 last_message_ts = now_iso
 
-            if isinstance(messages, list):
-                message_count = len(messages)
-            else:
-                existing_meta = self.storage.load_metadata(campaign_id)
-                message_count = existing_meta.get("message_count", 0) if isinstance(existing_meta, dict) else 0
+            message_count = new_count
             metadata_updates: Dict[str, Any] = {
                 "updated_at": now_iso,
                 "message_count": message_count,
@@ -609,11 +660,7 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
             if name:
                 metadata_updates["name"] = name
             self._update_metadata(campaign_id, metadata_updates)
-            
-            # Ensure required subdirectories exist
-            logs_dir = self.storage.ensure_subdir(campaign_id, "logs")
-            data_dir = self.storage.ensure_subdir(campaign_id, "data")
-            
+
             # Add timestamps and message_ids if missing (preserve existing values)
             import uuid as uuid_mod
             for msg in messages:
@@ -621,26 +668,96 @@ class SimpleCampaignManager(metaclass=SingletonMeta):
                     msg['timestamp'] = datetime.now().isoformat()
                 if 'message_id' not in msg:
                     msg['message_id'] = f"msg_{uuid_mod.uuid4().hex[:12]}"
-            
+
             # Save to logs directory
-            log_file = logs_dir / "chat_history.json"
             with open(log_file, 'w', encoding='utf-8') as f:
                 json.dump(messages, f, indent=2, ensure_ascii=False)
+
+            if existing_count > 0:
+                logger.info(f"💾 Saved campaign {campaign_id}: {existing_count} -> {new_count} messages")
+
             # Mirror via hybrid store (to GCS when enabled)
             if self._store:
                 self._store.write_json(messages, campaign_id, "logs/chat_history.json")
-            
+
             # Invalidate cache after save
             if campaign_id in self._history_cache:
                 del self._history_cache[campaign_id]
                 del self._cache_timestamp[campaign_id]
-                
+
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Error saving campaign {campaign_id}: {e}")
             return False
-    
+
+    def append_message(self, campaign_id: str, message: Dict[str, Any]) -> bool:
+        """Append a single message to campaign history (append-only, no full rewrite).
+
+        This is the safe way to add messages - it reads the current file,
+        appends the new message, and writes back. This prevents data loss
+        from stale in-memory state.
+
+        Args:
+            campaign_id: Campaign identifier
+            message: Message dict with role, content, timestamp, etc.
+
+        Returns:
+            True if appended successfully
+        """
+        import uuid as uuid_mod
+
+        try:
+            campaign_dir = self._find_campaign_dir(campaign_id)
+            if not campaign_dir:
+                logger.error(f"❌ Cannot append: campaign {campaign_id} not found")
+                return False
+
+            logs_dir = campaign_dir / "logs"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            log_file = logs_dir / "chat_history.json"
+
+            # Read current history directly from disk (not cache)
+            messages = []
+            if log_file.exists():
+                try:
+                    with open(log_file, 'r', encoding='utf-8') as f:
+                        messages = json.load(f)
+                        if not isinstance(messages, list):
+                            logger.warning(f"⚠️ History was not a list, starting fresh")
+                            messages = []
+                except json.JSONDecodeError as e:
+                    logger.error(f"❌ Corrupted history file, cannot append: {e}")
+                    return False
+
+            # Add timestamp and message_id if missing
+            if 'timestamp' not in message:
+                message['timestamp'] = datetime.now().isoformat()
+            if 'message_id' not in message:
+                message['message_id'] = f"msg_{uuid_mod.uuid4().hex[:12]}"
+
+            # Append the new message
+            messages.append(message)
+
+            # Write back
+            with open(log_file, 'w', encoding='utf-8') as f:
+                json.dump(messages, f, indent=2, ensure_ascii=False)
+
+            # Mirror to object store if enabled
+            if self._store:
+                self._store.write_json(messages, campaign_id, "logs/chat_history.json")
+
+            # Update cache
+            self._history_cache[campaign_id] = messages
+            self._cache_timestamp[campaign_id] = __import__('time').time()
+
+            logger.debug(f"📝 Appended message to {campaign_id}, total: {len(messages)}")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Error appending message to {campaign_id}: {e}")
+            return False
+
     def delete_campaign(self, campaign_id: str) -> bool:
         """Delete a campaign.
         
