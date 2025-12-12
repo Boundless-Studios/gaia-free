@@ -1302,6 +1302,16 @@ async def submit_turn(sid: str, data: Dict[str, Any]):
             role="user",
         )
 
+        # Persist turn_input event to DB
+        await turn_counter_service.add_turn_input_event(
+            campaign_id=session_id,
+            turn_number=turn_number,
+            active_player=data.get("active_player_input"),
+            observer_inputs=data.get("observer_inputs", []),
+            dm_input=data.get("dm_input"),
+            combined_prompt=data.get("message", ""),
+        )
+
         # 3. Get session manager and process the turn
         # Import here to avoid circular imports
         from gaia.api.routes.chat import _get_player_options_service, transform_structured_data
@@ -1420,6 +1430,18 @@ async def submit_turn(sid: str, data: Dict[str, Any]):
             obs_manager.clear_included(session_id)
         except Exception as obs_err:
             logger.warning("[submit_turn] Failed to clear observations: %s", obs_err)
+
+        # Persist assistant response to DB and mark turn complete
+        if result:
+            await turn_counter_service.add_assistant_response_event(
+                campaign_id=session_id,
+                turn_number=turn_number,
+                content={
+                    "narrative": final_text,
+                    "structured_data": structured_data_raw,
+                },
+            )
+        await turn_counter_service.complete_turn(session_id, turn_number)
 
         # 6. Emit turn_complete
         await sio.emit(
