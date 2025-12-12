@@ -66,7 +66,7 @@ export function useTurnBasedMessages(campaignId) {
     setProcessingTurn(turn_number);
     latestTurnRef.current = Math.max(latestTurnRef.current, turn_number);
 
-    // Initialize turn state
+    // Initialize turn state - mark as streaming so processing indicator shows immediately
     setTurnsByNumber(prev => ({
       ...prev,
       [turn_number]: {
@@ -74,7 +74,7 @@ export function useTurnBasedMessages(campaignId) {
         input: null,
         streamingText: '',
         finalMessage: null,
-        isStreaming: false,
+        isStreaming: true,  // Show processing indicator immediately
         error: null,
       }
     }));
@@ -299,6 +299,14 @@ export function useTurnBasedMessages(campaignId) {
           turns[turnNumber].finalMessage = msg;
         }
       });
+
+      // Mark incomplete turns as streaming (have input but no final response)
+      // This handles the case where we reload during backend processing
+      Object.values(turns).forEach(turn => {
+        if (turn.input && !turn.finalMessage) {
+          turn.isStreaming = true;
+        }
+      });
     } else {
       // Legacy format: convert user/dm message pairs to turns
       let turnNum = 0;
@@ -387,11 +395,33 @@ export function useTurnBasedMessages(campaignId) {
       if (currentUserMsg || currentDmMsgs.length > 0) {
         processTurnGroup();
       }
+
+      // Mark incomplete turns as streaming (have input but no final response)
+      Object.values(turns).forEach(turn => {
+        if (turn.input && !turn.finalMessage) {
+          turn.isStreaming = true;
+        }
+      });
     }
 
     // Use backend's current_turn as authoritative source if provided, otherwise use calculated max
     const finalTurn = backendCurrentTurn != null ? Math.max(backendCurrentTurn, maxTurn) : maxTurn;
     console.log('📚 loadTurnsFromHistory: created', Object.keys(turns).length, 'turns, maxTurn=', maxTurn, 'backendCurrentTurn=', backendCurrentTurn, 'finalTurn=', finalTurn);
+
+    // If backendCurrentTurn indicates a turn in progress that we don't have messages for,
+    // create a placeholder turn so we show a processing indicator
+    if (backendCurrentTurn != null && backendCurrentTurn > maxTurn && !turns[backendCurrentTurn]) {
+      console.log('📚 Creating placeholder for in-progress turn:', backendCurrentTurn);
+      turns[backendCurrentTurn] = {
+        turn_number: backendCurrentTurn,
+        input: null,
+        streamingText: '',
+        finalMessage: null,
+        isStreaming: true,  // Show processing indicator
+        error: null,
+      };
+    }
+
     latestTurnRef.current = finalTurn;
     setTurnsByNumber(turns);
   }, []);

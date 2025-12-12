@@ -301,8 +301,8 @@ const TurnMessage = ({
         </div>
       )}
 
-      {/* DM Response Section */}
-      {(hasContent || isStreaming || error) && (
+      {/* DM Response Section - only show when there's actual content or error */}
+      {(hasContent || error) && (
         <div className="dm-response-section">
           <div className="response-header">
             <span className="response-label">DM:</span>
@@ -350,8 +350,8 @@ const TurnMessage = ({
         </div>
       )}
 
-      {/* Processing indicator */}
-      {isStreaming && !hasContent && (
+      {/* Processing indicator - show when streaming but no content yet */}
+      {isStreaming && !hasContent && !error && (
         <div className="processing-indicator">
           <LoadingSpinner />
           <span>Processing...</span>
