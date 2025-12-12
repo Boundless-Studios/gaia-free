@@ -202,38 +202,117 @@ export function useTurnBasedMessages(campaignId) {
   /**
    * Load existing turns from backend history.
    * Called when loading a campaign to restore turn state.
+   * Supports both new format (with turn_number) and legacy format (user/dm pairs).
    */
   const loadTurnsFromHistory = useCallback((messages) => {
-    if (!Array.isArray(messages)) return;
+    if (!Array.isArray(messages) || messages.length === 0) return;
 
     const turns = {};
     let maxTurn = 0;
 
-    messages.forEach(msg => {
-      const turnNumber = msg.turn_number;
-      if (turnNumber == null) return; // Skip messages without turn numbers
+    // Check if messages have turn_number (new format)
+    const hasNewFormat = messages.some(msg => msg.turn_number != null);
 
-      maxTurn = Math.max(maxTurn, turnNumber);
+    if (hasNewFormat) {
+      // New format: messages have turn_number and response_type
+      messages.forEach(msg => {
+        const turnNumber = msg.turn_number;
+        if (turnNumber == null) return;
 
-      if (!turns[turnNumber]) {
-        turns[turnNumber] = {
-          turn_number: turnNumber,
+        maxTurn = Math.max(maxTurn, turnNumber);
+
+        if (!turns[turnNumber]) {
+          turns[turnNumber] = {
+            turn_number: turnNumber,
+            input: null,
+            streamingText: '',
+            finalMessage: null,
+            isStreaming: false,
+            error: null,
+          };
+        }
+
+        const responseType = msg.response_type;
+        if (responseType === 'turn_input') {
+          turns[turnNumber].input = msg.content;
+        } else if (responseType === 'final') {
+          turns[turnNumber].finalMessage = msg;
+        }
+      });
+    } else {
+      // Legacy format: convert user/dm message pairs to turns
+      let turnNum = 0;
+      let currentUserMsg = null;
+      let currentDmMsgs = [];
+
+      const processTurnGroup = () => {
+        if (turnNum === 0) return;
+
+        const turn = {
+          turn_number: turnNum,
           input: null,
           streamingText: '',
           finalMessage: null,
           isStreaming: false,
           error: null,
         };
-      }
 
-      const responseType = msg.response_type;
-      if (responseType === 'turn_input') {
-        turns[turnNumber].input = msg.content;
-      } else if (responseType === 'final') {
-        turns[turnNumber].finalMessage = msg;
+        // Convert user message to input
+        if (currentUserMsg) {
+          turn.input = {
+            active_player: {
+              character_id: currentUserMsg.character_id || 'player',
+              character_name: currentUserMsg.character_name || currentUserMsg.characterName || 'Player',
+              text: currentUserMsg.text || currentUserMsg.content || '',
+            },
+            observer_inputs: [],
+            dm_input: null,
+            combined_prompt: currentUserMsg.text || currentUserMsg.content || '',
+          };
+        }
+
+        // Convert DM message to final response
+        const dmMsg = currentDmMsgs[currentDmMsgs.length - 1];
+        if (dmMsg) {
+          turn.finalMessage = {
+            message_id: dmMsg.message_id || dmMsg.id || `hist-${turnNum}-dm`,
+            turn_number: turnNum,
+            response_index: 2,
+            role: 'assistant',
+            content: dmMsg.text || dmMsg.content || '',
+            character_name: 'DM',
+            has_audio: dmMsg.hasAudio || dmMsg.has_audio || false,
+            timestamp: dmMsg.timestamp,
+          };
+        }
+
+        turns[turnNum] = turn;
+        maxTurn = Math.max(maxTurn, turnNum);
+      };
+
+      messages.forEach((msg) => {
+        const isUser = msg.sender === 'user' || msg.role === 'user';
+        const isDM = msg.sender === 'dm' || msg.role === 'assistant';
+
+        if (isUser) {
+          // New user message starts a new turn
+          if (currentUserMsg || currentDmMsgs.length > 0) {
+            processTurnGroup();
+          }
+          turnNum++;
+          currentUserMsg = msg;
+          currentDmMsgs = [];
+        } else if (isDM) {
+          // DM message belongs to current turn
+          currentDmMsgs.push(msg);
+        }
+      });
+
+      // Process final turn group
+      if (currentUserMsg || currentDmMsgs.length > 0) {
+        processTurnGroup();
       }
-      // Streaming messages are ephemeral - not loaded from history
-    });
+    }
 
     latestTurnRef.current = maxTurn;
     setTurnsByNumber(turns);
@@ -255,7 +334,8 @@ export function useTurnBasedMessages(campaignId) {
     return Object.keys(turnsByNumber)
       .map(Number)
       .sort((a, b) => a - b)
-      .map(turnNum => turnsByNumber[turnNum]);
+      .map(turnNum => turnsByNumber[turnNum])
+      .filter(turn => turn != null); // Filter out any undefined entries
   }, [turnsByNumber]);
 
   /**

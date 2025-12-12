@@ -6,7 +6,7 @@ import PlayerAndTurnList from './PlayerAndTurnList/PlayerAndTurnList';
 import CollaborativeStackedEditor from './collaborative/CollaborativeStackedEditor.jsx';
 import apiService from '../services/apiService';
 import './GameDashboard.css';
-import StreamingNarrativeView from './player/StreamingNarrativeView.jsx';
+import TurnBasedNarrativeView from './player/TurnBasedNarrativeView.jsx';
 import { useRoom } from '../contexts/RoomContext.jsx';
 import RoomManagementDrawer from './dm/RoomManagementDrawer.jsx';
 import Button from './base-ui/Button.jsx';
@@ -22,6 +22,8 @@ const GameDashboard = forwardRef(
     isResponseStreaming = false,
     onDebugStreamPreview,
     messages = [],
+    // Turn-based message system props
+    turns = [],
     // Chat input props
     inputMessage = '',
     onInputChange,
@@ -231,12 +233,12 @@ const GameDashboard = forwardRef(
         </div>
       </div>
       <div className="streaming-panel-body">
-        <StreamingNarrativeView
+        <TurnBasedNarrativeView
           narrative={streamingNarrativeText}
           playerResponse={streamingResponseText}
           isNarrativeStreaming={isNarrativeStreaming}
           isResponseStreaming={isResponseStreaming}
-          messages={messages}
+          turns={turns}
           onImageGenerated={onImageGenerated}
           campaignId={campaignId}
         />

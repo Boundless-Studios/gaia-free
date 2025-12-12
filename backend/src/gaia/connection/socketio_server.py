@@ -1304,12 +1304,17 @@ async def submit_turn(sid: str, data: Dict[str, Any]):
         if player_character and isinstance(player_character, dict):
             player_character_payload = player_character
 
-        # Get session context
+        # Get session context - use the session_id from the request
+        # (which should match the campaign the user is connected to)
         try:
             from gaia_private.session.session_manager import SessionNotFoundError
             session_context = await session_manager.get_or_create(session_id)
         except SessionNotFoundError:
             raise RuntimeError(f"Session '{session_id}' not found")
+
+        # Use the session_id passed in the request, not session_context.campaign_id
+        # This ensures we process the turn for the correct campaign
+        campaign_id_for_turn = session_id
 
         # Process the turn - this may take a while (streaming response)
         response_index = 1
@@ -1318,7 +1323,7 @@ async def submit_turn(sid: str, data: Dict[str, Any]):
         async with session_context.lock:
             result = await session_context.orchestrator.run_campaign(
                 user_input=data.get("message", ""),
-                campaign_id=session_context.campaign_id,
+                campaign_id=campaign_id_for_turn,
                 player_character=player_character_payload,
                 broadcaster=socketio_broadcaster,
             )

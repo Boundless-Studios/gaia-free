@@ -205,6 +205,21 @@ function App() {
     clearTurns,
   } = useTurnBasedMessages(currentCampaignId);
 
+  // Convert messages to turns when messages change
+  // Track previous campaign to detect campaign switches (for clearing)
+  const prevCampaignIdRef = useRef(currentCampaignId);
+  useEffect(() => {
+    // Clear turns when campaign changes
+    if (prevCampaignIdRef.current !== currentCampaignId) {
+      clearTurns();
+      prevCampaignIdRef.current = currentCampaignId;
+    }
+    // Load turns from messages
+    if (messages && messages.length > 0) {
+      loadTurnsFromHistory(messages);
+    }
+  }, [messages, currentCampaignId, loadTurnsFromHistory, clearTurns]);
+
   // Campaign state management via custom hook
   const {
     structuredData: latestStructuredData,
@@ -1633,6 +1648,8 @@ function App() {
                 isResponseStreaming={dmIsResponseStreaming}
                 onDebugStreamPreview={handleDebugStreamPreview}
                 messages={messages}
+                // Turn-based message system props
+                turns={turnBasedMessages}
                 inputMessage={inputMessage}
                 onInputChange={(e) => setInputMessage(e.target.value)}
                 onSendMessage={handleSendMessage}

@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react';
-import SFXTextParser from '../SFXTextParser.jsx';
 import apiService from '../../services/apiService.js';
 import './TurnMessage.css';
 
@@ -235,7 +234,7 @@ const TurnMessage = ({
               </div>
             ) : (
               <>
-                <SFXTextParser text={displayText} sessionId={campaignId} />
+                <span>{displayText}</span>
                 {isStreaming && <span className="streaming-cursor">|</span>}
               </>
             )}

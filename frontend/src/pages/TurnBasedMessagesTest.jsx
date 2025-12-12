@@ -4,6 +4,7 @@ import TurnMessage from '../components/player/TurnMessage.jsx';
 import { useTurnBasedMessages } from '../hooks/useTurnBasedMessages.js';
 import { useGameSocket } from '../hooks/useGameSocket.js';
 import { LoadingProvider } from '../contexts/LoadingContext';
+import apiService from '../services/apiService.js';
 import '../components/player/TurnMessage.css';
 
 /**
@@ -28,6 +29,17 @@ const TurnBasedMessagesTestInner = () => {
   // Test log
   const [testLog, setTestLog] = useState([]);
   const logRef = useRef(null);
+
+  // Messages container ref for autoscroll
+  const messagesContainerRef = useRef(null);
+
+  // Streaming state (like PlayerPage)
+  const [streamingNarrative, setStreamingNarrative] = useState('');
+  const [isNarrativeStreaming, setIsNarrativeStreaming] = useState(false);
+  const streamingTurnRef = useRef(null); // Track which turn the streaming belongs to
+
+  // Message history from API
+  const [apiMessages, setApiMessages] = useState([]);
 
   const log = useCallback((message, type = 'info') => {
     const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
@@ -90,8 +102,52 @@ const TurnBasedMessagesTestInner = () => {
       registered: (data) => {
         log(`registered: ${data.playerId}`, 'event');
       },
+      // Handle narrative_chunk like the real app does
       narrative_chunk: (data) => {
-        log(`narrative_chunk: ${data.content?.slice(0, 30)}...`, 'event');
+        log(`narrative_chunk: "${data.content?.slice(0, 30)}..." final=${data.is_final}`, 'event');
+
+        if (data.content) {
+          // Use existing turn if already started (from handleSubmitTurn), otherwise create new
+          if (!streamingTurnRef.current) {
+            const turnNum = currentTurnNumber + 1;
+            streamingTurnRef.current = turnNum;
+            handleTurnStarted({ turn_number: turnNum, session_id: sessionId });
+          }
+
+          // Accumulate streaming content
+          setStreamingNarrative(prev => prev + data.content);
+          setIsNarrativeStreaming(!data.is_final);
+
+          // Send as streaming turn message
+          handleTurnMessage({
+            turn_number: streamingTurnRef.current,
+            response_index: 1,
+            response_type: 'streaming',
+            content: data.content,
+          });
+        }
+
+        if (data.is_final && streamingTurnRef.current) {
+          const turnNum = streamingTurnRef.current;
+          // Get the full accumulated text and send final
+          setStreamingNarrative(prev => {
+            const fullText = prev + (data.content || '');
+            // Send final message
+            handleTurnMessage({
+              message_id: `narrative-${Date.now()}`,
+              turn_number: turnNum,
+              response_index: 2,
+              response_type: 'final',
+              role: 'assistant',
+              content: fullText,
+              has_audio: false,
+            });
+            handleTurnComplete({ turn_number: turnNum, session_id: sessionId });
+            return ''; // Reset streaming
+          });
+          streamingTurnRef.current = null;
+          setIsNarrativeStreaming(false);
+        }
       },
       campaign_updated: (data) => {
         log(`campaign_updated received`, 'event');
@@ -105,6 +161,31 @@ const TurnBasedMessagesTestInner = () => {
       log('Cannot submit: not connected to WebSocket', 'error');
       return;
     }
+
+    // Start a new turn immediately with the player input
+    const turnNum = currentTurnNumber + 1;
+    streamingTurnRef.current = turnNum;
+
+    handleTurnStarted({ turn_number: turnNum, session_id: sessionId });
+
+    // Send turn_input immediately so player input shows
+    handleTurnMessage({
+      message_id: `submit-${turnNum}-input`,
+      turn_number: turnNum,
+      response_index: 0,
+      response_type: 'turn_input',
+      role: 'user',
+      content: {
+        active_player: {
+          character_id: 'test-char-1',
+          character_name: playerName,
+          text: messageText,
+        },
+        observer_inputs: [],
+        dm_input: dmText ? { text: dmText } : null,
+        combined_prompt: messageText,
+      },
+    });
 
     const turnData = {
       session_id: sessionId,
@@ -124,7 +205,7 @@ const TurnBasedMessagesTestInner = () => {
 
     log(`Emitting submit_turn: "${messageText.slice(0, 40)}..."`, 'send');
     emit('submit_turn', turnData);
-  }, [isConnected, sessionId, messageText, playerName, dmText, emit, log]);
+  }, [isConnected, sessionId, messageText, playerName, dmText, emit, log, currentTurnNumber, handleTurnStarted, handleTurnMessage]);
 
   // Simulate turn events locally (for testing without backend)
   const handleSimulateTurn = useCallback(() => {
@@ -202,6 +283,114 @@ const TurnBasedMessagesTestInner = () => {
     log(`Image generated: ${imageData.generated_image_type}`, 'info');
   }, [log]);
 
+  // Load campaign messages from API and convert to turns
+  const handleLoadCampaign = useCallback(async () => {
+    if (!sessionId) {
+      log('No session ID provided', 'error');
+      return;
+    }
+
+    log(`Loading campaign: ${sessionId}...`, 'info');
+
+    try {
+      const data = await apiService.readSimpleCampaign(sessionId);
+      log(`Loaded campaign: ${data?.name || sessionId}`, 'info');
+
+      if (data?.messages && Array.isArray(data.messages)) {
+        setApiMessages(data.messages);
+        log(`Found ${data.messages.length} messages`, 'info');
+
+        // Convert messages to turns
+        // Group messages by their turn_number if available, otherwise create pseudo-turns
+        clearTurns();
+
+        let turnNum = 0;
+        let currentTurnMessages = [];
+
+        data.messages.forEach((msg, idx) => {
+          // Start a new turn on each user message
+          if (msg.sender === 'user' || msg.role === 'user') {
+            if (currentTurnMessages.length > 0) {
+              // Process previous turn
+              processTurn(turnNum, currentTurnMessages);
+            }
+            turnNum++;
+            currentTurnMessages = [msg];
+          } else {
+            currentTurnMessages.push(msg);
+          }
+        });
+
+        // Process final turn
+        if (currentTurnMessages.length > 0) {
+          processTurn(turnNum, currentTurnMessages);
+        }
+
+        log(`Created ${turnNum} turns from history`, 'info');
+      }
+    } catch (error) {
+      log(`Failed to load campaign: ${error.message}`, 'error');
+    }
+  }, [sessionId, clearTurns, log, handleTurnStarted, handleTurnMessage, handleTurnComplete]);
+
+  // Helper to convert message groups to turns
+  const processTurn = useCallback((turnNum, messages) => {
+    if (turnNum === 0 || messages.length === 0) return;
+
+    handleTurnStarted({ turn_number: turnNum, session_id: sessionId });
+
+    // Find user and DM messages
+    const userMsg = messages.find(m => m.sender === 'user' || m.role === 'user');
+    const dmMsg = messages.find(m => m.sender === 'dm' || m.role === 'assistant');
+
+    // Send turn_input
+    if (userMsg) {
+      handleTurnMessage({
+        message_id: userMsg.message_id || `hist-${turnNum}-input`,
+        turn_number: turnNum,
+        response_index: 0,
+        response_type: 'turn_input',
+        role: 'user',
+        content: {
+          active_player: {
+            character_id: userMsg.character_id || 'player',
+            character_name: userMsg.character_name || userMsg.characterName || 'Player',
+            text: userMsg.text || userMsg.content || '',
+          },
+          observer_inputs: [],
+          dm_input: null,
+          combined_prompt: userMsg.text || userMsg.content || '',
+        },
+      });
+    }
+
+    // Send final DM response
+    if (dmMsg) {
+      handleTurnMessage({
+        message_id: dmMsg.message_id || `hist-${turnNum}-dm`,
+        turn_number: turnNum,
+        response_index: 2,
+        response_type: 'final',
+        role: 'assistant',
+        content: dmMsg.text || dmMsg.content || '',
+        character_name: 'DM',
+        has_audio: dmMsg.hasAudio || false,
+      });
+    }
+
+    handleTurnComplete({ turn_number: turnNum, session_id: sessionId });
+  }, [sessionId, handleTurnStarted, handleTurnMessage, handleTurnComplete]);
+
+  // Autoscroll messages container when turns change or streaming updates
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [turns.length, streamingNarrative]);
+
   return (
     <div className="turn-test-page" style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
       <h1 style={{ marginBottom: '20px', color: '#e0e0e0' }}>Turn-Based Messages Test</h1>
@@ -265,19 +454,35 @@ const TurnBasedMessagesTestInner = () => {
                 Change Session
               </button>
             </div>
-            <button
-              onClick={clearTurns}
-              style={{
-                padding: '8px 16px',
-                background: '#ff4a4a',
-                border: 'none',
-                borderRadius: '4px',
-                color: 'white',
-                cursor: 'pointer',
-              }}
-            >
-              Clear Turns
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={handleLoadCampaign}
+                style={{
+                  padding: '8px 16px',
+                  background: '#4aff4a',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: 'black',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                }}
+              >
+                Load Campaign
+              </button>
+              <button
+                onClick={clearTurns}
+                style={{
+                  padding: '8px 16px',
+                  background: '#ff4a4a',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                Clear Turns
+              </button>
+            </div>
           </div>
 
           {/* Turn Submission */}
@@ -429,10 +634,13 @@ const TurnBasedMessagesTestInner = () => {
           }}>
             <h3 style={{ marginTop: 0, color: '#e0e0e0' }}>Turn Messages ({turns.length} turns)</h3>
 
-            <div style={{
-              maxHeight: '600px',
-              overflowY: 'auto',
-            }}>
+            <div
+              ref={messagesContainerRef}
+              style={{
+                maxHeight: '600px',
+                overflowY: 'auto',
+              }}
+            >
               {turns.length === 0 ? (
                 <div style={{
                   padding: '40px',
@@ -479,6 +687,8 @@ const TurnBasedMessagesTestInner = () => {
                 isProcessing,
                 turnsCount: turns.length,
                 turnsByNumber: Object.keys(turnsByNumber).map(Number),
+                apiMessagesCount: apiMessages.length,
+                isNarrativeStreaming,
               }, null, 2)}
             </pre>
           </div>

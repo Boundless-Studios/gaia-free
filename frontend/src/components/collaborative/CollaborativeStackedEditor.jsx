@@ -137,7 +137,6 @@ const CollaborativeStackedEditor = forwardRef(({
         contents[key] = value;
       });
       setPlayerContents(contents);
-      logDebug('Updated player contents from Yjs', { playerCount: Object.keys(contents).length });
 
       // Notify parent of my section changes
       if (onMySectionChange) {
@@ -257,8 +256,6 @@ const CollaborativeStackedEditor = forwardRef(({
         update: Array.from(update),
         timestamp: new Date().toISOString()
       });
-
-      logDebug('Broadcasting Yjs update', { size: update.length });
     };
 
     const sendRegistration = () => {
@@ -341,8 +338,6 @@ const CollaborativeStackedEditor = forwardRef(({
     ydoc.transact(() => {
       yMap.set(playerId, newContent);
     });
-
-    logDebug('Updated my section', { length: newContent.length });
   }, [playerId, logDebug, logWarn]);
 
   // Clear all player text in the Yjs document
