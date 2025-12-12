@@ -312,8 +312,6 @@ export function useTurnBasedMessages(campaignId) {
     // Note: We no longer infer streaming state from missing finalMessage
     // Historical incomplete turns are displayed as-is without streaming indicator
 
-    latestTurnRef.current = finalTurn;
-
     // MERGE with existing state to preserve WebSocket-received data
     // WebSocket events may have set input/finalMessage that aren't in the API response yet
     setTurnsByNumber(prev => {
@@ -329,20 +327,26 @@ export function useTurnBasedMessages(campaignId) {
           // No existing data for this turn, use history
           merged[turnNum] = historyTurn;
         } else {
-          // Merge: prefer WebSocket data over history for real-time fields
+          // Merge: prefer history for authoritative persisted data, WebSocket for real-time state
           merged[turnNum] = {
             ...historyTurn,
             // Keep existing input if it exists (from WebSocket turn_input event)
+            // WebSocket input may be more recent than persisted history
             input: existingTurn.input || historyTurn.input,
-            // Keep existing finalMessage if it exists (from WebSocket final event)
-            finalMessage: existingTurn.finalMessage || historyTurn.finalMessage,
-            // Keep streaming text if present
+            // Prefer history finalMessage when it has content (authoritative persisted source)
+            // Only fall back to WebSocket cached data if history is empty
+            finalMessage: historyTurn.finalMessage || existingTurn.finalMessage,
+            // Keep streaming text if present (real-time state)
             streamingText: existingTurn.streamingText || historyTurn.streamingText,
-            // Keep streaming state if turn is actively streaming
+            // Keep streaming state if turn is actively streaming (real-time state)
             isStreaming: existingTurn.isStreaming || historyTurn.isStreaming,
           };
         }
       });
+
+      // Ensure latestTurnRef never regresses - take max of current ref, finalTurn, and merged keys
+      const mergedMaxTurn = Math.max(0, ...Object.keys(merged).map(Number));
+      latestTurnRef.current = Math.max(latestTurnRef.current, finalTurn, mergedMaxTurn);
 
       return merged;
     });
