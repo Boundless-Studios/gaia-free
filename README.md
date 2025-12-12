@@ -116,15 +116,12 @@ cat ~/.config/sops/age/keys.txt | grep "public key:"
 
 For more details, see the [Detailed Documentation](docs/README.md).
 
-## Contributing
+## 🤝 Contributing
 
-This project is Source-Available. We welcome contributions from the community!
+We welcome contributions from the community! Please read our [Contributing Guide](CONTRIBUTING.md) for details on:
+- How to fork and submit pull requests
+- The Contributor License Agreement (CLA) process
+- Best practices for contributing to this project
 
-Please Note: This is a commercial project owned by Boundless Games, LLC. To ensure the long-term sustainability of the project, all contributors must sign a Contributor Assignment Agreement (CAA) transferring ownership of their contribution to the Company.
-
-This is a volunteer-only opportunity.
-
-You will be prompted to sign the agreement digitally via our CLA bot when you open a Pull Request.
-
-Please do not contribute if you expect compensation or employment.
+**Note:** All contributors must sign a CLA when opening their first Pull Request. This is a volunteer-only opportunity with no compensation or employment offered.
 
