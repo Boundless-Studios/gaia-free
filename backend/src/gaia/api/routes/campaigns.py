@@ -901,6 +901,161 @@ class CampaignService:
             "file_info": file_info
         }
 
+    def _load_legacy_disk_history(self, campaign_id: str) -> List[Dict[str, Any]]:
+        """Load legacy chat history from disk (chat_history.json).
+
+        Returns:
+            List of legacy message dicts, or empty list if none found.
+        """
+        try:
+            messages = self.campaign_manager.load_campaign_history(campaign_id, allow_empty=True)
+            if messages:
+                logger.info(f"📂 Found {len(messages)} legacy messages on disk for {campaign_id}")
+            return messages or []
+        except Exception as e:
+            logger.warning(f"⚠️ Could not load legacy history for {campaign_id}: {e}")
+            return []
+
+    async def _migrate_legacy_to_db(self, campaign_id: str, legacy_messages: List[Dict[str, Any]]) -> bool:
+        """Migrate legacy disk-based messages to the turn_events DB table.
+
+        Converts user->assistant message pairs into turns with proper structure.
+
+        Args:
+            campaign_id: Campaign identifier
+            legacy_messages: List of legacy message dicts from chat_history.json
+
+        Returns:
+            True if migration succeeded, False otherwise
+        """
+        if not legacy_messages:
+            return False
+
+        try:
+            # Ensure campaign exists in DB
+            await campaign_repository.get_or_create_campaign(
+                external_campaign_id=campaign_id,
+                environment="migrated"
+            )
+
+            # Group messages into turns (user->assistant pairs)
+            turn_number = 0
+            i = 0
+            migrated_count = 0
+
+            while i < len(legacy_messages):
+                msg = legacy_messages[i]
+                role = msg.get("role", "").lower()
+                content = msg.get("content")
+                timestamp = msg.get("timestamp")
+
+                # Parse timestamp if available
+                created_at = None
+                if timestamp:
+                    try:
+                        created_at = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                    except (ValueError, AttributeError):
+                        pass
+
+                # Handle user/player input -> starts a new turn
+                if role in ("user", "player"):
+                    turn_number += 1
+                    event_index = 0
+
+                    # Create turn_input event
+                    combined_prompt = content if isinstance(content, str) else str(content)
+                    await campaign_repository.add_turn_event(
+                        external_campaign_id=campaign_id,
+                        turn_number=turn_number,
+                        event_index=event_index,
+                        event_type="turn_input",
+                        role="system",
+                        content={"combined_prompt": combined_prompt},
+                        event_metadata={"migrated": True, "original_role": role}
+                    )
+                    migrated_count += 1
+
+                    # Check if next message is assistant response
+                    if i + 1 < len(legacy_messages):
+                        next_msg = legacy_messages[i + 1]
+                        next_role = next_msg.get("role", "").lower()
+
+                        if next_role in ("assistant", "dm"):
+                            event_index += 1
+                            assistant_content = next_msg.get("content")
+
+                            # Ensure content is a dict for assistant responses
+                            if isinstance(assistant_content, str):
+                                assistant_content = {"narrative": assistant_content, "answer": assistant_content}
+                            elif not isinstance(assistant_content, dict):
+                                assistant_content = {"narrative": str(assistant_content)}
+
+                            await campaign_repository.add_turn_event(
+                                external_campaign_id=campaign_id,
+                                turn_number=turn_number,
+                                event_index=event_index,
+                                event_type="assistant",
+                                role="assistant",
+                                content=assistant_content,
+                                event_metadata={"migrated": True}
+                            )
+                            migrated_count += 1
+                            i += 1  # Skip the assistant message we just processed
+
+                # Handle standalone assistant message (no preceding user input)
+                elif role in ("assistant", "dm"):
+                    turn_number += 1
+
+                    assistant_content = content
+                    if isinstance(assistant_content, str):
+                        assistant_content = {"narrative": assistant_content, "answer": assistant_content}
+                    elif not isinstance(assistant_content, dict):
+                        assistant_content = {"narrative": str(assistant_content)}
+
+                    await campaign_repository.add_turn_event(
+                        external_campaign_id=campaign_id,
+                        turn_number=turn_number,
+                        event_index=0,
+                        event_type="assistant",
+                        role="assistant",
+                        content=assistant_content,
+                        event_metadata={"migrated": True, "standalone": True}
+                    )
+                    migrated_count += 1
+
+                # Handle system messages
+                elif role == "system":
+                    # Keep system messages in current turn or start new one
+                    if turn_number == 0:
+                        turn_number = 1
+
+                    await campaign_repository.add_turn_event(
+                        external_campaign_id=campaign_id,
+                        turn_number=turn_number,
+                        event_index=99,  # High index to not interfere with main flow
+                        event_type="system",
+                        role="system",
+                        content={"message": content if isinstance(content, str) else str(content)},
+                        event_metadata={"migrated": True}
+                    )
+                    migrated_count += 1
+
+                i += 1
+
+            # Update campaign state with final turn number
+            if turn_number > 0:
+                await campaign_repository.update_campaign_state(
+                    external_campaign_id=campaign_id,
+                    current_turn=turn_number
+                )
+
+            logger.info(f"✅ Migrated {migrated_count} messages to {turn_number} turns for campaign {campaign_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to migrate legacy history for {campaign_id}: {e}")
+            return False
+
     async def _get_campaign_data(self, campaign_id: str) -> Dict[str, Any]:
         """
         Load campaign data from turn_events DB table.
@@ -920,6 +1075,20 @@ class CampaignService:
             limit=500,  # Get plenty of history
         )
         logger.info(f"🔍 _get_campaign_data: campaign={campaign_id}, loaded {len(turn_events)} turn events from DB")
+
+        # If no DB records, try to migrate legacy disk history
+        if not turn_events:
+            legacy_messages = self._load_legacy_disk_history(campaign_id)
+            if legacy_messages:
+                logger.info(f"🔄 Migrating {len(legacy_messages)} legacy messages to DB for {campaign_id}")
+                migration_success = await self._migrate_legacy_to_db(campaign_id, legacy_messages)
+                if migration_success:
+                    # Re-fetch from DB after migration
+                    turn_events = await campaign_repository.get_turn_events(
+                        external_campaign_id=campaign_id,
+                        limit=500,
+                    )
+                    logger.info(f"🔍 Post-migration: loaded {len(turn_events)} turn events from DB")
 
         # Convert turn events to message format expected by frontend
         messages = []
