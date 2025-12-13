@@ -34,6 +34,6 @@ fi
 # Note: We source the entrypoint script which decrypts secrets into env vars
 # DISABLE_CLOUDFLARE_TUNNEL prevents the tunnel from starting
 docker exec "$CONTAINER_NAME" bash -c "
-    source /home/gaia/scripts/docker-entrypoint-with-secrets.sh 2>/dev/null
+    source /home/gaia/scripts/backend/docker-entrypoint-with-secrets.sh 2>/dev/null
     exec \"\$@\"
 " -- "$@"

@@ -280,6 +280,7 @@ const AppWithAuth0 = () => {
             } />
             <Route path="/test/collaborative-editor" element={<CollaborativeEditorTest />} />
             <Route path="/test/turn-messages" element={<TurnBasedMessagesTest />} />
+            <Route path="/:campaignId/test/dice-roller" element={<DiceRollerTest />} />
             <Route path="/test/dice-roller" element={<DiceRollerTest />} />
             <Route path="/player" element={<Navigate to="/" replace />} />
             <Route path="/auth-error" element={<AuthError />} />
@@ -317,6 +318,10 @@ const AppWithAuth0 = () => {
             <Route
               path="/test/turn-messages"
               element={<TurnBasedMessagesTest />}
+            />
+            <Route
+              path="/:campaignId/test/dice-roller"
+              element={<DiceRollerTest />}
             />
             <Route
               path="/test/dice-roller"

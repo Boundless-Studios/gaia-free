@@ -11,6 +11,7 @@ from pathlib import Path
 import os
 import re
 import json
+import sys
 import time
 import uuid
 import base64
@@ -256,19 +257,23 @@ async def lifespan(app: FastAPI):
             logger.error("[CRITICAL] Cannot start without authentication. Please configure database.")
             raise RuntimeError(f"Database initialization failed: {e}")
         logger.warning("Database initialization error ignored (REQUIRE_DATABASE_ON_STARTUP=false): %s", e)
-    
+
+    def _add_scripts_parent_to_path() -> None:
+        """Ensure the parent of the scripts directory is on sys.path."""
+        for parent in Path(__file__).resolve().parents:
+            candidate = parent / "scripts"
+            if candidate.exists():
+                scripts_parent = candidate.parent
+                if str(scripts_parent) not in sys.path:
+                    sys.path.insert(0, str(scripts_parent))
+                break
+
     # Auth0 configuration is validated at runtime when tokens are verified
     # No pre-flight checks needed as Auth0 handles all authentication
 
     # Check for users with pending admin notifications and retry sending emails
     try:
-        import sys
-        from pathlib import Path
-        # Add scripts directory to path for import
-        scripts_dir = Path(__file__).parent.parent.parent / "scripts"
-        if str(scripts_dir) not in sys.path:
-            sys.path.insert(0, str(scripts_dir))
-
+        _add_scripts_parent_to_path()
         from scripts.backend.startup.check_pending_registrations import check_and_notify_pending_registrations
         await check_and_notify_pending_registrations()
     except Exception as e:
@@ -302,6 +307,7 @@ async def lifespan(app: FastAPI):
     # Initialize room seats for campaigns seeded from filesystem
     # This runs after SessionRegistry._seed_db_from_memory() has populated campaign_sessions
     try:
+        _add_scripts_parent_to_path()
         from scripts.backend.startup.initialize_campaign_rooms import initialize_campaign_rooms
         room_init_stats = await initialize_campaign_rooms()
         if room_init_stats.get("campaigns_initialized", 0) > 0:

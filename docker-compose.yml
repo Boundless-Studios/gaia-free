@@ -75,7 +75,7 @@ services:
     volumes:
       # Add volume mounts for hot-reload in production
       - ./backend/src:/home/gaia/src:ro
-      - ./backend/scripts:/home/gaia/scripts:ro
+      - ./scripts:/home/gaia/scripts:ro
       - ./backend/test:/home/gaia/test:ro
       - ./backend/audio_samples:/home/gaia/audio_samples:ro
       # Mount auth and db submodules
