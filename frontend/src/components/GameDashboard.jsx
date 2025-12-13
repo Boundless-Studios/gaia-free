@@ -111,7 +111,15 @@ const GameDashboard = forwardRef(
 
   const structuredData = latestStructuredData || {};
   const turnInfo = structuredData.turn_info || {};
-  const combatStatus = structuredData.combat_status || {};
+  const nextInteractionType = (structuredData.next_interaction_type
+    || structuredData.original_data?.next_interaction_type
+    || '').toLowerCase();
+  const combatEnded = structuredData.is_combat_active === false
+    || (structuredData.combat_state
+      && typeof structuredData.combat_state === 'object'
+      && structuredData.combat_state.is_active === false)
+    || nextInteractionType === 'default';
+  const combatStatus = combatEnded ? {} : (structuredData.combat_status || {});
 
   const handlePlayStopOptions = async () => {
     try {

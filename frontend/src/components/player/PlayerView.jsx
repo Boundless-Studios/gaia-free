@@ -108,7 +108,21 @@ const PlayerView = ({
   }, []);
 
   const hasCombatStatusData = (state) => {
-    if (!state || !state.combat_status) {
+    if (!state) {
+      return false;
+    }
+
+    const nextInteractionType = state.next_interaction_type
+      || state.original_data?.next_interaction_type;
+    if (typeof nextInteractionType === 'string' && nextInteractionType.toLowerCase() === 'default') {
+      return false;
+    }
+
+    if (state.is_combat_active === false) {
+      return false;
+    }
+
+    if (!state.combat_status) {
       return false;
     }
 

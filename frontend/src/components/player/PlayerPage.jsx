@@ -413,6 +413,9 @@ const PlayerPage = () => {
       generated_image_prompt: structData.generated_image_prompt || '',
       generated_image_type: structData.generated_image_type || '',
       audio: structData.audio || null,
+      is_combat_active: structData.is_combat_active,
+      interaction_type: structData.interaction_type || '',
+      next_interaction_type: structData.next_interaction_type || '',
     };
     if (structData.combat_state) {
       base.combat_state = structData.combat_state;

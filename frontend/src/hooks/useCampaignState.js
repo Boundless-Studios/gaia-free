@@ -23,6 +23,8 @@ function transformStructuredData(structuredData, { needsResponse = false, sessio
   ) || [];
   const observations = parseField(structuredData.observations) || [];
   const summary = structuredData.summary || '';
+  const interactionType = structuredData.interaction_type || null;
+  const nextInteractionType = structuredData.next_interaction_type || null;
   const personalizedPlayerOptions = parseField(structuredData.personalized_player_options) || null;
   const pendingObservations = parseField(structuredData.pending_observations) || null;
   const rawPlayerOptions =
@@ -50,6 +52,9 @@ function transformStructuredData(structuredData, { needsResponse = false, sessio
     turn_info: parseField(structuredData.turn_info) || null,
     combat_status: parseField(structuredData.combat_status) || null,
     combat_state: structuredData.combat_state || null,
+    is_combat_active: structuredData.is_combat_active,
+    interaction_type: interactionType,
+    next_interaction_type: nextInteractionType,
     action_breakdown: parseField(structuredData.action_breakdown) || null,
     turn_resolution: parseField(structuredData.turn_resolution) || null,
     generated_image_url: structuredData.generated_image_url || '',

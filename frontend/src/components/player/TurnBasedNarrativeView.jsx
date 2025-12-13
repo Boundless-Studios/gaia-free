@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import './StreamingNarrativeView.css';
+import './TurnBasedNarrativeView.css';
 import TurnMessage from './TurnMessage.jsx';
 
 /**

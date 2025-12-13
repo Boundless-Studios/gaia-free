@@ -459,6 +459,9 @@ class ApiService {
       // Combat status fields
       combat_status: this.parseField(structuredData.combat_status),
       combat_state: structuredData.combat_state || null,
+      is_combat_active: structuredData.is_combat_active,
+      interaction_type: structuredData.interaction_type || '',
+      next_interaction_type: structuredData.next_interaction_type || '',
       action_breakdown: this.parseField(structuredData.action_breakdown),
       turn_resolution: this.parseField(structuredData.turn_resolution),
       environmental_conditions: structuredData.environmental_conditions || '',
