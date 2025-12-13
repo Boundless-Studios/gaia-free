@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS game.dm_preferences (
     -- UI/Display preferences
     show_dice_rolls BOOLEAN DEFAULT true,
     auto_generate_portraits BOOLEAN DEFAULT true,
-    narration_style VARCHAR(50) DEFAULT 'balanced',
+    auto_scene_image_generation BOOLEAN DEFAULT true,
+    auto_audio_playback BOOLEAN DEFAULT true,
 
     -- Gameplay preferences
     default_difficulty VARCHAR(50) DEFAULT 'medium',
@@ -36,11 +37,6 @@ CREATE TABLE IF NOT EXISTS game.dm_preferences (
 CREATE TABLE IF NOT EXISTS game.player_preferences (
     preference_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(user_id) ON DELETE CASCADE,
-
-    -- Display preferences
-    theme VARCHAR(50) DEFAULT 'dark',
-    font_size VARCHAR(20) DEFAULT 'medium',
-    show_animations BOOLEAN DEFAULT true,
 
     -- Audio preferences
     enable_audio BOOLEAN DEFAULT true,
@@ -81,16 +77,6 @@ CREATE TABLE IF NOT EXISTS game.campaign_settings (
     npc_model VARCHAR(100),
     combat_model VARCHAR(100),
     narration_model VARCHAR(100),
-
-    -- Gameplay rules
-    allow_homebrew BOOLEAN DEFAULT false,
-    use_milestone_leveling BOOLEAN DEFAULT true,
-    starting_level INTEGER DEFAULT 1,
-    max_level INTEGER DEFAULT 20,
-
-    -- Session settings
-    session_length_minutes INTEGER DEFAULT 180,
-    breaks_enabled BOOLEAN DEFAULT true,
 
     -- Metadata
     settings_metadata JSONB DEFAULT '{}',
