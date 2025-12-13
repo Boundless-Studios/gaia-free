@@ -48,7 +48,7 @@
   padding: 8px;
 }
 
-/* Character List panel - at the very top, horizontal layout */
+/* Character List panel - shared container for scene images + player list */
 .dashboard-character-list-panel {
   width: 100%;
   margin-bottom: 8px;
@@ -57,6 +57,38 @@
   min-height: fit-content;
   max-height: fit-content;
   overflow: visible;
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: flex-start;
+  background: #1a1a1a;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+/* Scene images mini gallery - align with player list */
+.dashboard-character-list-panel > .scene-images-mini-gallery {
+  flex: 0 0 auto;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  margin-right: 0;
+}
+
+/* Player list takes remaining space within shared container */
+.dashboard-character-list-panel > .player-and-turn-list {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Align the headers in the shared container */
+.dashboard-character-list-panel > .scene-images-mini-gallery .gallery-header,
+.dashboard-character-list-panel > .player-and-turn-list .turn-header {
+  min-height: 32px;
+  margin-bottom: 8px;
 }
 
 /* Gallery panel - full width below character list */
@@ -64,13 +96,14 @@
   width: 100%;
   margin-bottom: 4px;
   flex: 0 0 auto;
-  height: 500px;
-  min-height: 500px;
+  height: 350px;
+  min-height: 350px;
   overflow: hidden;
   position: relative;
   z-index: 1;
   padding: 0;
 }
+
 
 .dashboard-streaming-panel {
   width: 100%;
@@ -192,17 +225,18 @@
   display: flex;
   gap: 12px;
   margin: 8px 0;
-  flex: 0 0 auto;
-  min-height: 650px;
-  max-height: 860px;
+  flex: 1 1 auto;
+  min-height: 300px;
+  max-height: 400px;
 }
 
-/* Streaming section - 60% width on left */
+/* Streaming section - flexible width in center */
 .dashboard-streaming-section {
-  flex: 0 0 60%;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
 /* Player Options section - 40% width on right */
@@ -880,6 +914,12 @@
   .dashboard-combined-bottom-panel {
     flex-direction: column;
     min-height: auto;
+  }
+
+  /* Scene images in top bar - smaller on mobile */
+  .scene-images-mini-gallery .scene-image-thumbnail {
+    width: 50px;
+    height: 50px;
   }
 
   .dashboard-streaming-section,

@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useRef, useCallback, useState } from 'react';
 import TurnView from './TurnView';
 import CombatStatusView from './CombatStatusView';
 import ImageGalleryWithPolling from './ImageGalleryWithPolling';
+import SceneImagesMiniGallery from './SceneImagesMiniGallery';
 import PlayerAndTurnList from './PlayerAndTurnList/PlayerAndTurnList';
 import CollaborativeStackedEditor from './collaborative/CollaborativeStackedEditor.jsx';
 import apiService from '../services/apiService';
@@ -51,6 +52,8 @@ const GameDashboard = forwardRef(
     playerSubmissions = [],
     selectedPlayerSubmissionIds = new Set(),
     onTogglePlayerSubmission = null,
+    // Image refresh trigger for instant gallery updates via socket
+    imageRefreshTrigger = null,
   }, ref) => {
   // Debug: Uncomment for detailed render logging
   // console.log('📋 GameDashboard render:', { messagesCount: messages?.length });
@@ -63,15 +66,10 @@ const GameDashboard = forwardRef(
   const [collabEditorHasDraft, setCollabEditorHasDraft] = useState(false);
   const collabEditorRef = useRef(null);
 
-  // Room management state (optional - only if RoomProvider is available)
+  // Room management state
   const [showRoomDrawer, setShowRoomDrawer] = useState(false);
-  let roomContext = null;
-  try {
-    roomContext = useRoom();
-  } catch (e) {
-    // RoomProvider not available - room features disabled
-  }
-  const { isDMSeated, roomState } = roomContext || {};
+  const roomContext = useRoom();
+  const { roomState } = roomContext || {};
   const isCampaignSetup = Boolean(roomContext && roomState?.campaign_status === 'setup');
 
   // Auto-TTS on production when streaming completes
@@ -145,19 +143,8 @@ const GameDashboard = forwardRef(
     }
   };
 
-  const formatStatusLabel = (status) => {
-    if (!status) return 'Unknown';
-    return status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-  };
-
-  const roomStatusColor = roomState?.room_status === 'active' ? 'text-green-400' : 'text-yellow-400';
-  const campaignStatusColor = roomState?.campaign_status === 'active' ? 'text-green-400' : 'text-yellow-400';
-  const roomStatusLabel = roomState?.room_status ? formatStatusLabel(roomState.room_status) : 'Waiting';
-  const campaignStatusLabel = roomState?.campaign_status ? formatStatusLabel(roomState.campaign_status) : 'Setup';
-
   const streamingNarrativeText = (streamingNarrative || '').trim();
   const streamingResponseText = (streamingResponse || '').trim();
-  const streamingHasContent = Boolean(streamingNarrativeText || streamingResponseText);
   const streamingInProgress = Boolean(isNarrativeStreaming || isResponseStreaming);
   const hasPlayerOptions = Boolean(
     (latestStructuredData?.turn && String(latestStructuredData.turn).trim()) ||
@@ -213,13 +200,6 @@ const GameDashboard = forwardRef(
 
   const streamingPanel = (
     <div className="dashboard-streaming-panel">
-      <div className="streaming-panel-header">
-        <div
-          className={`streaming-panel-status${streamingInProgress ? ' streaming-panel-status--active' : ''}`}
-        >
-          {streamingInProgress ? 'Streaming…' : 'Idle'}
-        </div>
-      </div>
       <div className="streaming-panel-body">
         <TurnBasedNarrativeView
           narrative={streamingNarrativeText}
@@ -311,45 +291,17 @@ const GameDashboard = forwardRef(
         </div>
       )}
 
-      {/* Room Management Section - Only shown when RoomProvider is available */}
-      {roomContext && (
-        <>
-          <div className="px-4 pt-4 flex items-center justify-between">
-            <div className="text-sm text-gray-400 flex flex-col sm:flex-row sm:items-center gap-2">
-              <span>
-                Room:{' '}
-                <span className={`font-medium ${roomStatusColor}`}>
-                  {roomStatusLabel}
-                </span>
-              </span>
-              <span>
-                Campaign:{' '}
-                <span className={`font-medium ${campaignStatusColor}`}>
-                  {campaignStatusLabel}
-                </span>
-              </span>
-            </div>
-            <Button
-              onClick={() => setShowRoomDrawer(true)}
-              variant="secondary"
-              size="small"
-              icon={
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              }
-            >
-              Manage Room
-            </Button>
-          </div>
+      {/* Room Management Drawer - rendered separately */}
+      {roomContext && renderRoomDrawer()}
 
-          {/* Room Management Drawer */}
-          {renderRoomDrawer()}
-        </>
-      )}
-
-      {/* Character List Section - At the top */}
+      {/* Character List + Scene Images Panel - shared container */}
       <div className="dashboard-character-list-panel">
+        <SceneImagesMiniGallery
+          campaignId={campaignId}
+          onShowToPlayers={onImageGenerated}
+          pollingInterval={5000}
+          refreshTrigger={imageRefreshTrigger}
+        />
         <PlayerAndTurnList
           campaignId={campaignId}
           turnInfo={turnInfo}
@@ -364,12 +316,13 @@ const GameDashboard = forwardRef(
           campaignId={campaignId}
           pollingInterval={30000}
           onImageClick={onImageGenerated}
+          refreshTrigger={imageRefreshTrigger}
         />
       </div>
 
-      {/* Combined Bottom Panel: Live DM Stream (75%) + Player Options (25%) */}
+      {/* Combined Bottom Panel: Live DM Stream + Player Options */}
       <div className="dashboard-combined-bottom-panel">
-        {/* Streaming DM output - Left side 75% */}
+        {/* Streaming DM output - Left side */}
         <div className="dashboard-streaming-section">
           {streamingPanel}
         </div>

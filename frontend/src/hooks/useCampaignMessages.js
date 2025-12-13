@@ -389,6 +389,10 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
   const [messagesBySession, setMessagesBySession] = useState({});
   const messagesBySessionRef = useRef(messagesBySession);
 
+  // Track last reload time per session to debounce rapid reloads
+  const lastReloadTimeRef = useRef({});
+  const RELOAD_DEBOUNCE_MS = 2000; // Minimum 2 seconds between reloads
+
   // Keep ref in sync with state
   useEffect(() => {
     messagesBySessionRef.current = messagesBySession;
@@ -545,6 +549,7 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
 
       const timestamp = options.timestamp || new Date().toISOString();
       const normalizedAnswer = normalizeMessageText(text);
+      const currentTime = new Date(timestamp).getTime();
       let messageAdded = false;
 
       // Check for duplicates based on content, not timestamp
@@ -617,6 +622,7 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
   /**
    * Reload chat history from backend after streaming response
    * Merges backend messages and clears streaming state
+   * Debounced to prevent duplicate messages from rapid WebSocket events
    *
    * @param {string} sessionId - The session to reload
    */
@@ -625,6 +631,22 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
       if (!sessionId) {
         return;
       }
+
+      // Debounce: skip if we reloaded this session recently
+      const now = Date.now();
+      const lastReload = lastReloadTimeRef.current[sessionId] || 0;
+      if (now - lastReload < RELOAD_DEBOUNCE_MS) {
+        console.log('🔄 Skipping reload - debounced (last reload', now - lastReload, 'ms ago)');
+        // Still clear streaming state even if skipping reload
+        if (streamingState.clearNarrativeStreaming) {
+          streamingState.clearNarrativeStreaming(sessionId);
+        }
+        if (streamingState.clearResponseStreaming) {
+          streamingState.clearResponseStreaming(sessionId);
+        }
+        return;
+      }
+      lastReloadTimeRef.current[sessionId] = now;
 
       console.log('🔄 Reloading chat history after streamed response');
 

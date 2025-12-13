@@ -849,14 +849,16 @@ const PlayerPage = () => {
       case 'image_generated': {
         // New image was generated - trigger instant refresh in MediaGallery
         console.log('📸 Image generated event received:', update);
-        if (sessionId && update.filename) {
+        // Check for either filename (legacy) or url (new format from composite images)
+        const hasImage = update.filename || update.url || update.local_path;
+        if (sessionId && hasImage) {
           // Trigger MediaGallery refresh by updating a timestamp in separate UI state
           // (keeping UI state separate from game data)
           setImageRefreshTriggersBySession((prev) => ({
             ...prev,
             [sessionId]: Date.now()
           }));
-          console.log(`📸 Triggered instant image refresh for ${update.filename}`);
+          console.log(`📸 Triggered instant image refresh for ${update.filename || update.url}`);
         }
         break;
       }

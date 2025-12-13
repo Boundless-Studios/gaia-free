@@ -7,6 +7,11 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: write      # To push branches
+  pull-requests: read  # To read PR details
+  issues: write        # To add reactions and comments
+
 jobs:
   trigger-ci:
     # Only run on PR comments (not issue comments) with "/run-ci" from maintainers

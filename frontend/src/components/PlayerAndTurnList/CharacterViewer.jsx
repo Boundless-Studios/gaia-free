@@ -18,9 +18,17 @@ const CharacterViewer = ({ character, onClose }) => {
   const portraitUrl = useAuthorizedMediaUrl(character.portrait_url) || character.portrait_path || null;
 
   const handleBackdropClick = (e) => {
+    // Stop propagation to prevent React event bubbling to parent components
+    e.stopPropagation();
+    // Only close if clicking directly on the modal backdrop, not on content
     if (e.target === e.currentTarget) {
       onClose();
     }
+  };
+
+  const handleCloseClick = (e) => {
+    e.stopPropagation();
+    onClose();
   };
 
   const modalContent = (
@@ -30,12 +38,11 @@ const CharacterViewer = ({ character, onClose }) => {
     >
       <div
         className="character-viewer-content"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           className="character-viewer-close"
-          onClick={onClose}
+          onClick={handleCloseClick}
           aria-label="Close character viewer"
         >
           ✕

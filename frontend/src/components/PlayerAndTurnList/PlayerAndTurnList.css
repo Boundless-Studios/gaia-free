@@ -29,6 +29,17 @@
   padding: 0 16px 16px 16px;
 }
 
+/* Horizontal mode portrait sizing - match scene images height */
+.player-and-turn-list.horizontal .character-portrait,
+.player-and-turn-list.horizontal .character-portrait-placeholder {
+  width: 100px;
+  height: 100px;
+}
+
+.player-and-turn-list.horizontal .character-portrait-placeholder {
+  font-size: 50px;
+}
+
 /* Turn Header - matches player view color scheme */
 .turn-header {
   display: flex;

@@ -19,6 +19,7 @@ import AdminIndex from './components/admin/AdminIndex.jsx';
 import { AudioDebugPage } from './components/debug/AudioDebugPage.jsx';
 import { AudioStreamProvider } from './context/audioStreamContext.jsx';
 import CollaborativeEditorTest from './pages/CollaborativeEditorTest.jsx';
+import SceneImagesDebugPage from './pages/SceneImagesDebugPage.jsx';
 import TurnBasedMessagesTest from './pages/TurnBasedMessagesTest.jsx';
 import DiceRollerTest from './pages/DiceRollerTest.jsx';
 import { loggers } from './utils/logger.js';
@@ -279,9 +280,12 @@ const AppWithAuth0 = () => {
               </AudioStreamProvider>
             } />
             <Route path="/test/collaborative-editor" element={<CollaborativeEditorTest />} />
+            <Route path="/admin/debug-scene-images" element={<SceneImagesDebugPage />} />
             <Route path="/test/turn-messages" element={<TurnBasedMessagesTest />} />
             <Route path="/:campaignId/test/dice-roller" element={<DiceRollerTest />} />
             <Route path="/test/dice-roller" element={<DiceRollerTest />} />
+
+            {/* Legacy route redirects */}
             <Route path="/player" element={<Navigate to="/" replace />} />
             <Route path="/auth-error" element={<AuthError />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -314,6 +318,10 @@ const AppWithAuth0 = () => {
             <Route
               path="/test/collaborative-editor"
               element={<CollaborativeEditorTest />}
+            />
+            <Route
+              path="/admin/debug-scene-images"
+              element={<SceneImagesDebugPage />}
             />
             <Route
               path="/test/turn-messages"

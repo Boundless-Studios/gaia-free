@@ -84,6 +84,7 @@ from gaia.api.routes.chat import router as chat_router
 from gaia.api.routes.debug import router as debug_router
 from gaia.api.routes.room import router as room_router
 from gaia.api.routes.sound_effects import router as sfx_router
+from gaia.api.routes.scene_images import router as scene_images_router
 from gaia.connection.websocket.audio_websocket_handler import AudioWebSocketHandler
 
 # Socket.IO server for real-time communication
@@ -410,6 +411,7 @@ app.include_router(admin_router)  # Admin endpoints (email-restricted)
 app.include_router(scene_admin_router)  # Scene inspection admin endpoints
 app.include_router(prompts_router)  # Prompt management endpoints (admin-only)
 app.include_router(sfx_router)  # Sound effects endpoints
+app.include_router(scene_images_router)  # Scene images endpoints (visual narrator)
 
 # Add CORS middleware (wired to WS_ALLOWED_ORIGINS for consistency)
 _cors_exacts, _cors_regex = _split_cors_allowlist(WS_ALLOWED_ORIGINS)
@@ -1766,7 +1768,8 @@ async def serve_image(
         session_id = None
         parts = Path(filename).parts
         for part in parts:
-            if re.match(r"(campaign_\d+)", part):
+            # Match campaign_X, debug_campaign_X, test_campaign_X, etc.
+            if re.match(r"(\w*campaign_\d+)", part):
                 session_id = part
                 break
 

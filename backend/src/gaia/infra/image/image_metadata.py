@@ -13,7 +13,7 @@ from datetime import datetime
 
 from gaia_private.session.session_storage import SessionStorage
 from gaia.infra.storage.campaign_object_store import get_campaign_object_store
-from gaia.infra.image.image_artifact_store import image_artifact_store
+from gaia.infra.image.image_artifact_store import image_artifact_store, ImageStorageType
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class ImageMetadataManager:
             container_path = (image_artifact_store.local_root / rel).resolve()
 
         if container_path is None or not container_path.exists():
-            image_type = (metadata.get('type') or 'scene').lower().rstrip('s')
+            image_type = (metadata.get('type') or ImageStorageType.SCENE.value).lower().rstrip('s')
             type_dir = f"{image_type}s"
             candidate = (image_artifact_store.local_root / Path(campaign_id) / type_dir / storage_filename).resolve()
             if candidate.exists():

@@ -8,10 +8,45 @@ import socket
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
+
+
+class ImageStorageType(str, Enum):
+    """Supported storage types for image artifacts.
+
+    Each type corresponds to a subdirectory where images are stored.
+    The value is the singular form used in code, and `directory` property
+    returns the plural form used for filesystem paths.
+
+    Note: This is distinct from ImageType (location_ambiance, background_detail,
+    moment_focus) which identifies scene image subtypes within a visual narrator set.
+    """
+    PORTRAIT = "portrait"
+    SCENE = "scene"
+    SCENE_BACKGROUND = "scene_background"
+    MOMENT = "moment"
+    CHARACTER = "character"
+    ITEM = "item"
+    BEAST = "beast"
+
+    @property
+    def directory(self) -> str:
+        """Return the directory name (plural form) for this storage type."""
+        return f"{self.value}s"
+
+    @classmethod
+    def all_types(cls) -> List[str]:
+        """Return all storage type values."""
+        return [t.value for t in cls]
+
+    @classmethod
+    def all_directories(cls) -> List[str]:
+        """Return all directory names (plural forms)."""
+        return [t.directory for t in cls]
 
 try:
     from google.cloud import storage  # type: ignore
@@ -274,16 +309,8 @@ class ImageArtifactStore:
         candidates = [
             self.local_root / session_id / filename,
         ]
-        # Common type directories
-        for type_dir in [
-            "portraits",
-            "scenes",
-            "moments",
-            "characters",
-            "items",
-            "beasts",
-            "images",
-        ]:
+        # Common type directories (from ImageStorageType enum + legacy "images")
+        for type_dir in ImageStorageType.all_directories() + ["images"]:
             candidates.append(self.local_root / session_id / type_dir / filename)
 
         # Legacy top-level location
@@ -320,8 +347,8 @@ class ImageArtifactStore:
         # Try to infer image type from filename, but have fallback list
         inferred_type = filename.split("_")[0] if "_" in filename else "portrait"
 
-        # List of image types to try in order (inferred first, then common types)
-        types_to_try = [inferred_type, "portrait", "scene", "moment", "character", "item", "beast"]
+        # List of storage types to try in order (inferred first, then all known types)
+        types_to_try = [inferred_type] + ImageStorageType.all_types()
         # Remove duplicates while preserving order
         seen = set()
         types_to_try = [x for x in types_to_try if not (x in seen or seen.add(x))]
@@ -381,5 +408,6 @@ image_artifact_store = ImageArtifactStore()
 __all__ = [
     "ImageArtifact",
     "ImageArtifactStore",
+    "ImageStorageType",
     "image_artifact_store",
 ]

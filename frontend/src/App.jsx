@@ -4,6 +4,7 @@ import { useAuth } from './contexts/Auth0Context.jsx';
 import SharedHeaderLayout from './components/layout/SharedHeaderLayout.jsx';
 import LobbyButton from './components/layout/LobbyButton.jsx';
 import CampaignNameDisplay from './components/layout/CampaignNameDisplay.jsx';
+import RoomStatusBar from './components/layout/RoomStatusBar.jsx';
 import { UserMenu } from './AppWithAuth0.jsx';
 import GameDashboard from './components/GameDashboard.jsx';
 import AudioPlayerBar from './components/audio/AudioPlayerBar.jsx';
@@ -249,6 +250,9 @@ function App() {
     closePopup: handleImagePopupClose,
     loadRecent: loadRecentImages,
   } = useImageManagement(currentCampaignId);
+
+  // Image refresh trigger - incremented when socket receives image_generated event
+  const [imageRefreshTrigger, setImageRefreshTrigger] = useState(0);
 
   // Campaign operations via custom hook
   const {
@@ -1000,6 +1004,22 @@ function App() {
       turn_message: handleTurnMessage,
       turn_complete: handleTurnComplete,
       turn_error: handleTurnError,
+
+      // Image generation events - instant gallery refresh
+      image_generated: (data) => {
+        console.log('📸 image_generated socket event received:', data);
+        // Trigger gallery refresh by incrementing the counter
+        setImageRefreshTrigger((prev) => prev + 1);
+        // Also call handleNewImage to show popup and update image state
+        if (data) {
+          handleNewImage({
+            generated_image_url: data.url,
+            generated_image_path: data.local_path,
+            generated_image_prompt: data.prompt,
+            generated_image_type: data.type,
+          });
+        }
+      },
     },
   });
 
@@ -1541,14 +1561,22 @@ function App() {
   return (
     <LoadingProvider>
       <ErrorBoundary>
+        <RoomProvider
+          campaignId={resolvedCampaignIdForSocket}
+          currentUserId={user?.user_id || null}
+          currentUserProfile={currentUserProfile}
+          socketRef={dmSocketRef}
+          webSocketVersion={dmSocketVersion}
+          onRoomEvent={handleRoomEvent}
+        >
         <div className="flex flex-col h-screen min-h-0">
         {/* Voice Activity Indicator */}
-        <VoiceActivityIndicator 
+        <VoiceActivityIndicator
           sessionId={voiceRecordingState.sessionId}
           isRecording={voiceRecordingState.isRecording}
           voiceActivity={voiceActivityActive}
         />
-        
+
         {/* Header with controls */}
         <SharedHeaderLayout>
             <UnifiedLoadingIndicator />
@@ -1573,6 +1601,7 @@ function App() {
             </button>
             {currentCampaignId && (
               <>
+                <RoomStatusBar campaignId={currentCampaignId} />
                 <ConnectedPlayers
                   campaignId={currentCampaignId}
                   dmSocket={dmSocket}
@@ -1620,14 +1649,6 @@ function App() {
           {/* Game dashboard */}
           <div className="flex-[2] min-h-0 h-full flex overflow-hidden max-h-full gap-4">
             <div className="flex-1 min-w-0">
-              <RoomProvider
-                campaignId={resolvedCampaignIdForSocket}
-                currentUserId={user?.user_id || null}
-                currentUserProfile={currentUserProfile}
-                socketRef={dmSocketRef}
-                webSocketVersion={dmSocketVersion}
-                onRoomEvent={handleRoomEvent}
-              >
                 <GameDashboard
                 ref={gameDashboardRef}
                 latestStructuredData={latestStructuredData}
@@ -1661,6 +1682,8 @@ function App() {
                 // Player submissions (from player action submissions)
                 playerSubmissions={playerSubmissions}
                 selectedPlayerSubmissionIds={selectedPlayerSubmissionIds}
+                // Image refresh trigger for instant gallery updates via socket
+                imageRefreshTrigger={imageRefreshTrigger}
                 onTogglePlayerSubmission={(submission) => {
                   // Toggle selection state for this submission
                   setSelectedPlayerSubmissionIds(prev => {
@@ -1674,7 +1697,6 @@ function App() {
                   });
                 }}
                 />
-              </RoomProvider>
             </div>
           </div>
 
@@ -1855,6 +1877,7 @@ function App() {
           onClose={() => setShowKeyboardHelp(false)}
         />
       </div>
+        </RoomProvider>
     </ErrorBoundary>
     </LoadingProvider>
   );
