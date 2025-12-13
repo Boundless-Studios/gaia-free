@@ -2,6 +2,7 @@
 
 from typing import Dict, Any, Optional
 import logging
+import os
 from pathlib import Path
 
 from gaia.models.character import CharacterProfile, CharacterInfo
@@ -20,13 +21,27 @@ class ProfileManager:
     This class coordinates between ProfileStorage (I/O) and ProfileUpdater (business logic),
     providing caching for performance and high-level orchestration for complex operations
     like portrait generation and profile enrichment.
+
+    With database support enabled (USE_CHARACTER_DATABASE=true), this manager uses
+    the CharacterRepository for persistence while maintaining backward compatibility.
     """
 
     def __init__(self):
         """Initialize the profile manager."""
-        self.storage = ProfileStorage()
+        self.storage = ProfileStorage()  # Keep for backward compatibility
         self.updater = ProfileUpdater()
         self._cache: Dict[str, CharacterProfile] = {}
+
+        # Feature flag: database storage
+        self.use_database = os.getenv("USE_CHARACTER_DATABASE", "false").lower() == "true"
+
+        if self.use_database:
+            from gaia.infra.storage.character_repository import CharacterRepository
+            self.repository = CharacterRepository()
+            logger.info("ProfileManager: Database storage ENABLED")
+        else:
+            self.repository = None
+            logger.debug("ProfileManager: Database storage DISABLED (disk only)")
 
     # ------------------------------------------------------------------
     # Cache Management
@@ -48,7 +63,18 @@ class ProfileManager:
         if profile_id in self._cache:
             return self._cache[profile_id]
 
-        # Load from storage
+        # Try database first if enabled
+        if self.use_database and self.repository:
+            try:
+                profile = self.repository.get_profile_sync(profile_id)
+                if profile:
+                    self._cache[profile_id] = profile
+                    logger.debug(f"Profile {profile_id} loaded from database and cached")
+                    return profile
+            except Exception as e:
+                logger.debug(f"Database load failed for profile {profile_id}, falling back to disk: {e}")
+
+        # Fallback to disk storage
         profile = self.storage.load_profile(profile_id)
         if not profile:
             raise ValueError(f"Profile {profile_id} not found")
@@ -110,7 +136,26 @@ class ProfileManager:
         # Update profile with data from CharacterInfo (works for both new and existing profiles)
         self.updater.sync_from_character_info(profile, character_info)
 
-        # Save profile
+        # Save profile (to database if enabled, always to disk for backup)
+        if self.use_database and self.repository:
+            try:
+                # Check if profile exists in database
+                try:
+                    existing_uuid = self.repository.get_profile_by_external_id_sync(profile.character_id)
+                    if existing_uuid:
+                        # Update existing profile
+                        self.repository.update_profile_sync(existing_uuid, profile)
+                        logger.debug(f"Updated profile {profile.character_id} in database")
+                    else:
+                        raise ValueError("Not found")
+                except Exception:
+                    # Create new profile (user_id = None for now, could be enhanced)
+                    self.repository.create_profile_sync(profile, user_id=None, user_email=None)
+                    logger.debug(f"Created profile {profile.character_id} in database")
+            except Exception as e:
+                logger.warning(f"Failed to save profile {profile.character_id} to database: {e}")
+
+        # Always save to disk for backward compatibility
         self.storage.save_profile(profile)
 
         # Cache the profile
@@ -138,7 +183,16 @@ class ProfileManager:
         # Update visual fields using updater
         self.updater.update_visual_fields(profile, visual_data)
 
-        # Save profile
+        # Save profile (to database if enabled, always to disk for backup)
+        if self.use_database and self.repository:
+            try:
+                existing_uuid = self.repository.get_profile_by_external_id_sync(profile.character_id)
+                if existing_uuid:
+                    self.repository.update_profile_sync(existing_uuid, profile)
+            except Exception as e:
+                logger.warning(f"Failed to update profile {profile_id} in database: {e}")
+
+        # Always save to disk for backward compatibility
         self.storage.save_profile(profile)
 
         # Invalidate cache so next load gets fresh data
@@ -274,7 +328,16 @@ class ProfileManager:
                 profile.portrait_path = result.get("local_path")
                 profile.portrait_prompt = result.get("prompt")
 
-                # Save profile
+                # Save profile (to database if enabled, always to disk for backup)
+                if self.use_database and self.repository:
+                    try:
+                        existing_uuid = self.repository.get_profile_by_external_id_sync(profile.character_id)
+                        if existing_uuid:
+                            self.repository.update_profile_sync(existing_uuid, profile)
+                    except Exception as e:
+                        logger.warning(f"Failed to update profile portrait in database: {e}")
+
+                # Always save to disk for backward compatibility
                 self.storage.save_profile(profile)
 
                 # Invalidate cache
@@ -398,7 +461,19 @@ class ProfileManager:
         try:
             profile = self.get_profile(character_id)
             self.updater.increment_interactions(profile)
+
+            # Save profile (to database if enabled, always to disk for backup)
+            if self.use_database and self.repository:
+                try:
+                    existing_uuid = self.repository.get_profile_by_external_id_sync(profile.character_id)
+                    if existing_uuid:
+                        self.repository.update_profile_sync(existing_uuid, profile)
+                except Exception as e:
+                    logger.warning(f"Failed to update profile interactions in database: {e}")
+
+            # Always save to disk for backward compatibility
             self.storage.save_profile(profile)
+
             self.invalidate_cache(character_id)
             logger.debug(f"Updated interaction count for {character_id}")
             return True
