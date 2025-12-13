@@ -131,10 +131,12 @@ jobs:
           ./backend/src/gaia_private/prompts/write_prompts_to_db.sh
            python3 gaia_launcher.py test
 
-      - name: backend log
+      - name: Collect logs
         if: always()
         run: |
-          docker compose logs backend-dev > backend.log
+          docker compose logs backend-dev > backend.log 2>&1 || true
+          docker compose logs postgres > postgres.log 2>&1 || true
+          docker inspect gaia-postgres --format '{{json .State.Health}}' > postgres-health.json 2>&1 || true
 
       - name: upload
         if: always()
@@ -144,3 +146,5 @@ jobs:
           path: |
             build.log
             backend.log
+            postgres.log
+            postgres-health.json
