@@ -198,13 +198,6 @@ const GameDashboard = forwardRef(
 
   const streamingPanel = (
     <div className="dashboard-streaming-panel">
-      <div className="streaming-panel-header">
-        <div
-          className={`streaming-panel-status${streamingInProgress ? ' streaming-panel-status--active' : ''}`}
-        >
-          {streamingInProgress ? 'Streaming…' : 'Idle'}
-        </div>
-      </div>
       <div className="streaming-panel-body">
         <TurnBasedNarrativeView
           narrative={streamingNarrativeText}
