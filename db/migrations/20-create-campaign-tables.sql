@@ -64,16 +64,34 @@ CREATE INDEX IF NOT EXISTS idx_turn_events_content_gin ON game.turn_events USING
 CREATE INDEX IF NOT EXISTS idx_turn_events_metadata_gin ON game.turn_events USING GIN (event_metadata);
 CREATE INDEX IF NOT EXISTS idx_campaign_state_active_turn_gin ON game.campaign_state USING GIN (active_turn);
 
--- Create update triggers for updated_at columns
-CREATE TRIGGER update_game_campaigns_updated_at
-    BEFORE UPDATE ON game.campaigns
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+-- Create update triggers for updated_at columns (skip if already exists from 01-init-schema)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgname = 'update_game_campaigns_updated_at'
+          AND tgrelid = 'game.campaigns'::regclass
+    ) THEN
+        CREATE TRIGGER update_game_campaigns_updated_at
+            BEFORE UPDATE ON game.campaigns
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
-CREATE TRIGGER update_game_campaign_state_updated_at
-    BEFORE UPDATE ON game.campaign_state
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgname = 'update_game_campaign_state_updated_at'
+          AND tgrelid = 'game.campaign_state'::regclass
+    ) THEN
+        CREATE TRIGGER update_game_campaign_state_updated_at
+            BEFORE UPDATE ON game.campaign_state
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 -- Grant permissions to gaia user
 GRANT ALL PRIVILEGES ON TABLE game.campaigns TO gaia;
