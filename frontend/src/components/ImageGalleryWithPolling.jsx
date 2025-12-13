@@ -3,7 +3,7 @@ import { API_CONFIG } from '../config/api.js';
 import apiService from '../services/apiService';
 import { Button } from './base-ui/Button';
 
-const ImageGalleryWithPolling = ({ maxImages = 20, pollingInterval = 10000, campaignId = null, onImageClick = null }) => {
+const ImageGalleryWithPolling = ({ maxImages = 20, pollingInterval = 10000, campaignId = null, onImageClick = null, refreshTrigger = null }) => {
   const [images, setImages] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [isLoading, _setIsLoading] = useState(false);
@@ -141,7 +141,15 @@ const ImageGalleryWithPolling = ({ maxImages = 20, pollingInterval = 10000, camp
       }
     };
   }, [pollingInterval, fetchImages, isPageVisible]);
-  
+
+  // Instant refresh when socket event triggers
+  useEffect(() => {
+    if (refreshTrigger) {
+      console.log('🖼️ ImageGalleryWithPolling: Socket refresh triggered');
+      fetchImages();
+    }
+  }, [refreshTrigger, fetchImages]);
+
   // Handle horizontal scroll with mouse wheel
   useEffect(() => {
     const handleWheel = (e) => {

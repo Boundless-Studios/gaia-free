@@ -198,6 +198,9 @@ export function useGameSocket({
         'turn_error',
         // Input received event (immediate feedback when DM submits)
         'input_received',
+        // Image generation events
+        'image_generated',
+        'scene_image_update',
       ];
 
       gameEvents.forEach((event) => {

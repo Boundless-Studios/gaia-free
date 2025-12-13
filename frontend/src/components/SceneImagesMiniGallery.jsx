@@ -11,7 +11,8 @@ const SceneImagesMiniGallery = ({
   campaignId,
   onShowToPlayers = null,
   pollingInterval = 5000,
-  className = ''
+  className = '',
+  refreshTrigger = null,  // Socket-triggered refresh
 }) => {
   const [imageSet, setImageSet] = useState(null);
   const [isCreatingComposite, setIsCreatingComposite] = useState(false);
@@ -79,6 +80,14 @@ const SceneImagesMiniGallery = ({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
+
+  // Instant refresh when socket event triggers
+  useEffect(() => {
+    if (refreshTrigger) {
+      console.log('🖼️ SceneImagesMiniGallery: Socket refresh triggered');
+      fetchLatestImages();
+    }
+  }, [refreshTrigger, fetchLatestImages]);
 
   // Handle clicking on an image - show in main App modal
   const handleImageClick = useCallback((image) => {
