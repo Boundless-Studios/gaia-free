@@ -21,7 +21,8 @@ import { AudioStreamProvider } from './context/audioStreamContext.jsx';
 import CollaborativeEditorTest from './pages/CollaborativeEditorTest.jsx';
 import TurnBasedMessagesTest from './pages/TurnBasedMessagesTest.jsx';
 import { loggers } from './utils/logger.js';
-
+import StreamingNarrativeTest from './pages/StreamingNarrativeTest.jsx';
+import DiceRollerTest from './pages/DiceRollerTest.jsx';
 const authLog = loggers.auth;
 
 // Auth0 Callback Component
@@ -280,8 +281,8 @@ const AppWithAuth0 = () => {
             } />
             <Route path="/test/collaborative-editor" element={<CollaborativeEditorTest />} />
             <Route path="/test/turn-messages" element={<TurnBasedMessagesTest />} />
-
-            {/* Legacy route redirects */}
+            <Route path="/test/streaming-narrative" element={<StreamingNarrativeTest />} />
+            <Route path="/test/dice-roller" element={<DiceRollerTest />} />
             <Route path="/player" element={<Navigate to="/" replace />} />
             <Route path="/auth-error" element={<AuthError />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -318,6 +319,10 @@ const AppWithAuth0 = () => {
             <Route
               path="/test/turn-messages"
               element={<TurnBasedMessagesTest />}
+            />
+            <Route
+              path="/test/dice-roller"
+              element={<DiceRollerTest />}
             />
 
             {/* Landing page and session-based routes */}
