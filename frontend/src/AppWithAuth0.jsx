@@ -19,7 +19,6 @@ import AdminIndex from './components/admin/AdminIndex.jsx';
 import { AudioDebugPage } from './components/debug/AudioDebugPage.jsx';
 import { AudioStreamProvider } from './context/audioStreamContext.jsx';
 import CollaborativeEditorTest from './pages/CollaborativeEditorTest.jsx';
-import StreamingNarrativeTest from './pages/StreamingNarrativeTest.jsx';
 import TurnBasedMessagesTest from './pages/TurnBasedMessagesTest.jsx';
 import { loggers } from './utils/logger.js';
 
@@ -280,7 +279,6 @@ const AppWithAuth0 = () => {
               </AudioStreamProvider>
             } />
             <Route path="/test/collaborative-editor" element={<CollaborativeEditorTest />} />
-            <Route path="/test/streaming-narrative" element={<StreamingNarrativeTest />} />
             <Route path="/test/turn-messages" element={<TurnBasedMessagesTest />} />
 
             {/* Legacy route redirects */}
@@ -316,10 +314,6 @@ const AppWithAuth0 = () => {
             <Route
               path="/test/collaborative-editor"
               element={<CollaborativeEditorTest />}
-            />
-            <Route
-              path="/test/streaming-narrative"
-              element={<StreamingNarrativeTest />}
             />
             <Route
               path="/test/turn-messages"

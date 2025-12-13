@@ -4,11 +4,10 @@ Admin endpoints for managing registered users (allowlist) and campaign inspectio
 Access control: restricted to users with is_admin=True in the database.
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr
 from sqlalchemy import select, func, desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +19,18 @@ from auth.src.auth0_jwt_verifier import get_auth0_verifier
 from gaia.models.campaign_db import Campaign
 from gaia.models.campaign_state_db import CampaignState
 from gaia.models.turn_event_db import TurnEvent
+from gaia.api.schemas.admin import (
+    RegisterUserRequest,
+    UpdateUserRequest,
+    UserResponse,
+    OnboardUserRequest,
+    TestEmailRequest,
+    CampaignStateResponse,
+    CampaignAdminResponse,
+    CampaignDetailResponse,
+    TurnEventResponse,
+    CampaignStatsResponse,
+)
 
 
 security = HTTPBearer(auto_error=True)
@@ -60,58 +71,6 @@ async def require_super_admin(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     return user
-
-
-class RegisterUserRequest(BaseModel):
-    email: EmailStr
-    username: Optional[str] = None
-    display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
-    is_admin: bool = False
-    is_active: bool = True
-
-
-class UpdateUserRequest(BaseModel):
-    username: Optional[str] = None
-    display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
-    is_admin: Optional[bool] = None
-    is_active: Optional[bool] = None
-
-
-class UserResponse(BaseModel):
-    user_id: str
-    email: EmailStr
-    username: Optional[str]
-    display_name: Optional[str]
-    avatar_url: Optional[str]
-    is_admin: bool
-    is_active: bool
-    # Registration fields
-    registration_status: str
-    eula_accepted_at: Optional[str]
-    eula_version_accepted: Optional[str]
-    registration_completed_at: Optional[str]
-    created_at: Optional[str]
-    last_login: Optional[str]
-
-    @staticmethod
-    def from_model(user: User) -> "UserResponse":
-        return UserResponse(
-            user_id=str(user.user_id),
-            email=user.email,
-            username=user.username,
-            display_name=getattr(user, "display_name", None),
-            avatar_url=getattr(user, "avatar_url", None),
-            is_admin=bool(getattr(user, "is_admin", False)),
-            is_active=bool(getattr(user, "is_active", True)),
-            registration_status=getattr(user, "registration_status", "pending"),
-            eula_accepted_at=user.eula_accepted_at.isoformat() if user.eula_accepted_at else None,
-            eula_version_accepted=getattr(user, "eula_version_accepted", None),
-            registration_completed_at=user.registration_completed_at.isoformat() if user.registration_completed_at else None,
-            created_at=user.created_at.isoformat() if user.created_at else None,
-            last_login=user.last_login.isoformat() if user.last_login else None,
-        )
 
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_super_admin)])
@@ -244,11 +203,6 @@ async def enable_user(user_id: str, db: AsyncSession = Depends(get_async_db)):
     return UserResponse.from_model(user)
 
 
-class OnboardUserRequest(BaseModel):
-    """Request to onboard a user - marks them as active with completed registration."""
-    send_welcome_email: bool = True
-
-
 @router.post("/allowlist/users/{user_id}/onboard", response_model=UserResponse)
 async def onboard_user(
     user_id: str,
@@ -287,11 +241,6 @@ async def onboard_user(
             logging.getLogger(__name__).warning(f"Failed to send welcome email to {user.email}: {e}")
 
     return UserResponse.from_model(user)
-
-
-class TestEmailRequest(BaseModel):
-    email: EmailStr
-    test_type: str = "welcome"  # welcome, registration_complete, or access_request
 
 
 @router.post("/test-email")
@@ -345,145 +294,6 @@ async def test_email(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error sending email: {str(e)}"
         )
-
-
-# ============================================================================
-# Campaign Admin Response Models
-# ============================================================================
-
-
-class CampaignStateResponse(BaseModel):
-    """Response model for campaign state."""
-    state_id: str
-    campaign_id: str
-    current_turn: int
-    last_turn_started_at: Optional[str]
-    last_turn_completed_at: Optional[str]
-    is_processing: bool
-    active_turn: Optional[Dict[str, Any]]
-    version: int
-
-    @staticmethod
-    def from_model(state: CampaignState) -> "CampaignStateResponse":
-        return CampaignStateResponse(
-            state_id=str(state.state_id),
-            campaign_id=str(state.campaign_id),
-            current_turn=state.current_turn,
-            last_turn_started_at=state.last_turn_started_at.isoformat() if state.last_turn_started_at else None,
-            last_turn_completed_at=state.last_turn_completed_at.isoformat() if state.last_turn_completed_at else None,
-            is_processing=state.is_processing,
-            active_turn=state.active_turn,
-            version=state.version,
-        )
-
-
-class CampaignAdminResponse(BaseModel):
-    """Response model for campaign listing."""
-    campaign_id: str
-    external_campaign_id: str
-    environment: str
-    name: Optional[str]
-    description: Optional[str]
-    owner_id: Optional[str]
-    is_active: bool
-    created_at: Optional[str]
-    updated_at: Optional[str]
-    # Nested state summary
-    current_turn: int
-    is_processing: bool
-    event_count: int
-
-    @staticmethod
-    def from_model(campaign: Campaign, event_count: int = 0) -> "CampaignAdminResponse":
-        state = campaign.state
-        return CampaignAdminResponse(
-            campaign_id=str(campaign.campaign_id),
-            external_campaign_id=campaign.external_campaign_id,
-            environment=campaign.environment,
-            name=campaign.name,
-            description=campaign.description,
-            owner_id=campaign.owner_id,
-            is_active=campaign.is_active,
-            created_at=campaign.created_at.isoformat() if hasattr(campaign, 'created_at') and campaign.created_at else None,
-            updated_at=campaign.updated_at.isoformat() if hasattr(campaign, 'updated_at') and campaign.updated_at else None,
-            current_turn=state.current_turn if state else 0,
-            is_processing=state.is_processing if state else False,
-            event_count=event_count,
-        )
-
-
-class CampaignDetailResponse(BaseModel):
-    """Response model for campaign details with full state."""
-    campaign_id: str
-    external_campaign_id: str
-    environment: str
-    name: Optional[str]
-    description: Optional[str]
-    owner_id: Optional[str]
-    is_active: bool
-    created_at: Optional[str]
-    updated_at: Optional[str]
-    state: Optional[CampaignStateResponse]
-    event_count: int
-
-    @staticmethod
-    def from_model(campaign: Campaign, event_count: int = 0) -> "CampaignDetailResponse":
-        return CampaignDetailResponse(
-            campaign_id=str(campaign.campaign_id),
-            external_campaign_id=campaign.external_campaign_id,
-            environment=campaign.environment,
-            name=campaign.name,
-            description=campaign.description,
-            owner_id=campaign.owner_id,
-            is_active=campaign.is_active,
-            created_at=campaign.created_at.isoformat() if hasattr(campaign, 'created_at') and campaign.created_at else None,
-            updated_at=campaign.updated_at.isoformat() if hasattr(campaign, 'updated_at') and campaign.updated_at else None,
-            state=CampaignStateResponse.from_model(campaign.state) if campaign.state else None,
-            event_count=event_count,
-        )
-
-
-class TurnEventResponse(BaseModel):
-    """Response model for turn events."""
-    event_id: str
-    campaign_id: str
-    turn_number: int
-    event_index: int
-    type: str
-    role: str
-    content: Optional[Dict[str, Any]]
-    event_metadata: Dict[str, Any]
-    created_at: str
-
-    @staticmethod
-    def from_model(event: TurnEvent) -> "TurnEventResponse":
-        return TurnEventResponse(
-            event_id=str(event.event_id),
-            campaign_id=str(event.campaign_id),
-            turn_number=event.turn_number,
-            event_index=event.event_index,
-            type=event.type,
-            role=event.role,
-            content=event.content,
-            event_metadata=event.event_metadata,
-            created_at=event.created_at.isoformat(),
-        )
-
-
-class CampaignStatsResponse(BaseModel):
-    """Response model for campaign statistics."""
-    total_campaigns: int
-    active_campaigns: int
-    inactive_campaigns: int
-    campaigns_by_environment: Dict[str, int]
-    total_events: int
-    events_by_type: Dict[str, int]
-    campaigns_processing: int
-
-
-# ============================================================================
-# Campaign Admin Endpoints
-# ============================================================================
 
 
 @router.get("/campaigns/stats", response_model=CampaignStatsResponse)
