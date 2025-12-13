@@ -38,6 +38,9 @@
 /* All inputs get consistent left border styling */
 .player-input,
 .dm-input {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
   line-height: 1.5;
   border-left: 2px solid var(--color-active-player, #4a9eff);
@@ -48,6 +51,13 @@
 .player-input:last-child,
 .dm-input:last-child {
   margin-bottom: 0;
+}
+
+.input-content {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 /* Active player: Blue */
@@ -87,6 +97,15 @@
 
 .input-text {
   color: var(--color-text, #e0e0e0);
+  flex: 1;
+  min-width: 0;
+}
+
+.turn-input-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
 }
 
 /* DM Response Section */

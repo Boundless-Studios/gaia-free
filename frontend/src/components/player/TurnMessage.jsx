@@ -88,7 +88,8 @@ const TurnMessage = ({
 
   // Action button states
   const [isAudioLoading, setIsAudioLoading] = useState(false);
-  const [isImageLoading, setIsImageLoading] = useState(false);
+  const [isDMInputImageLoading, setIsDMInputImageLoading] = useState(false);
+  const [isResponseImageLoading, setIsResponseImageLoading] = useState(false);
   const audioRef = useRef(null);
 
   // Determine what text to display
@@ -157,16 +158,18 @@ const TurnMessage = ({
   };
 
   // Handle image generation
-  const handleImageGeneration = async () => {
-    if (!displayText) return;
+  const handleImageGeneration = async (prompt, source = 'response') => {
+    if (!prompt) return;
+
+    const setLoading = source === 'dm_input' ? setIsDMInputImageLoading : setIsResponseImageLoading;
 
     try {
-      setIsImageLoading(true);
+      setLoading(true);
 
       const response = await apiService.generateImage({
-        prompt: displayText,
+        prompt,
         image_type: 'moment',
-        context: displayText,
+        context: prompt,
         campaign_id: campaignId,
       });
 
@@ -174,16 +177,16 @@ const TurnMessage = ({
         const imageData = {
           generated_image_url: response.image.image_url || response.image.url,
           generated_image_path: response.image.local_path || response.image.path,
-          generated_image_prompt: response.image.prompt || response.image.original_prompt || displayText,
+          generated_image_prompt: response.image.prompt || response.image.original_prompt || prompt,
           generated_image_type: 'moment'
         };
         onImageGenerated(imageData);
       }
 
-      setIsImageLoading(false);
     } catch (err) {
       console.error('Failed to generate image:', err);
-      setIsImageLoading(false);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -253,10 +256,24 @@ const TurnMessage = ({
                     key={i}
                     className={`player-input ${isDM ? 'dm-contribution' : ''} ${isObserver ? 'observer' : ''}`}
                   >
-                    <span className={`input-label ${isDM ? 'dm-label' : ''}`}>
-                      {displayLabel}:
-                    </span>
-                    <span className="input-text">{contrib.text}</span>
+                    <div className="input-content">
+                      <span className={`input-label ${isDM ? 'dm-label' : ''}`}>
+                        {displayLabel}:
+                      </span>
+                      <span className="input-text">{contrib.text}</span>
+                    </div>
+                    {isDM && contrib.text && (
+                      <div className="turn-input-actions">
+                        <button
+                          className={`message-action-btn image-btn ${isDMInputImageLoading ? 'loading' : ''}`}
+                          onClick={() => handleImageGeneration(contrib.text, 'dm_input')}
+                          title="Generate moment image"
+                          disabled={isDMInputImageLoading}
+                        >
+                          {isDMInputImageLoading ? <LoadingSpinner /> : <ImageIcon />}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               });
@@ -293,8 +310,20 @@ const TurnMessage = ({
                 {/* Only show DM input if not hidden */}
                 {!hideDMInput && input.dm_input && input.dm_input.text && (
                   <div className="dm-input">
-                    <span className="input-label">DM:</span>
-                    <span className="input-text">{input.dm_input.text}</span>
+                    <div className="input-content">
+                      <span className="input-label">DM:</span>
+                      <span className="input-text">{input.dm_input.text}</span>
+                    </div>
+                    <div className="turn-input-actions">
+                      <button
+                        className={`message-action-btn image-btn ${isDMInputImageLoading ? 'loading' : ''}`}
+                        onClick={() => handleImageGeneration(input.dm_input.text, 'dm_input')}
+                        title="Generate moment image"
+                        disabled={isDMInputImageLoading}
+                      >
+                        {isDMInputImageLoading ? <LoadingSpinner /> : <ImageIcon />}
+                      </button>
+                    </div>
                   </div>
                 )}
               </>
@@ -331,12 +360,12 @@ const TurnMessage = ({
                 </button>
 
                 <button
-                  className={`message-action-btn image-btn ${isImageLoading ? 'loading' : ''}`}
-                  onClick={handleImageGeneration}
+                  className={`message-action-btn image-btn ${isResponseImageLoading ? 'loading' : ''}`}
+                  onClick={() => handleImageGeneration(displayText, 'response')}
                   title="Generate moment image"
-                  disabled={isImageLoading}
+                  disabled={isResponseImageLoading}
                 >
-                  {isImageLoading ? <LoadingSpinner /> : <ImageIcon />}
+                  {isResponseImageLoading ? <LoadingSpinner /> : <ImageIcon />}
                 </button>
               </div>
             )}
