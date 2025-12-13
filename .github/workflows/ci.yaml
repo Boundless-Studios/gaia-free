@@ -118,7 +118,7 @@ jobs:
           docker compose -f docker-compose.yml  -f docker-compose.ci.yaml --profile dev config
 
       - name: Start services in detached mode
-        timeout-minutes: 1
+        timeout-minutes: 3
         run: |
           make start DETACH=--detach
           until [ "$(docker inspect -f '{{.State.Health.Status}}' gaia-backend-dev)" = "healthy" ]; do
