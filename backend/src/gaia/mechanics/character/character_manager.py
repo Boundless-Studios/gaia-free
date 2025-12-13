@@ -9,7 +9,7 @@ from gaia.models.character import CharacterInfo, CharacterProfile
 from gaia.models.character.enums import CharacterRole
 from gaia.models.character.npc_profile import NpcProfile
 from gaia.mechanics.character.character_translator import CharacterTranslator
-from gaia.mechanics.character.character_storage import CharacterStorage
+from gaia.mechanics.character.character_storage_adapter import CharacterStorageAdapter
 from gaia.mechanics.character.character_updater import CharacterUpdater
 from gaia.mechanics.character.profile_manager import ProfileManager
 from gaia.mechanics.character.voice_pool import VoicePool
@@ -28,25 +28,27 @@ class CharacterManager:
     """Primary interface for managing characters in campaigns.
 
     This class coordinates between various character subsystems:
-    - CharacterStorage: Handles persistence and loading
+    - CharacterStorageAdapter: Handles persistence and loading (hybrid disk/DB)
     - CharacterUpdater: Handles character state updates
     - CharacterTranslator: Handles format conversions
     - ProfileManager: Manages character profiles (identity, portraits, enrichment)
     - VoicePool: Manages voice assignments
     """
-    
-    def __init__(self, campaign_id: str):
+
+    def __init__(self, campaign_id: str, user_id: Optional[str] = None):
         """Initialize the character manager for a specific campaign.
-        
+
         Args:
             campaign_id: The ID of the campaign this manager is associated with
+            user_id: Optional user ID for the campaign owner (for DB storage)
         """
         self.campaign_id = campaign_id
+        self.user_id = user_id  # Store user_id for database operations
         self.characters: Dict[str, CharacterInfo] = {}  # character_id -> CharacterInfo
-        
+
         # Initialize subsystems
         self.translator = CharacterTranslator()
-        self.storage = CharacterStorage()
+        self.storage = CharacterStorageAdapter()  # Use adapter instead of direct storage
         self.updater = CharacterUpdater()
         self.profile_manager = ProfileManager()
         self.voice_pool = VoicePool()
@@ -89,23 +91,27 @@ class CharacterManager:
     
     def create_character_from_simple(self, simple_char: Dict[str, Any], slot_id: Optional[int] = None) -> CharacterInfo:
         """Create a full CharacterInfo from simple character data.
-        
+
         Args:
             simple_char: Simple character dictionary from frontend or pre-generated data
             slot_id: Optional slot ID for the character
-            
+
         Returns:
             Created CharacterInfo object
         """
         # Use translator to create CharacterInfo
         character_info = self.translator.simple_to_character_info(simple_char, slot_id)
-        
-        # Save character to persistent storage
+
+        # Save character to persistent storage (adapter handles both disk and DB)
         char_dict = self.converter.to_dict(character_info)
-        stored_id = self.storage.save_character(char_dict)
+        stored_id = self.storage.save_character(
+            char_dict,
+            user_id=self.user_id,  # Pass user_id for database ownership
+            user_email=None,  # Could be enhanced to pass email if available
+        )
         character_info.character_id = stored_id
-        
-        # Link character to campaign
+
+        # Link character to campaign (adapter handles both disk and DB)
         self.storage.link_character_to_campaign(stored_id, self.campaign_id)
         
         # Also save to campaign-specific directory for campaign state
@@ -471,7 +477,7 @@ class CharacterManager:
     
     def persist_characters(self):
         """Persist all characters to storage for this campaign.
-        
+
         Returns:
             List of character IDs that were persisted
         """
@@ -479,7 +485,8 @@ class CharacterManager:
         return self.storage.persist_campaign_characters(
             self.campaign_id,
             self.characters,
-            campaign_path=characters_path
+            campaign_path=characters_path,
+            user_id=self.user_id,  # Pass user_id for database ownership
         )
     
     def persist_to_campaign(self, campaign_data):
