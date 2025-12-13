@@ -251,6 +251,9 @@ function App() {
     loadRecent: loadRecentImages,
   } = useImageManagement(currentCampaignId);
 
+  // Image refresh trigger - incremented when socket receives image_generated event
+  const [imageRefreshTrigger, setImageRefreshTrigger] = useState(0);
+
   // Campaign operations via custom hook
   const {
     selectCampaign: handleSelectCampaign,
@@ -1001,6 +1004,22 @@ function App() {
       turn_message: handleTurnMessage,
       turn_complete: handleTurnComplete,
       turn_error: handleTurnError,
+
+      // Image generation events - instant gallery refresh
+      image_generated: (data) => {
+        console.log('📸 image_generated socket event received:', data);
+        // Trigger gallery refresh by incrementing the counter
+        setImageRefreshTrigger((prev) => prev + 1);
+        // Also call handleNewImage to show popup and update image state
+        if (data) {
+          handleNewImage({
+            generated_image_url: data.url,
+            generated_image_path: data.local_path,
+            generated_image_prompt: data.prompt,
+            generated_image_type: data.type,
+          });
+        }
+      },
     },
   });
 
@@ -1663,6 +1682,8 @@ function App() {
                 // Player submissions (from player action submissions)
                 playerSubmissions={playerSubmissions}
                 selectedPlayerSubmissionIds={selectedPlayerSubmissionIds}
+                // Image refresh trigger for instant gallery updates via socket
+                imageRefreshTrigger={imageRefreshTrigger}
                 onTogglePlayerSubmission={(submission) => {
                   // Toggle selection state for this submission
                   setSelectedPlayerSubmissionIds(prev => {

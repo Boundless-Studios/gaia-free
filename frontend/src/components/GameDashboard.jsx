@@ -52,6 +52,8 @@ const GameDashboard = forwardRef(
     playerSubmissions = [],
     selectedPlayerSubmissionIds = new Set(),
     onTogglePlayerSubmission = null,
+    // Image refresh trigger for instant gallery updates via socket
+    imageRefreshTrigger = null,
   }, ref) => {
   // Debug: Uncomment for detailed render logging
   // console.log('📋 GameDashboard render:', { messagesCount: messages?.length });
@@ -298,6 +300,7 @@ const GameDashboard = forwardRef(
           campaignId={campaignId}
           onShowToPlayers={onImageGenerated}
           pollingInterval={5000}
+          refreshTrigger={imageRefreshTrigger}
         />
         <PlayerAndTurnList
           campaignId={campaignId}
@@ -313,6 +316,7 @@ const GameDashboard = forwardRef(
           campaignId={campaignId}
           pollingInterval={30000}
           onImageClick={onImageGenerated}
+          refreshTrigger={imageRefreshTrigger}
         />
       </div>
 
