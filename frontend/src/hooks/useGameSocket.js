@@ -12,8 +12,8 @@
  *     campaignId: 'campaign-123',
  *     getAccessToken,
  *     handlers: {
- *       narrative_chunk: (data) => console.log('Narrative:', data),
- *       campaign_updated: (data) => console.log('Update:', data),
+ *       narrative_chunk: (data) => { ... },
+ *       campaign_updated: (data) => { ... },
  *     },
  *   });
  */
@@ -21,6 +21,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { API_CONFIG } from '../config/api.js';
+import { loggers } from '../utils/logger.js';
+
+const log = loggers.socket;
 
 /**
  * Custom hook to manage Socket.IO connection to game server.
@@ -56,10 +59,7 @@ export function useGameSocket({
       const storedToken = localStorage.getItem(`gaia_conn_token_${campaignId}`);
       if (storedToken) {
         setConnectionToken(storedToken);
-        console.log(
-          '[SOCKET.IO] Restored connection token from localStorage | campaign=%s',
-          campaignId
-        );
+        log.debug('Restored connection token from localStorage | campaign=%s', campaignId);
       }
     }
   }, [campaignId]);
@@ -67,7 +67,7 @@ export function useGameSocket({
   // Main connection effect
   useEffect(() => {
     if (!campaignId) {
-      console.log('[SOCKET.IO] No campaignId, skipping connection');
+      log.debug('No campaignId, skipping connection');
       return;
     }
 
@@ -94,8 +94,7 @@ export function useGameSocket({
         baseUrl = `${protocol}//${host}`;
       }
 
-      console.log('[SOCKET.IO] Connecting to %s/campaign | session=%s role=%s',
-        baseUrl, campaignId, role);
+      log.debug('Connecting to %s/campaign | session=%s role=%s', baseUrl, campaignId, role);
 
       // Create Socket.IO connection with async auth
       const socket = io(`${baseUrl}/campaign`, {
@@ -105,7 +104,7 @@ export function useGameSocket({
           try {
             token = await getAccessToken?.();
           } catch (err) {
-            console.warn('[SOCKET.IO] Failed to get access token:', err);
+            log.warn('Failed to get access token:', err);
           }
           cb({
             token,
@@ -129,20 +128,20 @@ export function useGameSocket({
       // Connection events
       socket.on('connect', () => {
         if (!mounted) return;
-        console.log('[SOCKET.IO] Connected | socket.id=%s', socket.id);
+        log.debug('Connected | socket.id=%s', socket.id);
         setIsConnected(true);
         setConnectionError(null);
       });
 
       socket.on('disconnect', (reason) => {
         if (!mounted) return;
-        console.log('[SOCKET.IO] Disconnected | reason=%s', reason);
+        log.debug('Disconnected | reason=%s', reason);
         setIsConnected(false);
       });
 
       socket.on('connect_error', (error) => {
         if (!mounted) return;
-        console.error('[SOCKET.IO] Connection error:', error.message);
+        log.error('Connection error:', error.message);
         setConnectionError(error.message);
         setIsConnected(false);
       });
@@ -150,7 +149,7 @@ export function useGameSocket({
       // Connection registration (receives connection token)
       socket.on('connection_registered', (data) => {
         if (!mounted) return;
-        console.log('[SOCKET.IO] Connection registered | id=%s', data.connection_id);
+        log.debug('Connection registered | id=%s', data.connection_id);
         setConnectionId(data.connection_id);
         if (data.connection_token) {
           setConnectionToken(data.connection_token);
@@ -161,15 +160,13 @@ export function useGameSocket({
       // Player events
       socket.on('player_connected', (data) => {
         if (!mounted) return;
-        console.log('[SOCKET.IO] Player connected | user=%s count=%d',
-          data.user_id, data.connected_count);
+        log.debug('Player connected | user=%s count=%d', data.user_id, data.connected_count);
         handlersRef.current.onPlayerConnected?.(data);
       });
 
       socket.on('player_disconnected', (data) => {
         if (!mounted) return;
-        console.log('[SOCKET.IO] Player disconnected | user=%s count=%d',
-          data.user_id, data.connected_count);
+        log.debug('Player disconnected | user=%s count=%d', data.user_id, data.connected_count);
         handlersRef.current.onPlayerDisconnected?.(data);
       });
 
@@ -194,19 +191,26 @@ export function useGameSocket({
         'room.dm_left',
         // Player action submission (notifies DM when player submits)
         'player_action_submitted',
+        // Turn-based message events (for real-time history updates)
+        'turn_started',
+        'turn_message',
+        'turn_complete',
+        'turn_error',
+        // Input received event (immediate feedback when DM submits)
+        'input_received',
       ];
 
       gameEvents.forEach((event) => {
         socket.on(event, (data) => {
           if (!mounted) return;
-          console.log(`[SOCKET.IO] Received game event: ${event}`, data);
+          log.debug(`Received game event: ${event}`);
           // Try exact match first, then camelCase conversion
           const handler = handlersRef.current[event] ||
             handlersRef.current[toCamelCase(event)];
           if (handler) {
             handler(data, campaignId);
           } else {
-            console.warn(`[SOCKET.IO] No handler for event: ${event}`);
+            log.warn(`No handler for event: ${event}`);
           }
         });
       });
@@ -273,7 +277,7 @@ export function useGameSocket({
     };
 
     connect().catch((error) => {
-      console.error('[SOCKET.IO] Connection setup error:', error);
+      log.error('Connection setup error:', error);
       setConnectionError(error.message);
     });
 
@@ -281,7 +285,7 @@ export function useGameSocket({
     return () => {
       mounted = false;
       if (socketRef.current) {
-        console.log('[SOCKET.IO] Disconnecting...');
+        log.debug('Disconnecting...');
         socketRef.current.disconnect();
         socketRef.current = null;
       }
@@ -294,7 +298,7 @@ export function useGameSocket({
     if (socket?.connected) {
       socket.emit(event, data);
     } else {
-      console.warn('[SOCKET.IO] Cannot emit %s - not connected', event);
+      log.warn('Cannot emit %s - not connected', event);
     }
   }, []);
 

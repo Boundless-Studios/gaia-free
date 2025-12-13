@@ -3,6 +3,7 @@ Image Service Manager
 Central router that manages all image generation providers and routes requests appropriately.
 """
 
+import asyncio
 import logging
 from typing import Optional, Dict, Any, List
 from gaia.infra.image.image_provider import ImageProvider
@@ -23,6 +24,7 @@ class ImageServiceManager:
         self.config = get_image_config()
         self.providers: Dict[str, ImageProvider] = {}
         self._providers_initialized = False
+        self._runware_pool = None  # Lazy-initialized pool for parallel generation
         self._register_providers()
 
     def _register_providers(self):
@@ -400,6 +402,88 @@ class ImageServiceManager:
             "success": True,
             "model": response_model
         }
+
+    def _get_runware_pool(self):
+        """Get or create the Runware client pool for parallel generation."""
+        if self._runware_pool is None:
+            from gaia.infra.image.providers.runware_pool import get_runware_client_pool
+            self._runware_pool = get_runware_client_pool()
+        return self._runware_pool
+
+    async def generate_images_parallel(
+        self,
+        requests: List[Dict[str, Any]],
+        use_pool: bool = True,
+    ) -> List[Dict[str, Any]]:
+        """Generate multiple images in parallel.
+
+        Uses the Runware client pool for true parallel generation when available,
+        otherwise falls back to concurrent calls through the standard provider.
+
+        Args:
+            requests: List of dicts, each containing kwargs for generate_image()
+                     Example: [
+                         {"prompt": "A forest", "width": 1024, "height": 1024},
+                         {"prompt": "A castle"},
+                         {"prompt": "A dragon", "model": "hidream_fast"},
+                     ]
+            use_pool: If True, use the Runware pool for parallel WebSocket
+                     connections. If False, use standard sequential generation.
+
+        Returns:
+            List of results in the same order as requests. Each result dict has:
+            - success: bool
+            - images: list of generated images
+            - provider: str
+            - error: str (if success=False)
+        """
+        if not requests:
+            return []
+
+        logger.info(f"🎨 Generating {len(requests)} images in parallel")
+
+        # Check if we can use the Runware pool for true parallelism
+        pool = self._get_runware_pool() if use_pool else None
+
+        if pool and pool.is_available():
+            # Use the pool for parallel generation
+            logger.debug("Using Runware pool for parallel generation")
+            return await pool.generate_images_parallel(requests)
+
+        # Fallback: use asyncio.gather with the standard provider
+        # Note: This may still be serialized if the provider has a semaphore
+        logger.debug("Using standard provider (may be serialized)")
+
+        async def generate_single(request: Dict[str, Any]) -> Dict[str, Any]:
+            try:
+                return await self.generate_image(**request)
+            except Exception as e:
+                logger.error(f"Error generating image: {e}")
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "images": [],
+                    "provider": "unknown"
+                }
+
+        results = await asyncio.gather(
+            *[generate_single(req) for req in requests],
+            return_exceptions=False
+        )
+
+        success_count = sum(1 for r in results if r.get("success"))
+        logger.info(f"✅ Parallel generation complete: {success_count}/{len(requests)} succeeded")
+
+        return results
+
+    async def disconnect_pools(self) -> None:
+        """Disconnect any active client pools.
+
+        Call this during application shutdown.
+        """
+        if self._runware_pool:
+            await self._runware_pool.disconnect_all()
+            self._runware_pool = None
 
 
 # Singleton instance

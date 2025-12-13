@@ -57,43 +57,6 @@ CREATE TABLE IF NOT EXISTS auth.access_control (
     UNIQUE(user_id, resource_type, resource_id)
 );
 
--- Game Schema Tables
--- Campaigns table
-CREATE TABLE IF NOT EXISTS game.campaigns (
-    campaign_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    owner_id UUID NOT NULL REFERENCES auth.users(user_id),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    settings JSONB DEFAULT '{}',
-    state JSONB DEFAULT '{}',
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    last_played TIMESTAMP WITH TIME ZONE
-);
-
--- Campaign participants
-CREATE TABLE IF NOT EXISTS game.campaign_participants (
-    participant_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    campaign_id UUID NOT NULL REFERENCES game.campaigns(campaign_id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES auth.users(user_id),
-    role VARCHAR(50) DEFAULT 'player',
-    character_data JSONB DEFAULT '{}',
-    joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(campaign_id, user_id)
-);
-
--- Chat history
-CREATE TABLE IF NOT EXISTS game.chat_history (
-    message_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    campaign_id UUID NOT NULL REFERENCES game.campaigns(campaign_id) ON DELETE CASCADE,
-    user_id UUID REFERENCES auth.users(user_id),
-    message_type VARCHAR(50) NOT NULL,
-    content TEXT NOT NULL,
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Audit Schema Tables
 -- Audit log for security events
 CREATE TABLE IF NOT EXISTS audit.security_events (
@@ -116,11 +79,6 @@ CREATE INDEX IF NOT EXISTS idx_oauth_accounts_provider ON auth.oauth_accounts(pr
 -- Sessions indexes removed - Auth0 handles all session management
 CREATE INDEX IF NOT EXISTS idx_access_control_user ON auth.access_control(user_id);
 CREATE INDEX IF NOT EXISTS idx_access_control_resource ON auth.access_control(resource_type, resource_id);
-CREATE INDEX IF NOT EXISTS idx_campaigns_owner ON game.campaigns(owner_id);
-CREATE INDEX IF NOT EXISTS idx_campaign_participants_campaign ON game.campaign_participants(campaign_id);
-CREATE INDEX IF NOT EXISTS idx_campaign_participants_user ON game.campaign_participants(user_id);
-CREATE INDEX IF NOT EXISTS idx_chat_history_campaign ON game.chat_history(campaign_id);
-CREATE INDEX IF NOT EXISTS idx_chat_history_created ON game.chat_history(created_at);
 CREATE INDEX IF NOT EXISTS idx_security_events_user ON audit.security_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_security_events_created ON audit.security_events(created_at);
 CREATE INDEX IF NOT EXISTS idx_security_events_type ON audit.security_events(event_type);
@@ -138,9 +96,6 @@ CREATE TRIGGER update_auth_users_updated_at BEFORE UPDATE ON auth.users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_auth_oauth_accounts_updated_at BEFORE UPDATE ON auth.oauth_accounts
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_game_campaigns_updated_at BEFORE UPDATE ON game.campaigns
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Grant permissions to the gaia user

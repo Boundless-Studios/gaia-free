@@ -1,21 +1,36 @@
 """
-Admin endpoints for managing registered users (allowlist).
+Admin endpoints for managing registered users (allowlist) and campaign inspection.
 
 Access control: restricted to users with is_admin=True in the database.
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr
-from sqlalchemy import select
+from sqlalchemy import select, func, desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from db.src import get_async_db
 from auth.src.models import User
 from auth.src.auth0_jwt_verifier import get_auth0_verifier
+from gaia.models.campaign_db import Campaign
+from gaia.models.campaign_state_db import CampaignState
+from gaia.models.turn_event_db import TurnEvent
+from gaia.api.schemas.admin import (
+    RegisterUserRequest,
+    UpdateUserRequest,
+    UserResponse,
+    OnboardUserRequest,
+    TestEmailRequest,
+    CampaignStateResponse,
+    CampaignAdminResponse,
+    CampaignDetailResponse,
+    TurnEventResponse,
+    CampaignStatsResponse,
+)
 
 
 security = HTTPBearer(auto_error=True)
@@ -56,45 +71,6 @@ async def require_super_admin(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     return user
-
-
-class RegisterUserRequest(BaseModel):
-    email: EmailStr
-    username: Optional[str] = None
-    display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
-    is_admin: bool = False
-    is_active: bool = True
-
-
-class UpdateUserRequest(BaseModel):
-    username: Optional[str] = None
-    display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
-    is_admin: Optional[bool] = None
-    is_active: Optional[bool] = None
-
-
-class UserResponse(BaseModel):
-    user_id: str
-    email: EmailStr
-    username: Optional[str]
-    display_name: Optional[str]
-    avatar_url: Optional[str]
-    is_admin: bool
-    is_active: bool
-
-    @staticmethod
-    def from_model(user: User) -> "UserResponse":
-        return UserResponse(
-            user_id=str(user.user_id),
-            email=user.email,
-            username=user.username,
-            display_name=getattr(user, "display_name", None),
-            avatar_url=getattr(user, "avatar_url", None),
-            is_admin=bool(getattr(user, "is_admin", False)),
-            is_active=bool(getattr(user, "is_active", True)),
-        )
 
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_super_admin)])
@@ -215,9 +191,56 @@ async def disable_user(user_id: str, db: AsyncSession = Depends(get_async_db)):
     return UserResponse.from_model(user)
 
 
-class TestEmailRequest(BaseModel):
-    email: EmailStr
-    test_type: str = "welcome"  # welcome, registration_complete, or access_request
+@router.post("/allowlist/users/{user_id}/enable", response_model=UserResponse)
+async def enable_user(user_id: str, db: AsyncSession = Depends(get_async_db)):
+    """Enable/activate a user account."""
+    result = await db.execute(select(User).where(User.user_id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user.is_active = True
+    await db.commit()
+    return UserResponse.from_model(user)
+
+
+@router.post("/allowlist/users/{user_id}/onboard", response_model=UserResponse)
+async def onboard_user(
+    user_id: str,
+    req: OnboardUserRequest,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Onboard a user who has accepted EULA and requested access.
+
+    This sets is_active=True so the user can access the system.
+    Optionally sends a welcome email.
+    """
+    from datetime import datetime, timezone
+
+    result = await db.execute(select(User).where(User.user_id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Activate the user
+    user.is_active = True
+    await db.commit()
+
+    # Send welcome email if requested
+    if req.send_welcome_email:
+        from gaia.services.email.service import get_email_service
+        email_service = get_email_service()
+        try:
+            await email_service.send_welcome_email(
+                to_email=user.email,
+                display_name=user.display_name or user.username or user.email.split('@')[0]
+            )
+        except Exception as e:
+            # Log but don't fail the onboarding
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to send welcome email to {user.email}: {e}")
+
+    return UserResponse.from_model(user)
 
 
 @router.post("/test-email")
@@ -271,4 +294,188 @@ async def test_email(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error sending email: {str(e)}"
         )
+
+
+@router.get("/campaigns/stats", response_model=CampaignStatsResponse)
+async def get_campaign_stats(db: AsyncSession = Depends(get_async_db)) -> CampaignStatsResponse:
+    """Get aggregate statistics about campaigns."""
+    # Total campaigns
+    total_result = await db.execute(select(func.count(Campaign.campaign_id)))
+    total_campaigns = total_result.scalar() or 0
+
+    # Active/inactive counts
+    active_result = await db.execute(
+        select(func.count(Campaign.campaign_id)).where(Campaign.is_active == True)
+    )
+    active_campaigns = active_result.scalar() or 0
+
+    # Campaigns by environment
+    env_result = await db.execute(
+        select(Campaign.environment, func.count(Campaign.campaign_id))
+        .group_by(Campaign.environment)
+    )
+    campaigns_by_environment = {row[0]: row[1] for row in env_result.fetchall()}
+
+    # Total events
+    events_result = await db.execute(select(func.count(TurnEvent.event_id)))
+    total_events = events_result.scalar() or 0
+
+    # Events by type
+    type_result = await db.execute(
+        select(TurnEvent.type, func.count(TurnEvent.event_id))
+        .group_by(TurnEvent.type)
+    )
+    events_by_type = {row[0]: row[1] for row in type_result.fetchall()}
+
+    # Campaigns currently processing
+    processing_result = await db.execute(
+        select(func.count(CampaignState.state_id))
+        .where(CampaignState.active_turn.isnot(None))
+    )
+    campaigns_processing = processing_result.scalar() or 0
+
+    return CampaignStatsResponse(
+        total_campaigns=total_campaigns,
+        active_campaigns=active_campaigns,
+        inactive_campaigns=total_campaigns - active_campaigns,
+        campaigns_by_environment=campaigns_by_environment,
+        total_events=total_events,
+        events_by_type=events_by_type,
+        campaigns_processing=campaigns_processing,
+    )
+
+
+@router.get("/campaigns", response_model=List[CampaignAdminResponse])
+async def list_campaigns(
+    db: AsyncSession = Depends(get_async_db),
+    environment: Optional[str] = Query(None, description="Filter by environment"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    search: Optional[str] = Query(None, description="Search by ID, name, or owner"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum results"),
+    offset: int = Query(0, ge=0, description="Results offset"),
+) -> List[CampaignAdminResponse]:
+    """List all campaigns with optional filtering."""
+    query = select(Campaign).options(selectinload(Campaign.state))
+
+    if environment:
+        query = query.where(Campaign.environment == environment)
+    if is_active is not None:
+        query = query.where(Campaign.is_active == is_active)
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.where(
+            (Campaign.external_campaign_id.ilike(search_pattern)) |
+            (Campaign.name.ilike(search_pattern)) |
+            (Campaign.owner_id.ilike(search_pattern))
+        )
+
+    query = query.order_by(desc(Campaign.campaign_id)).limit(limit).offset(offset)
+
+    result = await db.execute(query)
+    campaigns = result.scalars().all()
+
+    # Get event counts for each campaign
+    campaign_ids = [c.campaign_id for c in campaigns]
+    if campaign_ids:
+        count_result = await db.execute(
+            select(TurnEvent.campaign_id, func.count(TurnEvent.event_id))
+            .where(TurnEvent.campaign_id.in_(campaign_ids))
+            .group_by(TurnEvent.campaign_id)
+        )
+        event_counts = {row[0]: row[1] for row in count_result.fetchall()}
+    else:
+        event_counts = {}
+
+    return [
+        CampaignAdminResponse.from_model(c, event_counts.get(c.campaign_id, 0))
+        for c in campaigns
+    ]
+
+
+@router.get("/campaigns/{campaign_id}", response_model=CampaignDetailResponse)
+async def get_campaign(
+    campaign_id: str,
+    db: AsyncSession = Depends(get_async_db),
+) -> CampaignDetailResponse:
+    """Get detailed information about a specific campaign."""
+    # Try to find by external_campaign_id first, then by UUID
+    query = select(Campaign).options(selectinload(Campaign.state))
+
+    result = await db.execute(
+        query.where(Campaign.external_campaign_id == campaign_id)
+    )
+    campaign = result.scalar_one_or_none()
+
+    if not campaign:
+        # Try UUID
+        try:
+            import uuid
+            campaign_uuid = uuid.UUID(campaign_id)
+            result = await db.execute(
+                query.where(Campaign.campaign_id == campaign_uuid)
+            )
+            campaign = result.scalar_one_or_none()
+        except ValueError:
+            pass
+
+    if not campaign:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
+    # Get event count
+    count_result = await db.execute(
+        select(func.count(TurnEvent.event_id))
+        .where(TurnEvent.campaign_id == campaign.campaign_id)
+    )
+    event_count = count_result.scalar() or 0
+
+    return CampaignDetailResponse.from_model(campaign, event_count)
+
+
+@router.get("/campaigns/{campaign_id}/events", response_model=List[TurnEventResponse])
+async def get_campaign_events(
+    campaign_id: str,
+    db: AsyncSession = Depends(get_async_db),
+    turn_number: Optional[int] = Query(None, description="Filter by turn number"),
+    event_type: Optional[str] = Query(None, description="Filter by event type"),
+    role: Optional[str] = Query(None, description="Filter by role"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum results"),
+    offset: int = Query(0, ge=0, description="Results offset"),
+) -> List[TurnEventResponse]:
+    """Get turn events for a campaign."""
+    # Find the campaign first
+    result = await db.execute(
+        select(Campaign).where(Campaign.external_campaign_id == campaign_id)
+    )
+    campaign = result.scalar_one_or_none()
+
+    if not campaign:
+        try:
+            import uuid
+            campaign_uuid = uuid.UUID(campaign_id)
+            result = await db.execute(
+                select(Campaign).where(Campaign.campaign_id == campaign_uuid)
+            )
+            campaign = result.scalar_one_or_none()
+        except ValueError:
+            pass
+
+    if not campaign:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
+    # Build query for events
+    query = select(TurnEvent).where(TurnEvent.campaign_id == campaign.campaign_id)
+
+    if turn_number is not None:
+        query = query.where(TurnEvent.turn_number == turn_number)
+    if event_type:
+        query = query.where(TurnEvent.type == event_type)
+    if role:
+        query = query.where(TurnEvent.role == role)
+
+    query = query.order_by(TurnEvent.turn_number, TurnEvent.event_index).limit(limit).offset(offset)
+
+    result = await db.execute(query)
+    events = result.scalars().all()
+
+    return [TurnEventResponse.from_model(e) for e in events]
 

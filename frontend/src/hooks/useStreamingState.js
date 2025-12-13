@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { loggers } from '../utils/logger.js';
 
-const STREAMING_TRACE = '[STREAMING]';
+const log = loggers.streaming;
 
 /**
  * Custom hook to manage streaming message state per session
@@ -47,17 +48,8 @@ export function useStreamingState(currentCampaignId) {
           ? append
           : previousContent.length > 0;
 
-        console.debug(
-          `${STREAMING_TRACE} updateStreamingNarrative`,
-          {
-            sessionId,
-            chunkLength: content ? content.length : 0,
-            previousLength: previousContent.length,
-            shouldAppend,
-            isFinal,
-            isStreaming,
-          },
-        );
+        log.debug('updateStreamingNarrative | session=%s chunkLen=%d prevLen=%d append=%s final=%s',
+          sessionId, content?.length || 0, previousContent.length, shouldAppend, isFinal);
 
         if (shouldAppend && content) {
           return { ...prev, [sessionId]: previousContent + content };
@@ -95,17 +87,8 @@ export function useStreamingState(currentCampaignId) {
           ? append
           : previousContent.length > 0;
 
-        console.debug(
-          `${STREAMING_TRACE} updateStreamingResponse`,
-          {
-            sessionId,
-            chunkLength: content ? content.length : 0,
-            previousLength: previousContent.length,
-            shouldAppend,
-            isFinal,
-            isStreaming,
-          },
-        );
+        log.debug('updateStreamingResponse | session=%s chunkLen=%d prevLen=%d append=%s final=%s',
+          sessionId, content?.length || 0, previousContent.length, shouldAppend, isFinal);
 
         if (shouldAppend && content) {
           return { ...prev, [sessionId]: previousContent + content };

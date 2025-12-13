@@ -7,7 +7,7 @@ INSERT INTO auth.users (email, username, display_name, is_admin, user_metadata)
 VALUES
     ('admin@gaia.local', 'admin', 'System Administrator', true,
      '{"role": "admin", "created_by": "system"}'),
-    ('danderthal@gmail.com', 'danielrosenthal', 'Daniel Rosenthal', false,
+    ('user@example.com', 'danielrosenthal', 'Example User', false,
      '{"role": "user", "added_by": "admin"}')
 ON CONFLICT (email) DO NOTHING;
 

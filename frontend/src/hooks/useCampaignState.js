@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import apiService from '../services/apiService.js';
+import { loggers } from '../utils/logger.js';
 
-const CAMPAIGN_STATE_TRACE = '[CAMPAIGN_STATE]';
+const log = loggers.campaign;
 
 /**
  * Transform structured data from backend into normalized frontend format
@@ -22,6 +23,8 @@ function transformStructuredData(structuredData, { needsResponse = false, sessio
   ) || [];
   const observations = parseField(structuredData.observations) || [];
   const summary = structuredData.summary || '';
+  const interactionType = structuredData.interaction_type || null;
+  const nextInteractionType = structuredData.next_interaction_type || null;
   const personalizedPlayerOptions = parseField(structuredData.personalized_player_options) || null;
   const pendingObservations = parseField(structuredData.pending_observations) || null;
   const rawPlayerOptions =
@@ -49,6 +52,9 @@ function transformStructuredData(structuredData, { needsResponse = false, sessio
     turn_info: parseField(structuredData.turn_info) || null,
     combat_status: parseField(structuredData.combat_status) || null,
     combat_state: structuredData.combat_state || null,
+    is_combat_active: structuredData.is_combat_active,
+    interaction_type: interactionType,
+    next_interaction_type: nextInteractionType,
     action_breakdown: parseField(structuredData.action_breakdown) || null,
     turn_resolution: parseField(structuredData.turn_resolution) || null,
     generated_image_url: structuredData.generated_image_url || '',
@@ -103,14 +109,7 @@ export function useCampaignState(currentCampaignId) {
         if (next === current) {
           return previous;
         }
-        console.debug(
-          `${CAMPAIGN_STATE_TRACE} setSessionStructuredData`,
-          {
-            sessionId,
-            hasNarrative: Boolean(next?.narrative || next?.answer),
-            keys: next && typeof next === 'object' ? Object.keys(next) : null,
-          },
-        );
+        log.debug('setSessionStructuredData | session=%s hasNarrative=%s', sessionId, Boolean(next?.narrative || next?.answer));
         return { ...previous, [sessionId]: next };
       });
     },

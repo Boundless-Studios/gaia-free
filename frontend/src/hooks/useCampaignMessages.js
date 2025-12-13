@@ -1,6 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import apiService from '../services/apiService.js';
 import { generateUniqueId } from '../utils/idGenerator.js';
+
+// Stable empty array reference to prevent re-renders
+const EMPTY_MESSAGES = [];
 
 // Monotonic counter to preserve insertion order across local and backend messages
 let messageOrderCounter = 0;
@@ -680,8 +683,11 @@ export function useCampaignMessages(currentCampaignId, streamingState = {}) {
     [mergeWithBackend, streamingState]
   );
 
-  // Get messages for current campaign
-  const messages = currentCampaignId ? messagesBySession[currentCampaignId] || [] : [];
+  // Get messages for current campaign - use stable empty array to prevent re-renders
+  const messages = useMemo(() => {
+    if (!currentCampaignId) return EMPTY_MESSAGES;
+    return messagesBySession[currentCampaignId] || EMPTY_MESSAGES;
+  }, [currentCampaignId, messagesBySession]);
 
   return {
     // State

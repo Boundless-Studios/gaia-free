@@ -72,6 +72,14 @@ class User(BaseModel):
     user_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
+    # Timestamp fields (mapped from database schema)
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
     # Registration flow fields
     registration_status: Mapped[str] = mapped_column(
         String(20),

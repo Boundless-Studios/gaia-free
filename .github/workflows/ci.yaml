@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'ci/pr-*'  # Internal branches for fork PR CI
   pull_request:
     types:
       - opened
@@ -117,7 +118,7 @@ jobs:
           docker compose -f docker-compose.yml  -f docker-compose.ci.yaml --profile dev config
 
       - name: Start services in detached mode
-        timeout-minutes: 1
+        timeout-minutes: 3
         run: |
           make start DETACH=--detach
           until [ "$(docker inspect -f '{{.State.Health.Status}}' gaia-backend-dev)" = "healthy" ]; do
@@ -130,10 +131,12 @@ jobs:
           ./backend/src/gaia_private/prompts/write_prompts_to_db.sh
            python3 gaia_launcher.py test
 
-      - name: backend log
+      - name: Collect logs
         if: always()
         run: |
-          docker compose logs backend-dev > backend.log
+          docker compose logs backend-dev > backend.log 2>&1 || true
+          docker compose logs postgres > postgres.log 2>&1 || true
+          docker inspect gaia-postgres --format '{{json .State.Health}}' > postgres-health.json 2>&1 || true
 
       - name: upload
         if: always()
@@ -143,3 +146,5 @@ jobs:
           path: |
             build.log
             backend.log
+            postgres.log
+            postgres-health.json

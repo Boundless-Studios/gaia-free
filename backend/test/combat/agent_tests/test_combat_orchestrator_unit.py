@@ -568,6 +568,7 @@ def test_annotate_combat_end_adds_structured_data(combat_orchestrator):
 
     structured = result["structured_data"]
     assert structured["interaction_type"] == "combat_end"
+    assert structured["next_interaction_type"] == "default"
     assert structured["combat_state"] == "players_victory"
     assert structured["combat_ended"]["reason"] == "players_victory"
     assert structured["combat_summary"] == summary

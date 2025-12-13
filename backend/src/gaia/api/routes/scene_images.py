@@ -5,12 +5,15 @@ Visual Narrator agent. These endpoints allow the frontend to:
 - Get the latest scene image set for a campaign
 - Get a specific image set by ID
 - Check the generation status of an image set
+- Create composite images from scene image sets
 """
 
 import logging
+from io import BytesIO
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from PIL import Image
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth.src.flexible_auth import optional_auth
 from auth.src.models import AccessControl, PermissionLevel, User
 from db.src import get_async_db
-from gaia.infra.image.image_artifact_store import ImageStorageType
+from gaia.infra.image.image_artifact_store import ImageStorageType, image_artifact_store
+from gaia.infra.image.image_metadata import get_metadata_manager
 from gaia.infra.image.scene_image_set import ImageType, get_scene_image_set_manager
 
 logger = logging.getLogger(__name__)
@@ -280,6 +284,171 @@ async def get_scene_image_set_status(
     }
 
 
+# Composite image endpoint
+class CompositeImageResponse(BaseModel):
+    """Response model for composite image creation."""
+
+    success: bool
+    composite_url: Optional[str] = None
+    message: str
+
+
+@router.post("/{set_id}/composite", response_model=CompositeImageResponse)
+async def create_composite_image(
+    request: Request,
+    set_id: str,
+    current_user: Optional[User] = optional_auth(),
+    db: AsyncSession = Depends(get_async_db),
+) -> Dict[str, Any]:
+    """Create a horizontal 3x1 composite image from a scene image set.
+
+    Combines the three scene images (location, background, moment) into
+    a single horizontal composite image for display to players.
+
+    Args:
+        request: The FastAPI request object
+        set_id: The scene image set to create composite from
+        current_user: The authenticated user (optional in dev mode)
+        db: The async database session
+
+    Returns:
+        CompositeImageResponse with the URL to the composite image
+
+    Raises:
+        HTTPException: 404 if set not found, 403 if not authorized,
+                       400 if no images available
+    """
+    manager = get_scene_image_set_manager()
+    image_set = manager.get_set(set_id)
+
+    if not image_set:
+        raise HTTPException(status_code=404, detail=f"Scene image set {set_id} not found")
+
+    # Check authorization
+    if not await check_campaign_access(image_set.campaign_id, current_user, request, db):
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to access this campaign's images",
+        )
+
+    # Collect complete images in order: location, background, moment
+    image_order = [
+        ImageType.LOCATION_AMBIANCE.value,
+        ImageType.BACKGROUND_DETAIL.value,
+        ImageType.MOMENT_FOCUS.value,
+    ]
+
+    pil_images = []
+    for img_type in image_order:
+        img = image_set.get_image(img_type)
+        if img and img.status == "complete" and img.image_url:
+            try:
+                # Extract session_id and filename from the image URL
+                # URL format: /api/images/media/images/{session_id}/{type}s/{filename}
+                url_parts = img.image_url.strip("/").split("/")
+                # Find the session_id (e.g., campaign_XX)
+                session_id = image_set.campaign_id
+                filename = url_parts[-1] if url_parts else None
+
+                if filename:
+                    img_bytes = image_artifact_store.read_artifact_bytes(session_id, filename)
+                    pil_img = Image.open(BytesIO(img_bytes))
+                    pil_images.append(pil_img)
+                    logger.debug(f"Loaded image for composite: {img_type}")
+            except Exception as exc:
+                logger.warning(f"Failed to load image {img_type} for composite: {exc}")
+
+    if not pil_images:
+        return {
+            "success": False,
+            "composite_url": None,
+            "message": "No completed images available to create composite",
+        }
+
+    # Create horizontal composite
+    # Resize all images to same height while maintaining aspect ratio
+    target_height = 512
+    resized_images = []
+    for img in pil_images:
+        # Convert to RGB if needed (in case of RGBA/P mode)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+
+        aspect = img.width / img.height
+        new_width = int(target_height * aspect)
+        resized = img.resize((new_width, target_height), Image.Resampling.LANCZOS)
+        resized_images.append(resized)
+
+    # Calculate total width and create composite
+    total_width = sum(img.width for img in resized_images)
+    composite = Image.new("RGB", (total_width, target_height))
+
+    # Paste images side by side
+    x_offset = 0
+    for img in resized_images:
+        composite.paste(img, (x_offset, 0))
+        x_offset += img.width
+
+    # Save composite using image artifact store
+    output = BytesIO()
+    composite.save(output, format="PNG", optimize=True)
+    output.seek(0)
+
+    artifact = image_artifact_store.persist_image(
+        session_id=image_set.campaign_id,
+        image_bytes=output.getvalue(),
+        image_type="scene",
+        filename=f"composite_{set_id}.png",
+    )
+
+    logger.info(
+        f"Created composite image for set {set_id}: {artifact.url} "
+        f"({len(pil_images)} images, {total_width}x{target_height})"
+    )
+
+    # Save metadata so the image appears in the media gallery
+    try:
+        metadata_manager = get_metadata_manager()
+        metadata_manager.save_metadata(
+            image_filename=f"composite_{set_id}.png",
+            metadata={
+                "prompt": "Scene Composite",
+                "type": "scene",
+                "storage_filename": f"composite_{set_id}.png",
+                "storage_path": artifact.storage_path,
+                "proxy_url": artifact.url,
+                "set_id": set_id,
+            },
+            campaign_id=image_set.campaign_id,
+        )
+        logger.info(f"Saved metadata for composite image {set_id}")
+    except Exception as meta_error:
+        logger.warning(f"Failed to save composite metadata: {meta_error}")
+
+    # Broadcast the composite image to all players via WebSocket
+    try:
+        from gaia.connection.socketio_broadcaster import socketio_broadcaster
+
+        await socketio_broadcaster.broadcast_image_generated(
+            session_id=image_set.campaign_id,
+            image_data={
+                "url": artifact.url,
+                "local_path": artifact.storage_path or f"composite_{set_id}.png",
+                "prompt": "Scene Composite",
+                "type": "scene",
+            },
+        )
+        logger.info(f"Broadcasted composite image to players for campaign {image_set.campaign_id}")
+    except Exception as broadcast_error:
+        logger.warning(f"Failed to broadcast composite image: {broadcast_error}")
+
+    return {
+        "success": True,
+        "composite_url": artifact.url,
+        "message": f"Created composite from {len(pil_images)} images",
+    }
+
+
 # Test/Debug endpoints
 class TestGenerateRequest(BaseModel):
     """Request model for test scene image generation."""
@@ -386,79 +555,111 @@ async def test_generate_scene_images(
 
         logger.info(f"🎨 [DEBUG] Created scene image set: {image_set.set_id}")
 
-        # Trigger async image generation for each description
-        async def generate_image_for_type(image_type: str, description: str):
-            """Generate a single image asynchronously."""
-            if not description:
-                manager.update_image(
-                    set_id=image_set.set_id,
-                    image_type=image_type,
-                    status="failed",
-                    error="No description provided",
-                )
-                return
+        # Parallel image generation using the Runware client pool
+        async def run_all_generations_with_pool():
+            """Run all image generations in parallel using the client pool."""
+            from gaia.infra.image.image_service_manager import get_image_service_manager
 
-            try:
-                from gaia_private.agents.generators.image_generator import (
-                    generate_image_tool,
-                )
+            logger.info("🎨 [DEBUG] Starting parallel image generation with pool...")
 
-                # Map scene ImageType to storage ImageStorageType
-                style_map = {
-                    ImageType.LOCATION_AMBIANCE.value: ImageStorageType.SCENE.value,
-                    ImageType.BACKGROUND_DETAIL.value: ImageStorageType.SCENE_BACKGROUND.value,
-                    ImageType.MOMENT_FOCUS.value: ImageStorageType.MOMENT.value,
-                }
+            # Map scene ImageType to storage ImageStorageType
+            style_map = {
+                ImageType.LOCATION_AMBIANCE.value: ImageStorageType.SCENE.value,
+                ImageType.BACKGROUND_DETAIL.value: ImageStorageType.SCENE_BACKGROUND.value,
+                ImageType.MOMENT_FOCUS.value: ImageStorageType.MOMENT.value,
+            }
 
-                image_result = await generate_image_tool(
-                    prompt=description,
-                    image_type=style_map.get(image_type, ImageStorageType.SCENE.value),
-                    session_id=request.campaign_id,
-                )
+            # Build requests for parallel generation
+            generation_requests = []
+            image_types = []
 
-                if image_result.get("success"):
+            for img_type, description in [
+                ("location_ambiance", result.location_ambiance),
+                ("background_detail", result.background_detail),
+                ("moment_focus", result.moment_focus),
+            ]:
+                if description:
+                    generation_requests.append({
+                        "prompt": description,
+                        "width": 1024,
+                        "height": 1024,
+                    })
+                    image_types.append(img_type)
+                else:
+                    # Mark as failed immediately if no description
                     manager.update_image(
                         set_id=image_set.set_id,
-                        image_type=image_type,
-                        status="complete",
-                        image_url=image_result.get("api_url")
-                        or image_result.get("image_url"),
-                        image_path=image_result.get("local_path"),
+                        image_type=img_type,
+                        status="failed",
+                        error="No description provided",
                     )
-                    logger.info(f"🎨 [DEBUG] Generated {image_type} image successfully")
+
+            if not generation_requests:
+                logger.warning("🎨 [DEBUG] No valid descriptions for image generation")
+                return
+
+            # Generate all images in parallel using the pool
+            image_manager = get_image_service_manager()
+            results = await image_manager.generate_images_parallel(generation_requests)
+
+            # Process results and update the scene image set
+            for img_type, gen_result in zip(image_types, results):
+                if gen_result.get("success"):
+                    # Get the image URL from the result
+                    images = gen_result.get("images", [])
+                    if images:
+                        img_data = images[0]
+                        # Save the image and get URL
+                        from gaia.infra.image.image_artifact_store import image_artifact_store
+
+                        if "b64_json" in img_data:
+                            import base64
+                            img_bytes = base64.b64decode(img_data["b64_json"])
+                            artifact = image_artifact_store.persist_image(
+                                session_id=request.campaign_id,
+                                image_bytes=img_bytes,
+                                image_type=style_map.get(img_type, "scene"),
+                                filename=f"{img_type}_{image_set.set_id}.png",
+                            )
+                            manager.update_image(
+                                set_id=image_set.set_id,
+                                image_type=img_type,
+                                status="complete",
+                                image_url=artifact.url,
+                                image_path=artifact.local_path,
+                            )
+                            logger.info(f"🎨 [DEBUG] Generated {img_type} image successfully")
+                        else:
+                            manager.update_image(
+                                set_id=image_set.set_id,
+                                image_type=img_type,
+                                status="failed",
+                                error="No image data in result",
+                            )
+                    else:
+                        manager.update_image(
+                            set_id=image_set.set_id,
+                            image_type=img_type,
+                            status="failed",
+                            error="No images returned",
+                        )
                 else:
                     manager.update_image(
                         set_id=image_set.set_id,
-                        image_type=image_type,
+                        image_type=img_type,
                         status="failed",
-                        error=image_result.get("error", "Unknown error"),
+                        error=gen_result.get("error", "Unknown error"),
                     )
                     logger.warning(
-                        f"🎨 [DEBUG] Failed to generate {image_type}: "
-                        f"{image_result.get('error')}"
+                        f"🎨 [DEBUG] Failed to generate {img_type}: "
+                        f"{gen_result.get('error')}"
                     )
-            except Exception as e:
-                logger.error(f"🎨 [DEBUG] Error generating {image_type}: {e}")
-                manager.update_image(
-                    set_id=image_set.set_id,
-                    image_type=image_type,
-                    status="failed",
-                    error=str(e),
-                )
 
-        # Wrap the async generation in a coroutine
-        async def run_all_generations():
-            """Run all image generations in parallel."""
-            logger.info("🎨 [DEBUG] Starting parallel image generation...")
-            await asyncio.gather(
-                generate_image_for_type("location_ambiance", result.location_ambiance),
-                generate_image_for_type("background_detail", result.background_detail),
-                generate_image_for_type("moment_focus", result.moment_focus),
-            )
             logger.info("🎨 [DEBUG] All image generations completed")
 
         # Start async generation for all image types (fire and forget)
-        asyncio.create_task(run_all_generations())
+        # Use the pool-based parallel generation
+        asyncio.create_task(run_all_generations_with_pool())
 
         return {
             "success": True,

@@ -6,16 +6,21 @@ by the VisualNarratorAgent. Each set contains three images:
 - Background Detail
 - Moment Focus
 
-Image sets are tracked in-memory with metadata persistence, allowing the
-frontend to poll for generation status and retrieve completed images.
+Image sets are persisted as JSON files in the campaign's scene_image_sets folder,
+allowing them to survive container restarts while maintaining the in-memory cache
+for fast access during active sessions.
 """
 
+import json
 import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Literal, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional
+
+from gaia_private.session.session_storage import SessionStorage
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +64,7 @@ class SceneImage:
     error: Optional[str] = None
     generated_at: Optional[datetime] = None
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for API response."""
         return {
             "type": self.image_type,
@@ -70,6 +75,25 @@ class SceneImage:
             "error": self.error,
             "generated_at": self.generated_at.isoformat() if self.generated_at else None,
         }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SceneImage":
+        """Create SceneImage from dictionary."""
+        generated_at = None
+        if data.get("generated_at"):
+            try:
+                generated_at = datetime.fromisoformat(data["generated_at"])
+            except (ValueError, TypeError):
+                pass
+        return cls(
+            image_type=data.get("type", data.get("image_type", "")),
+            description=data.get("description", ""),
+            status=data.get("status", "pending"),
+            image_path=data.get("image_path"),
+            image_url=data.get("image_url"),
+            error=data.get("error"),
+            generated_at=generated_at,
+        )
 
 
 @dataclass
@@ -88,8 +112,8 @@ class SceneImageSet:
     completed_at: Optional[datetime] = None
     images: List[SceneImage] = field(default_factory=list)
 
-    def to_dict(self) -> Dict:
-        """Convert to dictionary for API response."""
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API response and persistence."""
         return {
             "set_id": self.set_id,
             "campaign_id": self.campaign_id,
@@ -99,6 +123,35 @@ class SceneImageSet:
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "images": [img.to_dict() for img in self.images],
         }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SceneImageSet":
+        """Create SceneImageSet from dictionary."""
+        created_at = datetime.utcnow()
+        if data.get("created_at"):
+            try:
+                created_at = datetime.fromisoformat(data["created_at"])
+            except (ValueError, TypeError):
+                pass
+
+        completed_at = None
+        if data.get("completed_at"):
+            try:
+                completed_at = datetime.fromisoformat(data["completed_at"])
+            except (ValueError, TypeError):
+                pass
+
+        images = [SceneImage.from_dict(img) for img in data.get("images", [])]
+
+        return cls(
+            set_id=data["set_id"],
+            campaign_id=data["campaign_id"],
+            turn_number=data.get("turn_number", 0),
+            status=data.get("status", "generating"),
+            created_at=created_at,
+            completed_at=completed_at,
+            images=images,
+        )
 
     def update_status(self) -> None:
         """Update set status based on individual image statuses."""
@@ -124,18 +177,97 @@ class SceneImageSet:
 
 
 class SceneImageSetManager:
-    """Manages scene image sets with in-memory storage.
+    """Manages scene image sets with persistence.
 
     Provides storage, retrieval, and status tracking for scene image sets.
+    Sets are persisted as JSON files in the campaign's scene_image_sets folder.
     Maintains a limited number of sets per campaign to prevent unbounded growth.
     """
 
     MAX_SETS_PER_CAMPAIGN = 10  # Keep last N sets per campaign
+    SETS_FOLDER = "scene_image_sets"
 
-    def __init__(self):
-        """Initialize the manager with empty storage."""
+    def __init__(self) -> None:
+        """Initialize the manager with empty in-memory cache."""
         self._sets: Dict[str, SceneImageSet] = {}  # set_id -> SceneImageSet
         self._campaign_sets: Dict[str, List[str]] = {}  # campaign_id -> [set_ids]
+        self._loaded_campaigns: set[str] = set()  # Track which campaigns we've loaded
+        self._storage = SessionStorage(ensure_legacy_dirs=True)
+
+    def _get_sets_dir(self, campaign_id: str) -> Optional[Path]:
+        """Get the scene_image_sets directory for a campaign."""
+        campaign_dir = self._storage.resolve_session_dir(campaign_id, create=True)
+        if not campaign_dir:
+            return None
+        sets_dir = campaign_dir / self.SETS_FOLDER
+        sets_dir.mkdir(parents=True, exist_ok=True)
+        return sets_dir
+
+    def _persist_set(self, image_set: SceneImageSet) -> None:
+        """Persist a scene image set to disk."""
+        sets_dir = self._get_sets_dir(image_set.campaign_id)
+        if not sets_dir:
+            logger.warning(f"Could not get sets dir for campaign {image_set.campaign_id}")
+            return
+
+        set_file = sets_dir / f"{image_set.set_id}.json"
+        try:
+            with open(set_file, "w") as f:
+                json.dump(image_set.to_dict(), f, indent=2)
+            logger.debug(f"Persisted scene image set {image_set.set_id}")
+        except Exception as e:
+            logger.error(f"Failed to persist scene image set {image_set.set_id}: {e}")
+
+    def _delete_set_file(self, campaign_id: str, set_id: str) -> None:
+        """Delete a scene image set file from disk."""
+        sets_dir = self._get_sets_dir(campaign_id)
+        if not sets_dir:
+            return
+
+        set_file = sets_dir / f"{set_id}.json"
+        try:
+            if set_file.exists():
+                set_file.unlink()
+                logger.debug(f"Deleted scene image set file {set_id}")
+        except Exception as e:
+            logger.warning(f"Failed to delete scene image set file {set_id}: {e}")
+
+    def _load_campaign_sets(self, campaign_id: str) -> None:
+        """Load all scene image sets for a campaign from disk into memory."""
+        if campaign_id in self._loaded_campaigns:
+            return  # Already loaded
+
+        sets_dir = self._get_sets_dir(campaign_id)
+        if not sets_dir or not sets_dir.exists():
+            self._loaded_campaigns.add(campaign_id)
+            return
+
+        loaded_sets: List[SceneImageSet] = []
+
+        for set_file in sets_dir.glob("*.json"):
+            try:
+                with open(set_file) as f:
+                    data = json.load(f)
+                image_set = SceneImageSet.from_dict(data)
+                loaded_sets.append(image_set)
+            except Exception as e:
+                logger.warning(f"Failed to load scene image set {set_file}: {e}")
+
+        # Sort by created_at to maintain order
+        loaded_sets.sort(key=lambda s: s.created_at)
+
+        # Populate in-memory cache
+        if campaign_id not in self._campaign_sets:
+            self._campaign_sets[campaign_id] = []
+
+        for image_set in loaded_sets:
+            if image_set.set_id not in self._sets:
+                self._sets[image_set.set_id] = image_set
+                if image_set.set_id not in self._campaign_sets[campaign_id]:
+                    self._campaign_sets[campaign_id].append(image_set.set_id)
+
+        self._loaded_campaigns.add(campaign_id)
+        logger.info(f"Loaded {len(loaded_sets)} scene image sets for campaign {campaign_id}")
 
     def create_set(
         self,
@@ -153,6 +285,9 @@ class SceneImageSetManager:
         Returns:
             Created SceneImageSet
         """
+        # Ensure campaign sets are loaded first
+        self._load_campaign_sets(campaign_id)
+
         set_id = str(uuid.uuid4())
 
         images = [
@@ -188,6 +323,9 @@ class SceneImageSetManager:
             self._campaign_sets[campaign_id] = []
         self._campaign_sets[campaign_id].append(set_id)
 
+        # Persist to disk
+        self._persist_set(image_set)
+
         # Cleanup old sets
         self._cleanup_old_sets(campaign_id)
 
@@ -206,7 +344,31 @@ class SceneImageSetManager:
         Returns:
             SceneImageSet if found, None otherwise
         """
-        return self._sets.get(set_id)
+        # First check in-memory cache
+        if set_id in self._sets:
+            return self._sets[set_id]
+
+        # Try to find and load from disk if not in cache
+        # We need to search all campaigns since we don't know which one it belongs to
+        for session_id, campaign_dir, _ in self._storage.iter_session_dirs():
+            sets_dir = campaign_dir / self.SETS_FOLDER
+            set_file = sets_dir / f"{set_id}.json"
+            if set_file.exists():
+                try:
+                    with open(set_file) as f:
+                        data = json.load(f)
+                    image_set = SceneImageSet.from_dict(data)
+                    # Cache it
+                    self._sets[set_id] = image_set
+                    if session_id not in self._campaign_sets:
+                        self._campaign_sets[session_id] = []
+                    if set_id not in self._campaign_sets[session_id]:
+                        self._campaign_sets[session_id].append(set_id)
+                    return image_set
+                except Exception as e:
+                    logger.warning(f"Failed to load scene image set {set_id}: {e}")
+
+        return None
 
     def get_latest_set(self, campaign_id: str) -> Optional[SceneImageSet]:
         """Get the most recent scene image set for a campaign.
@@ -217,6 +379,9 @@ class SceneImageSetManager:
         Returns:
             Most recent SceneImageSet if any exist, None otherwise
         """
+        # Ensure campaign sets are loaded
+        self._load_campaign_sets(campaign_id)
+
         set_ids = self._campaign_sets.get(campaign_id, [])
         if not set_ids:
             return None
@@ -237,6 +402,9 @@ class SceneImageSetManager:
         Returns:
             List of SceneImageSets, most recent first
         """
+        # Ensure campaign sets are loaded
+        self._load_campaign_sets(campaign_id)
+
         set_ids = self._campaign_sets.get(campaign_id, [])
 
         # Return most recent first
@@ -265,7 +433,7 @@ class SceneImageSetManager:
         Returns:
             Updated SceneImageSet if found, None otherwise
         """
-        image_set = self._sets.get(set_id)
+        image_set = self.get_set(set_id)  # This will load from disk if needed
         if not image_set:
             logger.warning(f"Scene image set {set_id} not found for update")
             return None
@@ -286,6 +454,9 @@ class SceneImageSetManager:
         # Update set status
         image_set.update_status()
 
+        # Persist updated set to disk
+        self._persist_set(image_set)
+
         logger.info(
             f"Updated {image_type} in set {set_id}: status={status}, "
             f"set_status={image_set.status}"
@@ -305,6 +476,7 @@ class SceneImageSetManager:
             old_id = set_ids.pop(0)
             if old_id in self._sets:
                 del self._sets[old_id]
+                self._delete_set_file(campaign_id, old_id)
                 logger.debug(f"Cleaned up old scene image set {old_id}")
 
 

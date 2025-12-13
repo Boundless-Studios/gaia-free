@@ -291,6 +291,11 @@ async def chat(
             except SessionNotFoundError as exc:
                 raise HTTPException(status_code=404, detail=f"Session '{chat_request.session_id}' not found") from exc
 
+            # NOTE: Turn broadcasts (turn_started, input_received) are now handled by
+            # the WebSocket submit_turn handler. DM uses WebSocket for submissions.
+            # This HTTP endpoint is kept for backward compatibility but Socket.IO
+            # has its own HTTP long-polling fallback built-in.
+
             async with session_context.lock:
                 result = await session_context.orchestrator.run_campaign(
                     user_input=chat_request.message,

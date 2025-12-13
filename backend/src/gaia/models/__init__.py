@@ -4,6 +4,10 @@ from gaia.models.game_enums import (
     GameStyle,
     GameTheme,
 )
+from gaia.models.response_type import ResponseType
+from gaia.models.player_input import PlayerInput
+from gaia.models.dm_input import DMInput
+from gaia.models.turn_input import TurnInput
 from gaia.models.campaign import CampaignData
 from gaia.models.npc import NPCInfo
 from gaia.models.environment import EnvironmentInfo
@@ -24,6 +28,11 @@ __all__ = [
     # Enums
     "GameStyle",
     "GameTheme",
+    "ResponseType",
+    # Turn-based messaging
+    "PlayerInput",
+    "DMInput",
+    "TurnInput",
     # Campaign
     "CampaignData",
     # Game objects

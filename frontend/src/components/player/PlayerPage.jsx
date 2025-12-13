@@ -18,6 +18,7 @@ import CharacterAssignmentModal from './CharacterAssignmentModal.jsx';
 import PlayerVacatedModal from './PlayerVacatedModal.jsx';
 import VoiceInputScribeV2 from '../VoiceInputScribeV2.jsx';
 import { useGameSocket } from '../../hooks/useGameSocket.js';
+import { useTurnBasedMessages } from '../../hooks/useTurnBasedMessages.js';
 
 const PLAYER_SOCKET_GLOBAL_KEY = '__gaia_player_active_socket';
 const CHARACTER_DRAFT_STORAGE_PREFIX = 'player-seat-draft';
@@ -136,12 +137,61 @@ const PlayerPage = () => {
   const [isNarrativeStreamingBySession, setIsNarrativeStreamingBySession] = useState({});
   const [isResponseStreamingBySession, setIsResponseStreamingBySession] = useState({});
 
+  // Track backend-authoritative turn counter and processing state per session
+  const [backendTurnBySession, setBackendTurnBySession] = useState({});
+  const [isProcessingBySession, setIsProcessingBySession] = useState({});
+
   const latestStructuredData = currentCampaignId
     ? structuredDataBySession[currentCampaignId] ?? null
     : null;
   const campaignMessages = currentCampaignId
     ? messagesBySession[currentCampaignId] || []
     : [];
+  const backendCurrentTurn = currentCampaignId
+    ? backendTurnBySession[currentCampaignId] ?? null
+    : null;
+  const isBackendProcessing = currentCampaignId
+    ? isProcessingBySession[currentCampaignId] ?? false
+    : false;
+
+  // Turn-based messages for consistent display with DM view
+  const {
+    turns,
+    isProcessing,
+    handleTurnStarted,
+    handleTurnMessage,
+    handleTurnComplete,
+    handleTurnError,
+    handleInputReceived,
+    loadTurnsFromHistory,
+    clearTurns,
+    appendStreamingText,
+    setCurrentTurn,
+  } = useTurnBasedMessages(currentCampaignId);
+
+  // Track previous campaign to detect campaign switches (for clearing)
+  const prevCampaignIdRef = useRef(currentCampaignId);
+  useEffect(() => {
+    console.log('📚 Turns loading effect:', {
+      currentCampaignId,
+      prevCampaignId: prevCampaignIdRef.current,
+      campaignMessagesCount: campaignMessages?.length || 0,
+      turnsCount: turns?.length || 0,
+      backendCurrentTurn,
+      isBackendProcessing,
+    });
+    // Clear turns when campaign changes
+    if (prevCampaignIdRef.current !== currentCampaignId) {
+      console.log('📚 Campaign changed, clearing turns');
+      clearTurns();
+      prevCampaignIdRef.current = currentCampaignId;
+    }
+    // Load turns from messages with backend-authoritative turn number and processing state
+    if (campaignMessages && campaignMessages.length > 0) {
+      console.log('📚 Loading turns from', campaignMessages.length, 'messages, backendCurrentTurn=', backendCurrentTurn, 'isBackendProcessing=', isBackendProcessing);
+      loadTurnsFromHistory(campaignMessages, backendCurrentTurn, isBackendProcessing);
+    }
+  }, [campaignMessages, currentCampaignId, backendCurrentTurn, isBackendProcessing, loadTurnsFromHistory, clearTurns]);
 
   const handleRoomEvent = useCallback((event) => {
     setLastRoomEvent({ event, timestamp: Date.now() });
@@ -363,6 +413,10 @@ const PlayerPage = () => {
       generated_image_prompt: structData.generated_image_prompt || '',
       generated_image_type: structData.generated_image_type || '',
       audio: structData.audio || null,
+      is_combat_active: structData.is_combat_active,
+      interaction_type: structData.interaction_type || '',
+      next_interaction_type: structData.next_interaction_type || '',
+      original_data: structData,
     };
     if (structData.combat_state) {
       base.combat_state = structData.combat_state;
@@ -391,7 +445,32 @@ const PlayerPage = () => {
 
       const data = await apiService.readSimpleCampaign(campaignId);
       console.log('🎮 PlayerPage received from backend:', data);
+      console.log('🎮 Backend current_turn:', data?.current_turn, 'message_count:', data?.message_count);
+      if (data?.messages?.length > 0) {
+        console.log('🎮 First message sample:', {
+          turn_number: data.messages[0].turn_number,
+          response_type: data.messages[0].response_type,
+          role: data.messages[0].role,
+        });
+      }
       console.log('🎮 Backend structured_data.combat_status:', data?.structured_data?.combat_status);
+
+      // Initialize turn counter and processing state from backend (authoritative source)
+      if (data?.current_turn != null) {
+        setCurrentTurn(data.current_turn);
+        // Store in state so loadTurnsFromHistory can use it
+        setBackendTurnBySession(prev => ({
+          ...prev,
+          [sessionId]: data.current_turn,
+        }));
+      }
+      // Store backend processing state (determines if we show streaming indicator)
+      setIsProcessingBySession(prev => ({
+        ...prev,
+        [sessionId]: data?.is_processing ?? false,
+      }));
+      console.log('🎮 Backend is_processing:', data?.is_processing);
+
       if (data && data.success && data.structured_data) {
         const transformedData = transformStructuredData(data.structured_data);
         console.log('🎮 PlayerPage transformed data:', transformedData);
@@ -439,7 +518,7 @@ const PlayerPage = () => {
       loadingCampaignsRef.current.delete(campaignId);
       setIsLoading(false);
     }
-  }, [setSessionMessages, setSessionStructuredData, transformStructuredData, setCampaignName]);
+  }, [setSessionMessages, setSessionStructuredData, transformStructuredData, setCampaignName, setCurrentTurn]);
 
   // Ref for socket emit - allows useUserAudioQueue to use socket before useGameSocket is called
   const socketEmitRef = useRef(null);
@@ -770,14 +849,16 @@ const PlayerPage = () => {
       case 'image_generated': {
         // New image was generated - trigger instant refresh in MediaGallery
         console.log('📸 Image generated event received:', update);
-        if (sessionId && update.filename) {
+        // Check for either filename (legacy) or url (new format from composite images)
+        const hasImage = update.filename || update.url || update.local_path;
+        if (sessionId && hasImage) {
           // Trigger MediaGallery refresh by updating a timestamp in separate UI state
           // (keeping UI state separate from game data)
           setImageRefreshTriggersBySession((prev) => ({
             ...prev,
             [sessionId]: Date.now()
           }));
-          console.log(`📸 Triggered instant image refresh for ${update.filename}`);
+          console.log(`📸 Triggered instant image refresh for ${update.filename || update.url}`);
         }
         break;
       }
@@ -828,6 +909,8 @@ const PlayerPage = () => {
               ...prev,
               [sessionId]: !update.is_final
             }));
+            // Also update turn-based view with streaming text
+            appendStreamingText(update.content, update.is_final);
             if (update.is_final) {
               delete lastNarrativeChunkSignatureRef.current[sessionId];
             }
@@ -939,6 +1022,31 @@ const PlayerPage = () => {
   // Socket.IO connection using useGameSocket hook
   // Create handlers that wrap data with type field for handleCampaignUpdate
   const socketHandlers = useMemo(() => ({
+    // Turn-based message events (real-time updates for history view)
+    turn_started: handleTurnStarted,
+    turn_message: handleTurnMessage,
+    turn_complete: handleTurnComplete,
+    turn_error: handleTurnError,
+    // Input received event (immediate feedback when DM submits - includes input text)
+    // Also clears player options since the turn has advanced
+    input_received: (data) => {
+      handleInputReceived(data);
+      // Clear player options when turn advances
+      const { session_id } = data;
+      if (session_id) {
+        setStructuredDataBySession(prev => {
+          const current = prev[session_id];
+          if (!current) return prev;
+          return {
+            ...prev,
+            [session_id]: {
+              ...current,
+              personalized_player_options: null,
+            }
+          };
+        });
+      }
+    },
     // Core game events
     narrative_chunk: (data) => handleCampaignUpdate({ ...data, type: 'narrative_chunk' }),
     player_response_chunk: (data) => handleCampaignUpdate({ ...data, type: 'player_response_chunk' }),
@@ -1001,7 +1109,7 @@ const PlayerPage = () => {
       console.log('[Collab] Player registered via Socket.IO:', data);
       setCollabIsConnected(true);
     },
-  }), [handleCampaignUpdate, handleSfxAvailable, sessionId]);
+  }), [handleCampaignUpdate, handleSfxAvailable, sessionId, handleTurnStarted, handleTurnMessage, handleTurnComplete, handleTurnError, handleInputReceived, setStructuredDataBySession]);
 
   // Use Socket.IO connection
   const {
@@ -1288,6 +1396,8 @@ const PlayerPage = () => {
         imageRefreshTriggersBySession={imageRefreshTriggersBySession}
         latestStructuredData={latestStructuredData}
         campaignMessages={campaignMessages}
+        turns={turns}
+        isProcessing={isProcessing}
         handlePlayerAction={handlePlayerAction}
         loadCampaignData={loadCampaignData}
         streamingNarrativeBySession={streamingNarrativeBySession}
@@ -1332,6 +1442,8 @@ const PlayerRoomShell = ({
   imageRefreshTriggersBySession,
   latestStructuredData,
   campaignMessages,
+  turns,
+  isProcessing,
   handlePlayerAction,
   loadCampaignData,
   streamingNarrativeBySession,
@@ -1867,6 +1979,7 @@ const PlayerRoomShell = ({
               characterData={demoCharacter}
               latestStructuredData={latestStructuredData}
               campaignMessages={campaignMessages}
+              turns={turns}
               imageRefreshTrigger={imageRefreshTriggersBySession[currentCampaignId]}
               onPlayerAction={handlePlayerAction}
               onLoadCampaignData={loadCampaignData}
@@ -1874,6 +1987,8 @@ const PlayerRoomShell = ({
               streamingResponse={streamingResponseBySession[currentCampaignId] || ''}
               isNarrativeStreaming={isNarrativeStreamingBySession[currentCampaignId] || false}
               isResponseStreaming={isResponseStreamingBySession[currentCampaignId] || false}
+              // Event-driven processing indicator (set by turn_started socket event)
+              isProcessing={isProcessing}
               // Collaborative editing props (now via Socket.IO)
               collabWebSocket={sioSocket}
               collabPlayerId={collabPlayerId}

@@ -28,7 +28,7 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     env_file:
       - ../config/cloudrun.dev.env
-    entrypoint: ["/home/gaia/scripts/docker-entrypoint-with-secrets.sh"]
+    entrypoint: ["/home/gaia/scripts/backend/docker-entrypoint-with-secrets.sh"]
     command: ["python3", "-m", "uvicorn", "gaia.api.app:socket_app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     environment:
       - SOPS_AGE_KEY_FILE=/run/secrets/age-key.txt
@@ -42,7 +42,7 @@ services:
       # Mount gaia_private to PYTHONPATH root (can't mount over symlink in src/)
       - ../../gaia-private:/home/gaia/gaia_private:ro
       # Mount gaia-free scripts (entrypoints, etc.)
-      - ../scripts/backend:/home/gaia/scripts:ro
+      - ../scripts:/home/gaia/scripts:ro
       # Mount private scripts to separate location
       - ../../gaia-private/_scripts/backend:/home/gaia/private_scripts:ro
       - ./test:/home/gaia/test:ro
@@ -85,7 +85,7 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     env_file:
       - .settings.docker.env
-    entrypoint: ["/home/gaia/scripts/docker-entrypoint-with-secrets.sh"]
+    entrypoint: ["/home/gaia/scripts/backend/docker-entrypoint-with-secrets.sh"]
     command: ["python3", "-m", "uvicorn", "gaia.api.app:socket_app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     environment:
       - SOPS_AGE_KEY_FILE=/run/secrets/age-key.txt
@@ -95,7 +95,7 @@ services:
       # Mount gaia_private to PYTHONPATH root (can't mount over symlink in src/)
       - ../../gaia-private:/home/gaia/gaia_private:ro
       # Mount gaia-free scripts (entrypoints, etc.)
-      - ../scripts/backend:/home/gaia/scripts:ro
+      - ../scripts:/home/gaia/scripts:ro
       # Mount private scripts to separate location
       - ../../gaia-private/_scripts/backend:/home/gaia/private_scripts:ro
       - ./test:/home/gaia/test

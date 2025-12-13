@@ -7,7 +7,7 @@ import PlayerAndTurnList from './PlayerAndTurnList/PlayerAndTurnList';
 import CollaborativeStackedEditor from './collaborative/CollaborativeStackedEditor.jsx';
 import apiService from '../services/apiService';
 import './GameDashboard.css';
-import StreamingNarrativeView from './player/StreamingNarrativeView.jsx';
+import TurnBasedNarrativeView from './player/TurnBasedNarrativeView.jsx';
 import { useRoom } from '../contexts/RoomContext.jsx';
 import RoomManagementDrawer from './dm/RoomManagementDrawer.jsx';
 import Button from './base-ui/Button.jsx';
@@ -23,6 +23,8 @@ const GameDashboard = forwardRef(
     isResponseStreaming = false,
     onDebugStreamPreview,
     messages = [],
+    // Turn-based message system props
+    turns = [],
     // Chat input props
     inputMessage = '',
     onInputChange,
@@ -48,7 +50,8 @@ const GameDashboard = forwardRef(
     onCopyObservation = null, // Callback for primary player to copy an observation
     // Player submissions (from player action submissions)
     playerSubmissions = [],
-    onCopyPlayerSubmission = null,
+    selectedPlayerSubmissionIds = new Set(),
+    onTogglePlayerSubmission = null,
   }, ref) => {
   // Debug: Uncomment for detailed render logging
   // console.log('📋 GameDashboard render:', { messagesCount: messages?.length });
@@ -61,15 +64,10 @@ const GameDashboard = forwardRef(
   const [collabEditorHasDraft, setCollabEditorHasDraft] = useState(false);
   const collabEditorRef = useRef(null);
 
-  // Room management state (optional - only if RoomProvider is available)
+  // Room management state
   const [showRoomDrawer, setShowRoomDrawer] = useState(false);
-  let roomContext = null;
-  try {
-    roomContext = useRoom();
-  } catch (e) {
-    // RoomProvider not available - room features disabled
-  }
-  const { isDMSeated, roomState } = roomContext || {};
+  const roomContext = useRoom();
+  const { roomState } = roomContext || {};
   const isCampaignSetup = Boolean(roomContext && roomState?.campaign_status === 'setup');
 
   // Auto-TTS on production when streaming completes
@@ -109,7 +107,15 @@ const GameDashboard = forwardRef(
 
   const structuredData = latestStructuredData || {};
   const turnInfo = structuredData.turn_info || {};
-  const combatStatus = structuredData.combat_status || {};
+  const nextInteractionType = (structuredData.next_interaction_type
+    || structuredData.original_data?.next_interaction_type
+    || '').toLowerCase();
+  const combatEnded = structuredData.is_combat_active === false
+    || (structuredData.combat_state
+      && typeof structuredData.combat_state === 'object'
+      && structuredData.combat_state.is_active === false)
+    || nextInteractionType === 'default';
+  const combatStatus = combatEnded ? {} : (structuredData.combat_status || {});
 
   const handlePlayStopOptions = async () => {
     try {
@@ -135,19 +141,8 @@ const GameDashboard = forwardRef(
     }
   };
 
-  const formatStatusLabel = (status) => {
-    if (!status) return 'Unknown';
-    return status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-  };
-
-  const roomStatusColor = roomState?.room_status === 'active' ? 'text-green-400' : 'text-yellow-400';
-  const campaignStatusColor = roomState?.campaign_status === 'active' ? 'text-green-400' : 'text-yellow-400';
-  const roomStatusLabel = roomState?.room_status ? formatStatusLabel(roomState.room_status) : 'Waiting';
-  const campaignStatusLabel = roomState?.campaign_status ? formatStatusLabel(roomState.campaign_status) : 'Setup';
-
   const streamingNarrativeText = (streamingNarrative || '').trim();
   const streamingResponseText = (streamingResponse || '').trim();
-  const streamingHasContent = Boolean(streamingNarrativeText || streamingResponseText);
   const streamingInProgress = Boolean(isNarrativeStreaming || isResponseStreaming);
   const hasPlayerOptions = Boolean(
     (latestStructuredData?.turn && String(latestStructuredData.turn).trim()) ||
@@ -200,27 +195,6 @@ const GameDashboard = forwardRef(
     }
   }, [collabWebSocket, onInputChange, inputMessage]);
 
-  // Handle copying a player submission to the DM's input
-  const handleCopyPlayerSubmission = useCallback((submission) => {
-    if (!submission) return;
-
-    // Format: "[CharacterName]: action text"
-    const formattedAction = `[${submission.characterName}]: ${submission.actionText}`;
-
-    if (collabWebSocket && collabEditorRef.current?.insertText) {
-      // Using collaborative editor - insert via ref
-      collabEditorRef.current.insertText(formattedAction);
-    } else if (onInputChange) {
-      // Fallback to regular input - append to existing message
-      const separator = inputMessage.trim() ? '\n\n' : '';
-      onInputChange({ target: { value: inputMessage + separator + formattedAction } });
-    }
-
-    // Remove the submission after copying
-    if (onCopyPlayerSubmission) {
-      onCopyPlayerSubmission(submission);
-    }
-  }, [collabWebSocket, onInputChange, inputMessage, onCopyPlayerSubmission]);
 
   const streamingPanel = (
     <div className="dashboard-streaming-panel">
@@ -232,12 +206,12 @@ const GameDashboard = forwardRef(
         </div>
       </div>
       <div className="streaming-panel-body">
-        <StreamingNarrativeView
+        <TurnBasedNarrativeView
           narrative={streamingNarrativeText}
           playerResponse={streamingResponseText}
           isNarrativeStreaming={isNarrativeStreaming}
           isResponseStreaming={isResponseStreaming}
-          messages={messages}
+          turns={turns}
           onImageGenerated={onImageGenerated}
           campaignId={campaignId}
         />
@@ -322,45 +296,16 @@ const GameDashboard = forwardRef(
         </div>
       )}
 
-      {/* Room Management Section - Only shown when RoomProvider is available */}
-      {roomContext && (
-        <>
-          <div className="px-4 pt-4 flex items-center justify-between">
-            <div className="text-sm text-gray-400 flex flex-col sm:flex-row sm:items-center gap-2">
-              <span>
-                Room:{' '}
-                <span className={`font-medium ${roomStatusColor}`}>
-                  {roomStatusLabel}
-                </span>
-              </span>
-              <span>
-                Campaign:{' '}
-                <span className={`font-medium ${campaignStatusColor}`}>
-                  {campaignStatusLabel}
-                </span>
-              </span>
-            </div>
-            <Button
-              onClick={() => setShowRoomDrawer(true)}
-              variant="secondary"
-              size="small"
-              icon={
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              }
-            >
-              Manage Room
-            </Button>
-          </div>
+      {/* Room Management Drawer - rendered separately */}
+      {roomContext && renderRoomDrawer()}
 
-          {/* Room Management Drawer */}
-          {renderRoomDrawer()}
-        </>
-      )}
-
-      {/* Character List Section - At the top */}
+      {/* Character List + Scene Images Panel - shared container */}
       <div className="dashboard-character-list-panel">
+        <SceneImagesMiniGallery
+          campaignId={campaignId}
+          onShowToPlayers={onImageGenerated}
+          pollingInterval={5000}
+        />
         <PlayerAndTurnList
           campaignId={campaignId}
           turnInfo={turnInfo}
@@ -378,18 +323,9 @@ const GameDashboard = forwardRef(
         />
       </div>
 
-      {/* Scene Images Mini Gallery - For DM to show generated scene images to players */}
-      <div className="dashboard-scene-images-panel">
-        <SceneImagesMiniGallery
-          campaignId={campaignId}
-          onShowToPlayers={onImageGenerated}
-          pollingInterval={5000}
-        />
-      </div>
-
-      {/* Combined Bottom Panel: Live DM Stream (75%) + Player Options (25%) */}
+      {/* Combined Bottom Panel: Live DM Stream + Player Options */}
       <div className="dashboard-combined-bottom-panel">
-        {/* Streaming DM output - Left side 75% */}
+        {/* Streaming DM output - Left side */}
         <div className="dashboard-streaming-section">
           {streamingPanel}
         </div>
@@ -411,7 +347,8 @@ const GameDashboard = forwardRef(
                 onCopyToChat={handleCopyPlayerOptionToChat}
                 turnInfo={latestStructuredData.turn_info}
                 playerSubmissions={playerSubmissions}
-                onCopyPlayerSubmission={handleCopyPlayerSubmission}
+                selectedPlayerSubmissionIds={selectedPlayerSubmissionIds}
+                onTogglePlayerSubmission={onTogglePlayerSubmission}
                 isDMView={true}
               />
             ) : (

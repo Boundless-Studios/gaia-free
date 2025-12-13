@@ -259,10 +259,10 @@ const ImageGalleryWithPolling = ({ maxImages = 20, pollingInterval = 10000, camp
     return (
       <>
         <style>{scrollbarStyles}</style>
-        <div className="bg-gaia-light/60 border border-white/10 rounded-lg p-4 backdrop-blur-md h-[520px] flex flex-col">
-          <div className="flex items-center gap-2 mb-3 text-gray-200">
-            <span className="text-xl">🖼️</span>
-            <h3 className="m-0 text-base font-semibold flex-1">Scene Gallery</h3>
+        <div className="bg-gaia-light/60 border border-white/10 rounded-lg p-3 backdrop-blur-md h-full flex flex-col">
+          <div className="flex items-center gap-2 mb-2 text-gray-200">
+            <span className="text-lg">🖼️</span>
+            <h3 className="m-0 text-sm font-semibold flex-1">Scene Gallery</h3>
             {isLoading && <span className="text-gaia-accent ml-2 inline-block animate-spin-custom">🔄</span>}
           </div>
           <div className="flex-1 flex flex-col items-center justify-center text-gray-500 italic gap-2">
@@ -277,10 +277,10 @@ const ImageGalleryWithPolling = ({ maxImages = 20, pollingInterval = 10000, camp
   return (
     <>
       <style>{scrollbarStyles}</style>
-      <div className="bg-gaia-light/60 border border-white/10 rounded-lg p-4 backdrop-blur-md h-[520px] flex flex-col">
-        <div className="flex items-center gap-2 mb-3 text-gray-200">
-          <span className="text-xl">🖼️</span>
-          <h3 className="m-0 text-base font-semibold flex-1">Scene Gallery</h3>
+      <div className="bg-gaia-light/60 border border-white/10 rounded-lg p-3 backdrop-blur-md h-full flex flex-col">
+        <div className="flex items-center gap-2 mb-2 text-gray-200">
+          <span className="text-lg">🖼️</span>
+          <h3 className="m-0 text-sm font-semibold flex-1">Scene Gallery</h3>
           <span className="text-xs text-gray-400 bg-white/10 px-2 py-0.5 rounded-full">{images.length} scenes</span>
           {isLoading && <span className="text-gaia-accent ml-2 inline-block animate-spin-custom">🔄</span>}
         </div>
@@ -302,11 +302,16 @@ const ImageGalleryWithPolling = ({ maxImages = 20, pollingInterval = 10000, camp
             Use mouse wheel to scroll →
           </div>
           
-          <div className="flex gap-5 h-full items-center">
-            {images.map((image, index) => (
-              <div 
-                key={image.id} 
-                className={`relative flex-shrink-0 h-[480px] w-[480px] cursor-pointer rounded-md overflow-hidden transition-all duration-200 border-2 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/50 ${
+          <div className="flex gap-3 h-full items-center">
+            {images.map((image, index) => {
+              // Detect composite images (3x wider)
+              const isComposite = image.id?.includes('composite_') || image.imagePath?.includes('composite_');
+              const imageWidth = isComposite ? 'w-[912px]' : 'w-[300px]';
+
+              return (
+              <div
+                key={image.id}
+                className={`relative flex-shrink-0 h-[300px] ${imageWidth} cursor-pointer rounded-md overflow-hidden transition-all duration-200 border-2 hover:-translate-y-0.5 hover:shadow-xl hover:border-orange-500/50 ${
                   index === 0 ? 'border-orange-500/30' : 'border-transparent'
                 }`}
                 onClick={(e) => {
@@ -363,7 +368,8 @@ const ImageGalleryWithPolling = ({ maxImages = 20, pollingInterval = 10000, camp
                   )}
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
         

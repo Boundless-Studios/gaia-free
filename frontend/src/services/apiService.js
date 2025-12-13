@@ -4,6 +4,10 @@
  */
 
 import { API_CONFIG } from '../config/api.js';
+import { loggers } from '../utils/logger.js';
+
+const log = loggers.api;
+const authLog = loggers.auth;
 
 class ApiService {
   constructor() {
@@ -184,7 +188,7 @@ class ApiService {
       const absolute = new URL(rawUrl, base);
       return absolute.toString();
     } catch (error) {
-      console.warn('Failed to resolve absolute URL:', rawUrl, error);
+      log.warn('Failed to resolve absolute URL:', rawUrl, error);
       if (rawUrl.startsWith('/')) {
         return `${base.replace(/\/$/, '')}${rawUrl}`;
       }
@@ -205,7 +209,7 @@ class ApiService {
           headers.Authorization = `Bearer ${token}`;
         }
       } catch (error) {
-        console.warn('Failed to obtain auth token for media fetch:', error);
+        log.warn('Failed to obtain auth token for media fetch:', error);
       }
     }
 
@@ -253,7 +257,7 @@ class ApiService {
     try {
       return await this.fetchMediaAsObjectUrl(absoluteUrl);
     } catch (error) {
-      console.warn('Failed to fetch authorized media blob:', error);
+      log.warn('Failed to fetch authorized media blob:', error);
       return absoluteUrl;
     }
   }
@@ -263,7 +267,7 @@ class ApiService {
    * @param {Function} tokenProvider - Function to get access token
    */
   setTokenProvider(tokenProvider) {
-    console.log('🔐 Setting Auth0 token provider in apiService');
+    authLog.debug('Setting Auth0 token provider in apiService');
     this.getAccessToken = tokenProvider;
     this.tokenProviderVersion += 1;
     this.notifyTokenProviderListeners();
@@ -274,7 +278,7 @@ class ApiService {
    * @param {Function} callback - Function to call on auth errors
    */
   setAuthErrorCallback(callback) {
-    console.log('🔐 Setting auth error callback in apiService');
+    authLog.debug('Setting auth error callback in apiService');
     this.onAuthError = callback;
   }
 
@@ -293,7 +297,7 @@ class ApiService {
       try {
         listener(this.tokenProviderVersion);
       } catch (error) {
-        console.warn('Token provider listener error:', error);
+        authLog.warn('Token provider listener error:', error);
       }
     }
   }
@@ -311,35 +315,29 @@ class ApiService {
     };
     
     // Try to get Auth0 token if provider is set
-    console.log('🔐 Token provider available:', !!this.getAccessToken);
     if (this.getAccessToken) {
       try {
-        console.log('🔐 Attempting to get Auth0 token...');
         // The token provider is now a wrapper function that returns the token
         const accessToken = await this.getAccessToken();
-        console.log('🔐 Auth0 token received:', accessToken ? `${accessToken.substring(0, 20)}...` : 'null/undefined');
         if (accessToken) {
           headers['Authorization'] = `Bearer ${accessToken}`;
-          console.log('🔐 Authorization header set');
         } else {
-          console.warn('🔐 No access token received from Auth0');
+          authLog.warn('No access token received from Auth0');
         }
       } catch (error) {
-        console.warn('🔐 Failed to get Auth0 token:', error);
+        authLog.warn('Failed to get Auth0 token:', error);
 
         // Check if this is an Auth0 error indicating expired/invalid refresh token
         if (error.error === 'login_required' ||
             error.error === 'invalid_grant' ||
             error.message?.includes('login_required') ||
             error.message?.includes('expired')) {
-          console.error('🔐 Refresh token expired or invalid - triggering logout');
+          authLog.error('Refresh token expired or invalid - triggering logout');
           if (this.onAuthError) {
             this.onAuthError(error);
           }
         }
       }
-    } else {
-      console.warn('🔐 No token provider set - requests will be unauthenticated');
     }
     
     const options = {
@@ -350,17 +348,15 @@ class ApiService {
     if (method !== 'GET' && data) {
       options.body = JSON.stringify(data);
     }
-    
-    console.log(`📡 API Request to ${endpoint}:`, data);
-    
+
+    log.debug(`Request to ${endpoint}`);
+
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, options);
 
-      console.log(`📡 API Response status: ${response.status}`);
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error(`❌ API Error Response:`, errorData);
+        log.error(`API Error Response (${response.status}):`, errorData);
         const errorMessage = errorData.detail?.error_message ||
                            errorData.detail ||
                            errorData.message ||
@@ -368,7 +364,7 @@ class ApiService {
 
         // Check for 401 Unauthorized - token expired or invalid
         if (response.status === 401) {
-          console.error('🔐 401 Unauthorized - token expired or invalid');
+          authLog.error('401 Unauthorized - token expired or invalid');
           if (this.onAuthError) {
             this.onAuthError(new Error('Authentication token expired'));
           }
@@ -378,11 +374,9 @@ class ApiService {
       }
 
       const responseData = await response.json();
-      console.log(`📡 API Response data:`, responseData);
-
       return responseData;
     } catch (error) {
-      console.error(`❌ API Request failed:`, error);
+      log.error(`Request failed:`, error);
       throw error;
     }
   }
@@ -407,7 +401,7 @@ class ApiService {
         try {
           return JSON.parse(field);
         } catch (e) {
-          console.warn('Failed to parse JSON field:', e);
+          log.warn('Failed to parse JSON field:', e);
           return field;
         }
       }
@@ -465,6 +459,9 @@ class ApiService {
       // Combat status fields
       combat_status: this.parseField(structuredData.combat_status),
       combat_state: structuredData.combat_state || null,
+      is_combat_active: structuredData.is_combat_active,
+      interaction_type: structuredData.interaction_type || '',
+      next_interaction_type: structuredData.next_interaction_type || '',
       action_breakdown: this.parseField(structuredData.action_breakdown),
       turn_resolution: this.parseField(structuredData.turn_resolution),
       environmental_conditions: structuredData.environmental_conditions || '',
@@ -487,6 +484,7 @@ class ApiService {
         this.parseField(structuredData.perception_checks) ||
         this.parseField(structuredData.observations) ||
         [],
+      original_data: structuredData,
     };
 
     return {
@@ -506,15 +504,14 @@ class ApiService {
     if (!sessionId) {
       throw new Error('sessionId is required to send a message');
     }
-    console.log('💬 Sending chat message:', message);
-    console.log('💬 Session ID:', sessionId);
+    log.debug('Sending chat message to session:', sessionId);
     
     const requestData = {
       message,
       session_id: sessionId,
       input_type: 'CHAT'
     };
-    console.log('💬 Request data:', requestData);
+    log.debug('Request data:', { input_type: requestData.input_type });
     
     const response = await this.makeRequest('/api/chat/compat', requestData);
     
@@ -527,7 +524,7 @@ class ApiService {
    * @returns {Promise<Object>} Transformed response
    */
   async startNewCampaign(blank = false) {
-    console.log('🎲 Starting new campaign, blank:', blank);
+    log.debug('Starting new campaign, blank:', blank);
     
     const response = await this.makeRequest('/api/campaigns/new', {
       blank
@@ -566,7 +563,7 @@ class ApiService {
     if (!sessionId) {
       throw new Error('sessionId is required to add context');
     }
-    console.log('📝 Adding context to campaign:', sessionId);
+    log.debug('Adding context to campaign:', sessionId);
     
     const response = await this.makeRequest('/api/campaigns/add-context', {
       context: contextMessage,
@@ -588,7 +585,7 @@ class ApiService {
   async fetchRecentImages(limit = 10, campaignId = null) {
     try {
       if (!campaignId) {
-        console.warn('fetchRecentImages called without campaignId; returning empty list.');
+        log.warn('fetchRecentImages called without campaignId; returning empty list.');
         return [];
       }
       const params = new URLSearchParams({
@@ -599,7 +596,7 @@ class ApiService {
       const data = await this.fetchJsonWithDedupe(url, { method: 'GET' }, { maxAttempts: 3, baseDelayMs: 800, jitterMs: 250 });
       return Array.isArray(data.images) ? data.images : [];
     } catch (error) {
-      console.error('❌ Error fetching recent images:', error);
+      log.error('Error fetching recent images:', error);
       return [];
     }
   }
@@ -613,7 +610,7 @@ class ApiService {
    * @returns {Promise<Object>} Transformed response
    */
   async sendCompatRequest(message, sessionId, inputType) {
-    console.log(`📡 Sending compat request, type: ${inputType}`);
+    log.debug(`Sending compat request, type: ${inputType}`);
     
     const response = await this.makeRequest('/api/chat/compat', {
       message,
@@ -720,7 +717,7 @@ class ApiService {
           headers['Authorization'] = `Bearer ${token}`;
         }
       } catch (error) {
-        console.warn('Failed to get auth token for listSimpleCampaigns:', error);
+        authLog.warn('Failed to get auth token for listSimpleCampaigns:', error);
       }
     }
 
@@ -789,7 +786,7 @@ class ApiService {
           headers['Authorization'] = `Bearer ${token}`;
         }
       } catch (error) {
-        console.warn('Failed to get Auth0 token for active campaign:', error);
+        authLog.warn('Failed to get Auth0 token for active campaign:', error);
       }
     }
     
@@ -810,7 +807,7 @@ class ApiService {
     } catch (error) {
       // If it's a network error (backend not running), return null gracefully
       if (error.name === 'AbortError' || error.message.includes('Failed to fetch') || error.message.includes('ERR_')) {
-        console.warn('Backend not accessible for active campaign check:', error.message);
+        log.warn('Backend not accessible for active campaign check:', error.message);
         return null;
       }
       // Re-throw other errors
@@ -928,7 +925,7 @@ class ApiService {
           headers['Authorization'] = `Bearer ${accessToken}`;
         }
       } catch (error) {
-        console.warn('Failed to get Auth0 token for TTS:', error);
+        authLog.warn('Failed to get Auth0 token for TTS:', error);
       }
     }
     
@@ -1048,7 +1045,7 @@ class ApiService {
         const token = await this.auth0Client.getAccessTokenSilently();
         headers['Authorization'] = `Bearer ${token}`;
       } catch (error) {
-        console.warn('Failed to get Auth0 token for TTS availability:', error);
+        authLog.warn('Failed to get Auth0 token for TTS availability:', error);
       }
     }
     
@@ -1083,7 +1080,7 @@ class ApiService {
         const token = await this.auth0Client.getAccessTokenSilently();
         headers['Authorization'] = `Bearer ${token}`;
       } catch (error) {
-        console.warn('Failed to get Auth0 token for TTS providers:', error);
+        authLog.warn('Failed to get Auth0 token for TTS providers:', error);
       }
     }
 
@@ -1208,7 +1205,7 @@ class ApiService {
           headers['Authorization'] = `Bearer ${accessToken}`;
         }
       } catch (error) {
-        console.warn('Failed to get Auth0 token for portrait generation:', error);
+        authLog.warn('Failed to get Auth0 token for portrait generation:', error);
       }
     }
 
@@ -1251,7 +1248,7 @@ class ApiService {
           headers['Authorization'] = `Bearer ${accessToken}`;
         }
       } catch (error) {
-        console.warn('Failed to get Auth0 token for portrait retrieval:', error);
+        authLog.warn('Failed to get Auth0 token for portrait retrieval:', error);
       }
     }
 
@@ -1285,7 +1282,7 @@ class ApiService {
           headers['Authorization'] = `Bearer ${accessToken}`;
         }
       } catch (error) {
-        console.warn('Failed to get Auth0 token for visual update:', error);
+        authLog.warn('Failed to get Auth0 token for visual update:', error);
       }
     }
 

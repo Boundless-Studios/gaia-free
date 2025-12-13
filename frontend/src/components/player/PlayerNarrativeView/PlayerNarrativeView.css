@@ -48,7 +48,6 @@
   position: relative;
   width: 100%;
   height: 100%;
-  cursor: pointer;
   overflow: hidden;
 }
 
@@ -608,18 +607,69 @@
   }
 }
 
+/* Inline Scene Navigation Buttons */
+.scene-nav-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+  opacity: 0.7;
+}
+
+.scene-nav-button:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.8);
+  opacity: 1;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.scene-nav-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.scene-nav-prev {
+  left: 0.75rem;
+}
+
+.scene-nav-next {
+  right: 0.75rem;
+}
+
+/* Scene Image Counter */
+.scene-image-counter {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 0.4rem 1rem;
+  border-radius: 16px;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 500;
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 /* Scene Image Display Styles */
 .scene-image-display {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  cursor: pointer;
   transition: all 0.3s ease;
-}
-
-.scene-image-display:hover {
-  transform: scale(1.02);
 }
 
 .scene-image {
@@ -781,13 +831,23 @@
     padding: 0.1rem 0.3rem;
   }
 
-  .click-indicator {
-    top: 0.5rem;
-    right: 0.5rem;
-    padding: 0.4rem 0.8rem;
+  .scene-nav-button {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
   }
 
-  .click-text {
+  .scene-nav-prev {
+    left: 0.5rem;
+  }
+
+  .scene-nav-next {
+    right: 0.5rem;
+  }
+
+  .scene-image-counter {
+    bottom: 0.5rem;
+    padding: 0.3rem 0.8rem;
     font-size: 0.75rem;
   }
 
@@ -860,4 +920,35 @@
   color: #e5e7eb;
   margin: 0;
   line-height: 1.6;
+}
+
+/* Player Inputs Section - formatted inputs from turn */
+.player-inputs-section {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.player-input-item {
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 193, 7, 0.1);
+  border-left: 2px solid #ffc107;
+  border-radius: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.player-input-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffc107;
+  text-transform: uppercase;
+}
+
+.player-input-text {
+  color: #e5e7eb;
+  line-height: 1.5;
 }

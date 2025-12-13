@@ -5,7 +5,12 @@ import apiService from '../services/apiService';
 import { useSFX } from '../context/sfxContext';
 import { Card } from './base-ui/Card';
 import { Alert } from './base-ui/Alert';
+import { loggers, createLogger } from '../utils/logger.js';
 import './ControlPanel.css';
+
+const log = loggers.audio;
+const ttsLog = createLogger('TTS');
+const sfxLog = createLogger('SFX');
 
 const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRef, onImageGenerated, campaignId, selectedProvider, onProviderChange }, ref) => {
   const sfx = useSFX();
@@ -56,7 +61,7 @@ const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRe
     const fetchAvailableVoices = async (retryCount = 0) => {
     // Prevent concurrent fetches
     if (fetchingRef.current && retryCount === 0) {
-      console.log('Already fetching voices, skipping...');
+      log.debug('Already fetching voices, skipping');
       return;
     }
     
@@ -64,7 +69,7 @@ const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRe
     
     try {
       setIsLoadingVoices(true);
-      console.log(`Fetching voices for provider: ${selectedProvider} (attempt ${retryCount + 1})`);
+      log.debug('Fetching voices | provider=%s attempt=%d', selectedProvider, retryCount + 1);
       
       const data = await apiService.getTTSVoices();
 
@@ -72,13 +77,13 @@ const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRe
         if (data.voices && data.voices.length > 0) {
           // Only get voices for the selected provider
           const selectedProviderVoices = data.voices.filter(voice => voice.provider === selectedProvider);
-          console.log(`Found ${selectedProviderVoices.length} voices for provider ${selectedProvider}:`, selectedProviderVoices);
+          log.debug('Found %d voices for provider %s', selectedProviderVoices.length, selectedProvider);
           
           if (selectedProviderVoices.length > 0) {
             setAvailableVoices(selectedProviderVoices);
           } else {
             // No voices available for the selected provider
-            console.log(`No voices available for provider ${selectedProvider}`);
+            log.debug('No voices available for provider %s', selectedProvider);
             setAvailableVoices([]);
           }
         } else {
@@ -87,18 +92,18 @@ const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRe
         fetchingRef.current = false;
         setIsLoadingVoices(false);
       } else {
-        console.error('Voice API response not ok');
+        log.error('Voice API response not ok');
         setAvailableVoices([]);
         fetchingRef.current = false;
         setIsLoadingVoices(false);
       }
     } catch (error) {
-      console.error('Failed to fetch voices:', error);
+      log.error('Failed to fetch voices:', error.message);
       setAvailableVoices([]);
-      
+
       // Retry logic for TTS server startup timing issues - but only if we have a provider selected
       if (retryCount < 3 && selectedProvider) {
-        console.log(`Retrying voice fetch in 2 seconds... (attempt ${retryCount + 1})`);
+        log.debug('Retrying voice fetch in 2s | attempt=%d', retryCount + 1);
         retryTimeoutRef.current = setTimeout(() => {
           fetchingRef.current = false;
           fetchAvailableVoices(retryCount + 1);
@@ -141,13 +146,13 @@ const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRe
       }
     } else {
       // Clear selected voice when no voices are available
-      console.log(`No voices available for provider ${selectedProvider}, clearing selected voice`);
+      log.debug('No voices available for provider %s, clearing', selectedProvider);
       onVoiceSelect('');
     }
   }, [availableVoices, selectedProvider, onVoiceSelect]);
 
   const handleRefreshTTS = () => {
-    console.log('Manual TTS refresh triggered');
+    log.debug('Manual TTS refresh triggered');
     fetchAvailableVoices();
   };
 
@@ -167,11 +172,11 @@ const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRe
     const selection = window.getSelection();
     const selectedText = selection ? selection.toString().trim() : '';
     if (!selectedText) {
-      console.log('[TTS] No highlighted text detected, skipping playback trigger');
+      ttsLog.debug('No highlighted text detected, skipping playback');
       return;
     }
     if (!characterVoiceMappings.length && !selectedVoice && !voiceOverride) {
-      console.warn('[TTS] No available voices to use for playback');
+      ttsLog.warn('No available voices to use for playback');
       return;
     }
 
@@ -189,13 +194,9 @@ const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRe
         },
         sessionForRequest,
       );
-      console.log('[TTS] Triggered playback via keyboard shortcut', {
-        sessionId: sessionForRequest,
-        voice: voiceToUse,
-        length: selectedText.length,
-      });
+      ttsLog.debug('Triggered playback | voice=%s len=%d', voiceToUse, selectedText.length);
     } catch (error) {
-      console.error('Failed to trigger keyboard playback:', error);
+      ttsLog.error('Failed to trigger keyboard playback:', error.message);
     } finally {
       playbackStateRef.current.isProcessing = false;
     }
@@ -209,7 +210,7 @@ const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRe
     const selection = window.getSelection();
     const selectedText = selection ? selection.toString().trim() : '';
     if (!selectedText) {
-      console.log('[SFX] No highlighted text detected, skipping sound effect generation');
+      sfxLog.debug('No highlighted text detected, skipping sound effect');
       return;
     }
 
@@ -266,7 +267,7 @@ const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRe
         const numberPressed = parseInt(e.key);
         const mapping = characterVoiceMappings.find(m => m.number === numberPressed);
         if (mapping) {
-          console.log(`Keyboard shortcut ${numberPressed} pressed. Selecting voice:`, mapping);
+          ttsLog.debug('Keyboard shortcut %d pressed | voice=%s', numberPressed, mapping.voice);
           // Select the voice
           onVoiceSelect(mapping.voice);
 
@@ -278,7 +279,7 @@ const ControlPanel = forwardRef(({ selectedVoice, onVoiceSelect, gameDashboardRe
 
       // Handle key 9 for sound effect generation
       if (e.key === '9') {
-        console.log('Keyboard shortcut 9 pressed. Generating sound effect for selected text.');
+        sfxLog.debug('Keyboard shortcut 9 pressed, generating sound effect');
         triggerSoundEffect();
       }
     };

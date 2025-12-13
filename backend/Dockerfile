@@ -26,10 +26,10 @@ ENV PATH=/home/gaia/.local/bin:$PATH \
 
 # Copy application code
 COPY --chown=gaia:gaia backend/src/ ./src/
-COPY --chown=gaia:gaia scripts/backend/ ./scripts/
+COPY --chown=gaia:gaia scripts/ ./scripts/
 
 # Expose Cloud Run port
 EXPOSE 8080
 
 # Use Cloud Run entrypoint
-ENTRYPOINT ["python", "/home/gaia/scripts/entrypoint_cloud_run.py"]
+ENTRYPOINT ["python", "/home/gaia/scripts/backend/entrypoint_cloud_run.py"]

@@ -26,17 +26,11 @@ const TurnView = ({
   turnInfo,
   // Player submissions (from players clicking "Submit Action")
   playerSubmissions = [],
-  onCopyPlayerSubmission,
+  selectedPlayerSubmissionIds = new Set(),
+  onTogglePlayerSubmission = null,
   // DM mode - only show player submissions, no player options
   isDMView = false,
 }) => {
-  // Debug: Log what TurnView receives
-  console.log('📋 TurnView render:', {
-    playerSubmissionsCount: playerSubmissions?.length,
-    playerSubmissions,
-    pendingObservationsCount: pendingObservations?.length,
-    isActivePlayer
-  });
   // Determine which options to display and whether user is active
   const { turnLines, isActive, characterName } = useMemo(() => {
     // If personalized options are available and we have a character ID, use those
@@ -139,11 +133,6 @@ const TurnView = ({
         {/* Player submissions (from players clicking "Submit Action") */}
         {playerSubmissions.length > 0 && (
           <div className="turn-submissions-section">
-            <div className="turn-submissions-header">
-              <span className="turn-submissions-icon">📝</span>
-              <span className="turn-submissions-title">Player Submissions</span>
-              <span className="turn-submissions-count">{playerSubmissions.length}</span>
-            </div>
             <div className="turn-submissions-list">
               {playerSubmissions.map((submission) => {
                 // Parse action text to separate main action from observations
@@ -165,13 +154,16 @@ const TurnView = ({
                   mainAction = submission.actionText.replace(observationPattern, '').trim();
                 }
 
+                // Check if this submission is selected
+                const isSelected = selectedPlayerSubmissionIds.has(submission.id);
+
                 return (
                   <div
                     key={submission.id}
-                    className="turn-submission-item"
-                    onClick={() => onCopyPlayerSubmission && onCopyPlayerSubmission(submission)}
-                    style={onCopyPlayerSubmission ? { cursor: 'pointer' } : {}}
-                    title={onCopyPlayerSubmission ? "Click to copy to input" : ""}
+                    className={`turn-submission-item ${isSelected ? 'selected' : ''}`}
+                    onClick={() => onTogglePlayerSubmission && onTogglePlayerSubmission(submission)}
+                    style={onTogglePlayerSubmission ? { cursor: 'pointer' } : {}}
+                    title={onTogglePlayerSubmission ? (isSelected ? "Click to deselect" : "Click to select") : ""}
                   >
                     {/* Main action */}
                     <div className="turn-submission-action">

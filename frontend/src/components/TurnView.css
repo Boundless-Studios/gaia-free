@@ -340,6 +340,17 @@
   transform: translateY(0);
 }
 
+.turn-submission-item.selected {
+  border-color: rgba(167, 139, 250, 0.7);
+  background: rgba(139, 92, 246, 0.15);
+  box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.4);
+}
+
+.turn-submission-item.selected:hover {
+  border-color: rgba(167, 139, 250, 0.9);
+  background: rgba(139, 92, 246, 0.2);
+}
+
 .turn-submission-author {
   color: #a5b4fc;
   font-weight: 600;

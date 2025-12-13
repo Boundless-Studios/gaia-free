@@ -25,8 +25,8 @@
 
 .character-viewer-content {
   position: relative;
-  max-width: 95vw;
-  max-height: 95vh;
+  max-width: min(1200px, 90vw);
+  max-height: 90vh;
   cursor: default;
   animation: slideIn 0.3s ease-out;
 }
@@ -71,13 +71,13 @@
 /* Main Grid Layout */
 .character-viewer-grid {
   display: grid;
-  grid-template-columns: 600px 1fr;
+  grid-template-columns: 600px minmax(300px, 500px);
   gap: 32px;
   background: #1a1a1a;
   border-radius: 12px;
   padding: 32px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-  max-height: 90vh;
+  max-height: 85vh;
   overflow: hidden;
 }
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { API_CONFIG } from '../../../config/api.js';
 
-const SceneImageDisplay = ({ image, campaignId, onClick }) => {
+const SceneImageDisplay = ({ image, campaignId }) => {
   // Default placeholder scene
   const defaultScene = {
     imageUrl: null,
@@ -11,17 +11,10 @@ const SceneImageDisplay = ({ image, campaignId, onClick }) => {
 
   const currentImage = image || defaultScene;
 
-  const handleImageClick = (e) => {
-    e.preventDefault();
-    if (onClick) {
-      onClick();
-    }
-  };
-
   if (!currentImage.imageUrl && !currentImage.path) {
     // Show atmospheric placeholder
     return (
-      <div className="scene-image-display scene-placeholder" onClick={handleImageClick}>
+      <div className="scene-image-display scene-placeholder">
         <div className="placeholder-background">
           <div className="atmospheric-elements">
             <div className="element element-1">✨</div>
@@ -45,7 +38,7 @@ const SceneImageDisplay = ({ image, campaignId, onClick }) => {
                   (currentImage.path ? `${API_CONFIG.BACKEND_URL}${currentImage.path}` : null);
 
   return (
-    <div className="scene-image-display" onClick={handleImageClick}>
+    <div className="scene-image-display">
       <img
         src={imageUrl}
         alt={currentImage.imagePrompt || 'Scene image'}
@@ -56,22 +49,6 @@ const SceneImageDisplay = ({ image, campaignId, onClick }) => {
           e.target.style.display = 'none';
         }}
       />
-
-      {/* Image overlay with title */}
-      <div className="scene-overlay">
-        <div className="scene-info">
-          <span className="scene-type">{currentImage.type || 'scene'}</span>
-          {currentImage.imagePrompt && (
-            <span className="scene-prompt">{currentImage.imagePrompt}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Click indicator */}
-      <div className="click-indicator">
-        <span className="click-icon">🔍</span>
-        <span className="click-text">Click to expand</span>
-      </div>
     </div>
   );
 };

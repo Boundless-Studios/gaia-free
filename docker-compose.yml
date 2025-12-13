@@ -28,6 +28,9 @@ services:
       service: dev
     container_name: ${BACKEND_CONTAINER_NAME:-gaia-backend-dev}
     profiles: ["dev"]
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       # Disable Cloudflare tunnel for local development
       DISABLE_CLOUDFLARE_TUNNEL: "true"
@@ -56,6 +59,9 @@ services:
       service: gpu
     container_name: ${BACKEND_CONTAINER_NAME:-gaia-backend-gpu}
     profiles: ["gpu"]  # Only for gpu profile
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       # Disable Cloudflare tunnel for local GPU development
       DISABLE_CLOUDFLARE_TUNNEL: "true"
@@ -73,11 +79,14 @@ services:
       service: gpu  # Use GPU configuration
     container_name: ${BACKEND_CONTAINER_NAME:-gaia-backend-prod}
     profiles: ["prod"]  # Production profile
+    depends_on:
+      postgres:
+        condition: service_healthy
     # Tunnel will use CLOUDFLARE_TUNNEL from environment
     volumes:
       # Add volume mounts for hot-reload in production
       - ./backend/src:/home/gaia/src:ro
-      - ./backend/scripts:/home/gaia/scripts:ro
+      - ./scripts:/home/gaia/scripts:ro
       - ./backend/test:/home/gaia/test:ro
       - ./backend/audio_samples:/home/gaia/audio_samples:ro
       # Mount auth and db submodules
@@ -103,6 +112,9 @@ services:
       service: test
     container_name: ${BACKEND_CONTAINER_NAME:-gaia-backend-test}
     profiles: ["test"]
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   # =============================================================================
   # FRONTEND SERVICES
@@ -216,10 +228,11 @@ services:
       - ./secrets:/secrets:ro
     profiles: ["dev", "gpu", "prod"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gaia} -d ${POSTGRES_DB:-gaia}"]
-      interval: 10s
+      # Check postgres is ready AND migrations have completed (external_campaign_id column exists)
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gaia} -d ${POSTGRES_DB:-gaia} && psql -U ${POSTGRES_USER:-gaia} -d ${POSTGRES_DB:-gaia} -c \"SELECT 1 FROM information_schema.columns WHERE table_schema='game' AND table_name='campaigns' AND column_name='external_campaign_id'\" | grep -q 1"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 30
       start_period: 30s
     logging:
       driver: "json-file"
