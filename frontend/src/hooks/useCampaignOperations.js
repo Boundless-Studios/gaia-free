@@ -32,6 +32,7 @@ export function useCampaignOperations({
   clearStreaming,
   setCampaignName,
   setCurrentTurn, // For turn counter persistence
+  navigate, // Add navigate for routing to campaigns
 }) {
   /**
    * Select and load a campaign
@@ -279,8 +280,8 @@ export function useCampaignOperations({
       log.debug('Arena quick start response | success=%s', response.success);
 
       if (response.success && response.campaign_id) {
-        // Load the created campaign
-        await handleSelectCampaign(response.campaign_id, true);
+        // Navigate to the arena campaign DM view
+        navigate(`/${response.campaign_id}/dm`);
 
         log.info('Arena campaign created and loaded');
       } else {
@@ -291,7 +292,7 @@ export function useCampaignOperations({
       setError(`Failed to start arena: ${error.message}`);
       setIsLoading(false);
     }
-  }, [setIsLoading, setError, handleSelectCampaign]);
+  }, [setIsLoading, setError, navigate]);
 
 
   /**
