@@ -217,6 +217,23 @@ const PlayerControls = ({
   // Check if combat is active - hide suggestions during combat (combat has its own action system)
   const isInCombat = useMemo(() => {
     if (!structuredData) return false;
+
+    const nextInteractionType = structuredData.next_interaction_type
+      || structuredData.original_data?.next_interaction_type;
+    if (typeof nextInteractionType === 'string' && nextInteractionType.toLowerCase() === 'default') {
+      return false;
+    }
+
+    if (structuredData.is_combat_active === false) {
+      return false;
+    }
+
+    if (structuredData.combat_state
+      && typeof structuredData.combat_state === 'object'
+      && structuredData.combat_state.is_active === false) {
+      return false;
+    }
+
     const combatStatus = structuredData.combat_status;
     if (!combatStatus) return false;
     // Check if combat_status has meaningful content (not empty object/array/string)

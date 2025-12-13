@@ -484,6 +484,7 @@ class ApiService {
         this.parseField(structuredData.perception_checks) ||
         this.parseField(structuredData.observations) ||
         [],
+      original_data: structuredData,
     };
 
     return {

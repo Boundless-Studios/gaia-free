@@ -416,6 +416,7 @@ const PlayerPage = () => {
       is_combat_active: structData.is_combat_active,
       interaction_type: structData.interaction_type || '',
       next_interaction_type: structData.next_interaction_type || '',
+      original_data: structData,
     };
     if (structData.combat_state) {
       base.combat_state = structData.combat_state;
