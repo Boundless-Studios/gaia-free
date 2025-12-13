@@ -47,7 +47,8 @@ class DMPreferences(BaseModel):
     # UI/Display preferences
     show_dice_rolls: Mapped[bool] = mapped_column(Boolean, default=True)
     auto_generate_portraits: Mapped[bool] = mapped_column(Boolean, default=True)
-    narration_style: Mapped[str] = mapped_column(String(50), default="balanced")
+    auto_scene_image_generation: Mapped[bool] = mapped_column(Boolean, default=True)
+    auto_audio_playback: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Gameplay preferences
     default_difficulty: Mapped[str] = mapped_column(String(50), default="medium")
@@ -86,11 +87,6 @@ class PlayerPreferences(BaseModel):
         unique=True
     )
 
-    # Display preferences
-    theme: Mapped[str] = mapped_column(String(50), default="dark")
-    font_size: Mapped[str] = mapped_column(String(20), default="medium")
-    show_animations: Mapped[bool] = mapped_column(Boolean, default=True)
-
     # Audio preferences
     enable_audio: Mapped[bool] = mapped_column(Boolean, default=True)
     audio_volume: Mapped[int] = mapped_column(Integer, default=80)
@@ -105,7 +101,7 @@ class PlayerPreferences(BaseModel):
     preferences_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
 
     def __repr__(self):
-        return f"<PlayerPreferences(user_id={self.user_id}, theme={self.theme})>"
+        return f"<PlayerPreferences(user_id={self.user_id}, audio={self.enable_audio})>"
 
 
 class CampaignSettings(BaseModel):
@@ -144,16 +140,6 @@ class CampaignSettings(BaseModel):
     npc_model: Mapped[Optional[str]] = mapped_column(String(100))
     combat_model: Mapped[Optional[str]] = mapped_column(String(100))
     narration_model: Mapped[Optional[str]] = mapped_column(String(100))
-
-    # Gameplay rules
-    allow_homebrew: Mapped[bool] = mapped_column(Boolean, default=False)
-    use_milestone_leveling: Mapped[bool] = mapped_column(Boolean, default=True)
-    starting_level: Mapped[int] = mapped_column(Integer, default=1)
-    max_level: Mapped[int] = mapped_column(Integer, default=20)
-
-    # Session settings
-    session_length_minutes: Mapped[int] = mapped_column(Integer, default=180)
-    breaks_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Metadata
     settings_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
