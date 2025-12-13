@@ -1442,6 +1442,87 @@ class ApiService {
     );
   }
 
+  // ==========================================================================
+  // Game Preferences API
+  // ==========================================================================
+
+  /**
+   * Get DM preferences for the current user
+   * @returns {Promise<Object>} DM preferences
+   */
+  async getDMPreferences() {
+    return this.fetchJsonWithDedupe(
+      `${this.baseUrl}/api/preferences/dm`
+    );
+  }
+
+  /**
+   * Update DM preferences for the current user
+   * @param {Object} preferences - Preference fields to update
+   * @returns {Promise<Object>} Updated DM preferences
+   */
+  async updateDMPreferences(preferences) {
+    return this.fetchJsonWithDedupe(
+      `${this.baseUrl}/api/preferences/dm`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(preferences)
+      }
+    );
+  }
+
+  /**
+   * Get player preferences for the current user
+   * @returns {Promise<Object>} Player preferences
+   */
+  async getPlayerPreferences() {
+    return this.fetchJsonWithDedupe(
+      `${this.baseUrl}/api/preferences/player`
+    );
+  }
+
+  /**
+   * Update player preferences for the current user
+   * @param {Object} preferences - Preference fields to update
+   * @returns {Promise<Object>} Updated player preferences
+   */
+  async updatePlayerPreferences(preferences) {
+    return this.fetchJsonWithDedupe(
+      `${this.baseUrl}/api/preferences/player`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(preferences)
+      }
+    );
+  }
+
+  /**
+   * Get campaign settings
+   * @param {string} campaignId - Campaign ID
+   * @returns {Promise<Object>} Campaign settings
+   */
+  async getCampaignSettings(campaignId) {
+    return this.fetchJsonWithDedupe(
+      `${this.baseUrl}/api/preferences/campaign/${this.encodePathSegment(campaignId)}`
+    );
+  }
+
+  /**
+   * Update campaign settings
+   * @param {string} campaignId - Campaign ID
+   * @param {Object} settings - Settings fields to update
+   * @returns {Promise<Object>} Updated campaign settings
+   */
+  async updateCampaignSettings(campaignId, settings) {
+    return this.fetchJsonWithDedupe(
+      `${this.baseUrl}/api/preferences/campaign/${this.encodePathSegment(campaignId)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(settings)
+      }
+    );
+  }
+
 }
 
 // Create and export singleton instance
